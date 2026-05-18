@@ -1,33 +1,56 @@
 """olympus.cli — the single entry point.
 
-Hermes dispatches every named errand. To run a god, ask Hermes:
+Hermes dispatches every named errand. The CLI is a thin wrapper around
+the Python API; everything `invoke` does, you can do from Python.
 
-    invoke prime                  # session prime via Odysseus
-    invoke consult chart          # Urania's brain-map
-    invoke consult population     # Coeus's tier counts
-    invoke consult hymn           # Polyhymnia's Styx hymn
-    invoke bring-forth            # Rhea ensures directories
-    invoke kindle <name> <vocation>  # Hestia lights the hearth
-    invoke remember <kind> <actor> <summary>   # Mnemosyne
-    invoke swear <by> <statement>              # Styx
-    invoke verify                 # Tisiphone audits Styx
-    invoke labors                 # Heracles runs the canonical 12
-    invoke pantheon               # full pantheon listing
-    invoke blessing               # Thalia's closing
+Global flags (place before any errand):
+  --json        emit machine-readable output where supported
+  --quiet       suppress non-essential output
+  --no-color    disable ANSI colors
+
+Use `invoke help <errand>` for per-errand detail.
 """
 from __future__ import annotations
 
+import json as _json
+import os as _os
 import pathlib
 import sys
+from typing import Any
 
-from olympus.olympians.hermes import hermes
-from olympus.olympians.aphrodite import aphrodite
-from olympus.graces.aglaia import aglaia
-from olympus.primordials.gaia import root as _gaia_root
+# Honor global flags before any color modules load
+_argv_raw = list(sys.argv[1:])
+_GLOBAL_FLAGS: dict[str, bool] = {"json": False, "quiet": False, "no_color": False}
+_filtered: list[str] = []
+for _a in _argv_raw:
+    if _a == "--json":
+        _GLOBAL_FLAGS["json"] = True
+    elif _a == "--quiet":
+        _GLOBAL_FLAGS["quiet"] = True
+    elif _a == "--no-color":
+        _GLOBAL_FLAGS["no_color"] = True
+        _os.environ["NO_COLOR"] = "1"
+    else:
+        _filtered.append(_a)
+sys.argv = [sys.argv[0]] + _filtered
+
+
+from olympus.olympians.hermes import hermes  # noqa: E402
+from olympus.olympians.aphrodite import aphrodite  # noqa: E402
+from olympus.graces.aglaia import aglaia  # noqa: E402
+from olympus.primordials.gaia import root as _gaia_root  # noqa: E402
+
+
+def _maybe_json(data: Any, fallback_text: str) -> int:
+    if _GLOBAL_FLAGS["json"]:
+        sys.stdout.write(_json.dumps(data, default=str, indent=2) + "\n")
+    elif not _GLOBAL_FLAGS["quiet"]:
+        sys.stdout.write(fallback_text + "\n")
+    return 0
 
 
 # ─────────────────────────────────────────────────────────────────────
-# Errands — every public capability is registered here
+# Substrate primitives — register first so help lists them up top
 # ─────────────────────────────────────────────────────────────────────
 
 
@@ -37,23 +60,157 @@ def _prime(_argv: list[str]) -> int:
     from olympus.olympians.hestia import hestia
     from olympus.heroes.odysseus import odysseus
     rhea.bring_forth()
-    print(aglaia.section("Olympus — session prime"))
+    if not _GLOBAL_FLAGS["quiet"]:
+        print(aglaia.section("Olympus — session prime"))
     if not hestia.is_lit():
         print(aphrodite.wine_dark(
             "hearth is unlit — run `invoke kindle <name> <vocation>` first"
         ))
         return 1
     h = hestia.hearth()
-    print(aphrodite.laurel(f"hearth lit as '{h.name}' (kindled {h.kindled_at})"))
-    print(aglaia.murmur(f"  vocation: {h.vocation}"))
     bearing = odysseus.take_bearing()
-    if bearing.last_summary:
-        print(aphrodite.lightning(
-            f"last memory: {bearing.last_kind} — {bearing.last_summary}"
-        ))
+    data = {
+        "hearth": {"name": h.name, "vocation": h.vocation, "kindled_at": h.kindled_at},
+        "last_memory": bearing.last_summary,
+        "last_kind": bearing.last_kind,
+        "total_memories": bearing.total_memories,
+    }
+    text = (
+        aphrodite.laurel(f"hearth lit as '{h.name}' (kindled {h.kindled_at})") + "\n"
+        + aglaia.murmur(f"  vocation: {h.vocation}") + "\n"
+        + (aphrodite.lightning(f"last memory: {bearing.last_kind} — {bearing.last_summary}")
+           if bearing.last_summary else aglaia.murmur("  no prior memories")) + "\n"
+        + aglaia.murmur(f"  total memories: {bearing.total_memories}")
+    )
+    return _maybe_json(data, text)
+
+
+@hermes.register("status", "one-line health snapshot of the substrate")
+def _status(_argv: list[str]) -> int:
+    from olympus.olympians.hestia import hestia
+    from olympus.muses.polyhymnia import polyhymnia
+    from olympus.action import action_queue
+    from olympus.titans.mnemosyne import mnemosyne
+    from olympus.monsters.hydra import hydra
+    from olympus.monsters.argos.colony import colony
+
+    hymn = polyhymnia.hymn()
+    hearth = hestia.hearth() if hestia.is_lit() else None
+    pending = action_queue.pending()
+    delphi = action_queue.delphi_pending()
+    sessions = mnemosyne.recall("session.completed")
+
+    data = {
+        "hearth": {"lit": hearth is not None,
+                   "name": hearth.name if hearth else None,
+                   "vocation": hearth.vocation if hearth else None},
+        "styx": {"total_oaths": hymn.total_oaths, "intact": hymn.intact},
+        "hydra": {"heads": len(hydra.heads()),
+                  "mortal": hydra.mortal_count(),
+                  "immortal": 1 if hydra.immortal() else 0},
+        "argos": {"eyes": len(colony.eyes())},
+        "actions": {"pending": len(pending), "delphi_pending": len(delphi)},
+        "sessions": {"total": len(sessions)},
+    }
+    rows = [
+        ("hearth",   "lit" if hearth else "DARK",
+                     f"{hearth.name}" if hearth else "—"),
+        ("styx",     f"{hymn.total_oaths} oaths",
+                     "intact" if hymn.intact else "BROKEN"),
+        ("hydra",    f"{len(hydra.heads())} heads",
+                     f"{hydra.mortal_count()} mortal + 1 immortal"),
+        ("argos",    f"{len(colony.eyes())} eyes", "registered"),
+        ("actions",  f"{len(pending)} queued",
+                     f"{len(delphi)} delphi-pending"),
+        ("sessions", f"{len(sessions)} total", "in Mnemosyne"),
+    ]
+    text = aphrodite.table(("tier", "count", "state"), rows)
+    return _maybe_json(data, text)
+
+
+@hermes.register("version", "show Olympus version")
+def _version(_argv: list[str]) -> int:
+    from olympus import __version__
+    if _GLOBAL_FLAGS["json"]:
+        print(_json.dumps({"version": __version__}))
     else:
-        print(aglaia.murmur("  no prior memories"))
-    print(aglaia.murmur(f"  total memories: {bearing.total_memories}"))
+        print(f"olympus {__version__}")
+    return 0
+
+
+@hermes.register("list", "list named modules under a tier — list [tier]")
+def _list(argv: list[str]) -> int:
+    import pathlib as _pl
+    tiers = ("primordials", "titans", "olympians", "underworld",
+             "fates", "furies", "graces", "muses", "heroes", "monsters")
+    requested = argv[0] if argv else None
+    rows: list[tuple[str, str]] = []
+    src_root = _gaia_root.child("src", "olympus")
+    for t in tiers:
+        if requested and t != requested:
+            continue
+        tier_path = src_root / t
+        if not tier_path.is_dir():
+            continue
+        for f in sorted(tier_path.rglob("*.py")):
+            if f.name.startswith("_") or f.name == "base.py":
+                continue
+            rel = f.relative_to(src_root).as_posix()[:-3]
+            rows.append((t, rel))
+    if _GLOBAL_FLAGS["json"]:
+        print(_json.dumps([{"tier": t, "module": m} for t, m in rows], indent=2))
+        return 0
+    print(aphrodite.table(("tier", "module"), rows))
+    return 0
+
+
+@hermes.register("describe", "show a god's docstring and interface — describe <tier.god>")
+def _describe(argv: list[str]) -> int:
+    import importlib
+    import inspect
+    if not argv:
+        print("usage: invoke describe <tier.god>  (e.g., olympians.zeus)")
+        return 2
+    name = argv[0]
+    if not name.startswith("olympus."):
+        name = f"olympus.{name}"
+    try:
+        mod = importlib.import_module(name)
+    except ImportError as exc:
+        print(aphrodite.wine_dark(f"cannot import {name!r}: {exc}"))
+        return 1
+    doc = (mod.__doc__ or "(no docstring)").strip()
+    print(aglaia.section(f"{name}"))
+    print(doc)
+    print()
+    print(aglaia.subhead("public interface"))
+    for n, obj in inspect.getmembers(mod):
+        if n.startswith("_") or inspect.ismodule(obj):
+            continue
+        kind = "class" if inspect.isclass(obj) else (
+            "func" if inspect.isfunction(obj) else "var"
+        )
+        print(f"  {kind:5s}  {n}")
+    return 0
+
+
+@hermes.register("history", "last N sessions — history [N=10]")
+def _history(argv: list[str]) -> int:
+    from olympus.titans.mnemosyne import mnemosyne
+    n = int(argv[0]) if argv else 10
+    sessions = mnemosyne.recall("session.completed")[-n:]
+    if not sessions:
+        print(aglaia.murmur("  no sessions in Mnemosyne yet"))
+        return 0
+    data = [{"ts": m.remembered_at, "summary": m.summary,
+             "session_id": m.body.get("session_id")} for m in sessions]
+    if _GLOBAL_FLAGS["json"]:
+        print(_json.dumps(data, indent=2))
+        return 0
+    rows = [(m.remembered_at[:19],
+             m.body.get("session_id", "")[:16],
+             m.summary[:80]) for m in sessions]
+    print(aphrodite.table(("when", "session", "summary"), rows))
     return 0
 
 
@@ -61,6 +218,9 @@ def _prime(_argv: list[str]) -> int:
 def _bring_forth(_argv: list[str]) -> int:
     from olympus.titans.rhea import rhea
     statuses = rhea.bring_forth()
+    if _GLOBAL_FLAGS["json"]:
+        print(_json.dumps(statuses, indent=2))
+        return 0
     rows = [(rel, status) for rel, status in statuses.items()]
     print(aphrodite.table(("directory", "status"), rows))
     return 0
@@ -120,12 +280,19 @@ def _verify(_argv: list[str]) -> int:
     return 1
 
 
-@hermes.register("labors", "Heracles performs the assigned labors")
+@hermes.register("labors", "Heracles performs the twelve canonical labors")
 def _labors(_argv: list[str]) -> int:
-    from olympus.heroes.heracles import heracles, CANONICAL_LABORS
+    from olympus.heroes.heracles import Heracles, CANONICAL_LABORS
+    h = Heracles()
     for labor in CANONICAL_LABORS:
-        heracles.assign(labor)
-    verdicts = heracles.perform()
+        h.assign(labor)
+    verdicts = h.perform()
+    if _GLOBAL_FLAGS["json"]:
+        data = [{"n": v.labor.number, "name": v.labor.name,
+                 "target": v.labor.target, "survived": v.survived,
+                 "detail": v.detail} for v in verdicts]
+        print(_json.dumps(data, indent=2))
+        return 0
     rows = [(str(v.labor.number), v.labor.name, v.labor.target,
              "+" if v.survived else "-", v.detail) for v in verdicts]
     print(aphrodite.table(("#", "labor", "target", "result", "detail"), rows))
@@ -134,6 +301,166 @@ def _labors(_argv: list[str]) -> int:
         print(aphrodite.wine_dark(f"{failed} labor(s) failed"))
         return 1
     print(aphrodite.laurel("all twelve labors survived"))
+    return 0
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Loop + action + meta + correlation
+# ─────────────────────────────────────────────────────────────────────
+
+
+@hermes.register("session", "run one cognitive-loop session — session [--verbose] [directive]")
+def _session(argv: list[str]) -> int:
+    from olympus.session import Session
+    verbose = "--verbose" in argv or "-v" in argv
+    argv = [a for a in argv if a not in ("--verbose", "-v")]
+    directive = " ".join(argv) if argv else None
+    s = Session(directive=directive)
+    r = s.run()
+    if _GLOBAL_FLAGS["json"]:
+        print(_json.dumps(r.as_dict(), default=str, indent=2))
+    elif not _GLOBAL_FLAGS["quiet"]:
+        print(r.render(verbose=verbose))
+    return 1 if r.error else 0
+
+
+@hermes.register("loop", "auto-session on a cadence — loop --interval <seconds> [--count N]")
+def _loop(argv: list[str]) -> int:
+    import time
+    from olympus.session import Session
+    interval = 60.0
+    count = -1  # forever
+    while argv:
+        a = argv.pop(0)
+        if a == "--interval" and argv:
+            interval = float(argv.pop(0))
+        elif a == "--count" and argv:
+            count = int(argv.pop(0))
+    if not _GLOBAL_FLAGS["quiet"]:
+        print(aglaia.section(f"loop — every {interval:.0f}s"
+                              + (f" × {count}" if count > 0 else "")))
+    i = 0
+    try:
+        while count < 0 or i < count:
+            i += 1
+            r = Session().run()
+            if _GLOBAL_FLAGS["json"]:
+                print(_json.dumps({"iteration": i, "report": r.as_dict()}, default=str))
+            elif not _GLOBAL_FLAGS["quiet"]:
+                print(f"  [{i}] {r.session_id[:16]}  "
+                      f"hydra={r.hydra_findings} argos={r.argos_pheromones} "
+                      f"proposals={r.proposals_count} duration={r.duration_ms:.0f}ms")
+            if count < 0 or i < count:
+                time.sleep(interval)
+    except KeyboardInterrupt:
+        print()
+    return 0
+
+
+@hermes.register("action", "action queue — action <review|delphi|ratify|reject>")
+def _action(argv: list[str]) -> int:
+    from olympus.action import action_queue
+    if not argv:
+        print("usage: invoke action <review|delphi|ratify <id> [quote]|reject <id> [reason]>")
+        return 2
+    verb = argv[0]
+    if verb in ("review", "delphi"):
+        actions = action_queue.pending() if verb == "review" else action_queue.delphi_pending()
+        if not actions:
+            print(aglaia.murmur(f"  no {verb} actions"))
+            return 0
+        if _GLOBAL_FLAGS["json"]:
+            import dataclasses as _dc
+            print(_json.dumps([_dc.asdict(a) for a in actions], default=str, indent=2))
+            return 0
+        rows = [(a.id[:28], a.risk_class, a.summary[:80]) for a in actions]
+        print(aphrodite.table(("id", "risk", "summary"), rows))
+        return 0
+    if verb == "ratify" and len(argv) >= 2:
+        try:
+            a = action_queue.ratify(argv[1], quote=" ".join(argv[2:]) or "ratified via CLI")
+            print(aphrodite.laurel(f"ratified {a.id[:28]}"))
+            return 0
+        except (KeyError, RuntimeError) as exc:
+            print(aphrodite.wine_dark(str(exc)))
+            return 1
+    if verb == "reject" and len(argv) >= 2:
+        try:
+            a = action_queue.reject(argv[1], reason=" ".join(argv[2:]) or "rejected via CLI")
+            print(aphrodite.laurel(f"rejected {a.id[:28]}"))
+            return 0
+        except KeyError as exc:
+            print(aphrodite.wine_dark(str(exc)))
+            return 1
+    print(aphrodite.wine_dark(f"unknown action subcommand: {verb!r}"))
+    return 2
+
+
+@hermes.register("meta", "Olympus self-portrait (Olympus reasoning about Olympus)")
+def _meta(_argv: list[str]) -> int:
+    from olympus.meta import portrait
+    p = portrait()
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(p), default=str, indent=2))
+        return 0
+    print(p.as_text())
+    return 0
+
+
+@hermes.register("correlate", "Argos CorrelationEngine — correlate [window_hours=24]")
+def _correlate(argv: list[str]) -> int:
+    from olympus.monsters.argos.correlation import correlation
+    from olympus.monsters.argos.colony import colony
+    window_hours = float(argv[0]) if argv else 24.0
+    known_eyes = [e.NAME for e in colony.eyes()]
+    report = correlation.correlate(window_hours=window_hours, known_eyes=known_eyes)
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps({
+            "window_hours": report.window_hours,
+            "pheromones_considered": report.pheromones_considered,
+            "clusters": [_dc.asdict(c) for c in report.clusters],
+            "cascades": [_dc.asdict(c) for c in report.cascades],
+            "quiet":    [_dc.asdict(q) for q in report.quiet],
+        }, default=str, indent=2))
+        return 0
+    print(aphrodite.banner("Argos correlation",
+                           f"window: {window_hours}h · {report.pheromones_considered} pheromone(s)"))
+    if report.clusters:
+        print(aglaia.subhead(f"Clusters ({len(report.clusters)})"))
+        for c in report.clusters[:5]:
+            print(f"  · slice {c.slice!r}: {len(c.eyes)} eye(s) "
+                  f"({', '.join(c.eyes[:3])}{'...' if len(c.eyes) > 3 else ''}) "
+                  f"— intensity {c.intensity_sum:.1f}")
+    if report.cascades:
+        print(aglaia.subhead(f"Cascades ({len(report.cascades)})"))
+        for c in report.cascades[:5]:
+            print(f"  · {c.leader} → {c.follower} ({c.instances}x, median {c.median_gap_minutes:.1f}min)")
+    if report.quiet:
+        print(aglaia.subhead(f"Quiet eyes ({len(report.quiet)})"))
+        for q in report.quiet:
+            print(f"  · {q.eye}: silent {q.hours_silent:.1f}h")
+    if not (report.clusters or report.cascades or report.quiet):
+        print(aglaia.murmur("  no cross-eye patterns surfaced in window"))
+    return 0
+
+
+@hermes.register("console", "Zeus operator console — review + ratify pending actions")
+def _console(_argv: list[str]) -> int:
+    from olympus.olympians.zeus import zeus
+    touched = zeus.console()
+    print(aglaia.murmur(f"  Zeus touched {touched} action(s)"))
+    return 0
+
+
+@hermes.register("pantheon", "show the complete pantheon (codex/PANTHEON.md)")
+def _pantheon(_argv: list[str]) -> int:
+    pantheon_md = _gaia_root.child("codex", "PANTHEON.md")
+    if not pantheon_md.exists():
+        print(aphrodite.wine_dark("codex/PANTHEON.md missing"))
+        return 1
+    sys.stdout.write(pantheon_md.read_text(encoding="utf-8"))
     return 0
 
 
@@ -150,12 +477,20 @@ def _consult(argv: list[str]) -> int:
     if what == "population":
         from olympus.titans.coeus import coeus
         result = coeus.ask("pantheon-population")
+        if _GLOBAL_FLAGS["json"]:
+            print(_json.dumps(result, indent=2))
+            return 0
         rows = [(k, str(v)) for k, v in result.items()]
         print(aphrodite.table(("tier", "modules"), rows))
         return 0
     if what == "hymn":
         from olympus.muses.polyhymnia import polyhymnia
         h = polyhymnia.hymn()
+        if _GLOBAL_FLAGS["json"]:
+            print(_json.dumps({"total_oaths": h.total_oaths, "intact": h.intact,
+                               "last_oath_ts": h.last_oath_ts,
+                               "summary": h.summary}))
+            return 0
         print(aphrodite.banner("Polyhymnia's hymn"))
         print(f"  {h.summary}")
         if h.last_oath_ts:
@@ -170,7 +505,7 @@ def _consult(argv: list[str]) -> int:
         print(aphrodite.banner(f"Athena's brief — {b.label}",
                                f"confidence: {b.confidence:.2f}"))
         print("\nFindings:")
-        for f in b.findings:
+        for f in b.findings[:20]:
             print(f"  · {f}")
         print("\nRecommendations:")
         for r in b.recommendations:
@@ -178,16 +513,6 @@ def _consult(argv: list[str]) -> int:
         return 0
     print(aphrodite.wine_dark(f"unknown oracle: {what!r}"))
     return 2
-
-
-@hermes.register("pantheon", "show the complete pantheon")
-def _pantheon(_argv: list[str]) -> int:
-    pantheon_md = _gaia_root.child("codex", "PANTHEON.md")
-    if not pantheon_md.exists():
-        print(aphrodite.wine_dark("codex/PANTHEON.md missing"))
-        return 1
-    sys.stdout.write(pantheon_md.read_text(encoding="utf-8"))
-    return 0
 
 
 @hermes.register("blessing", "Thalia bestows a closing blessing")
@@ -199,127 +524,50 @@ def _blessing(_argv: list[str]) -> int:
     return 0
 
 
-# ─────────────────────────────────────────────────────────────────────
-# Loop + action + meta + correlation + labors errands
-# ─────────────────────────────────────────────────────────────────────
-
-
-@hermes.register("session", "run one cognitive-loop session — optional directive")
-def _session(argv: list[str]) -> int:
-    from olympus.session import run_session
-    directive = " ".join(argv) if argv else None
-    r = run_session(directive)
-    print(aglaia.section(f"session {r.session_id[:16]}"))
-    if r.directive:
-        print(aglaia.murmur(f"  directive: {r.directive}"))
-    rows = [
-        ("HYDRA",      f"{r.hydra_findings} findings ({r.hydra_alerts} alerts, {r.hydra_drifts} drifts)"),
-        ("Argos",      f"{r.argos_pheromones} pheromones ({r.argos_alerts} alerts)"),
-        ("Athena",     f"brief {r.brief_label!r} — {r.brief_findings} findings, "
-                       f"{r.brief_recommendations} recs, confidence={r.brief_confidence:.2f}"),
-        ("Hephaestus", f"{r.proposals_count} proposal(s) surfaced"),
-        ("Momus",      f"{r.contests_count} contest(s) issued"),
-        ("Actions",    f"{r.actions_promoted} promoted "
-                       f"({r.actions_autoratified} auto, "
-                       f"{r.actions_queued_for_zeus} queued, "
-                       f"{r.actions_delphi_pending} delphi)"),
-        ("Styx",       f"{r.styx_total} oaths · chain {'intact' if r.styx_intact else 'BROKEN'}"),
-    ]
-    print(aphrodite.table(("phase", "outcome"), rows))
-    if r.error:
-        print(aphrodite.wine_dark(f"  ERROR: {r.error}"))
-        return 1
+@hermes.register("shell", "interactive multi-errand REPL")
+def _shell(_argv: list[str]) -> int:
+    print(aglaia.section("Olympus shell — type errands; 'q' or Ctrl-D to exit"))
+    while True:
+        try:
+            line = input("  invoke ▸ ").strip()
+        except (KeyboardInterrupt, EOFError):
+            print()
+            break
+        if line in ("q", "quit", "exit"):
+            break
+        if not line:
+            continue
+        parts = line.split()
+        rc = hermes.dispatch(parts)
+        if rc != 0:
+            print(aphrodite.wine_dark(f"  (exit {rc})"))
     return 0
 
 
-@hermes.register("action", "action queue — action <review|delphi|ratify|reject>")
-def _action(argv: list[str]) -> int:
-    from olympus.action import action_queue
+@hermes.register("help", "show help for an errand — help [errand]")
+def _help(argv: list[str]) -> int:
     if not argv:
-        print("usage: invoke action <review|delphi|ratify <id> [quote]|reject <id> [reason]>")
-        return 2
-    verb = argv[0]
-    if verb == "review":
-        pending = action_queue.pending()
-        if not pending:
-            print(aglaia.murmur("  no actions await Zeus"))
-            return 0
-        rows = [(a.id[:24], a.risk_class, a.summary[:80]) for a in pending]
-        print(aphrodite.table(("id", "risk", "summary"), rows))
-        return 0
-    if verb == "delphi":
-        delphi = action_queue.delphi_pending()
-        if not delphi:
-            print(aglaia.murmur("  no actions awaiting Delphi"))
-            return 0
-        rows = [(a.id[:24], a.risk_class, a.summary[:80]) for a in delphi]
-        print(aphrodite.table(("id", "risk", "summary"), rows))
-        return 0
-    if verb == "ratify" and len(argv) >= 2:
-        action_id = argv[1]
-        quote = " ".join(argv[2:]) if len(argv) > 2 else "ratified via CLI"
-        try:
-            a = action_queue.ratify(action_id, quote=quote)
-            print(aphrodite.laurel(f"ratified {a.id[:24]}"))
-            return 0
-        except (KeyError, RuntimeError) as exc:
-            print(aphrodite.wine_dark(str(exc)))
-            return 1
-    if verb == "reject" and len(argv) >= 2:
-        action_id = argv[1]
-        reason = " ".join(argv[2:]) if len(argv) > 2 else "rejected via CLI"
-        try:
-            a = action_queue.reject(action_id, reason=reason)
-            print(aphrodite.laurel(f"rejected {a.id[:24]}"))
-            return 0
-        except KeyError as exc:
-            print(aphrodite.wine_dark(str(exc)))
-            return 1
-    print(aphrodite.wine_dark(f"unknown action subcommand: {verb!r}"))
-    return 2
-
-
-@hermes.register("meta", "Olympus self-portrait (Olympus reasoning about Olympus)")
-def _meta(_argv: list[str]) -> int:
-    from olympus.meta import portrait
-    print(portrait().as_text())
+        return hermes.dispatch([])  # falls into Hermes._help
+    target = argv[0]
+    errand = None
+    for e in hermes.errands():
+        if e.name == target:
+            errand = e
+            break
+    if errand is None:
+        print(aphrodite.wine_dark(f"no such errand: {target!r}"))
+        return 1
+    print(aglaia.section(f"errand: {errand.name}"))
+    print(f"  {errand.summary}")
+    print()
+    print(aglaia.subhead("global flags (place before errand)"))
+    print("  --json       machine-readable output")
+    print("  --quiet      suppress non-essential output")
+    print("  --no-color   disable ANSI colors")
     return 0
 
 
-@hermes.register("correlate", "Argos CorrelationEngine — cross-eye patterns over a time window")
-def _correlate(argv: list[str]) -> int:
-    from olympus.monsters.argos.correlation import correlation
-    from olympus.monsters.argos.colony import colony
-    window_hours = float(argv[0]) if argv else 24.0
-    known_eyes = [e.NAME for e in colony.eyes()]
-    report = correlation.correlate(window_hours=window_hours, known_eyes=known_eyes)
-    print(aphrodite.banner("Argos correlation",
-                           f"window: {window_hours}h · {report.pheromones_considered} pheromone(s)"))
-    if report.clusters:
-        print(aglaia.subhead(f"Clusters ({len(report.clusters)})"))
-        for c in report.clusters[:5]:
-            print(f"  · slice {c.slice!r}: {len(c.eyes)} eye(s) "
-                  f"({', '.join(c.eyes[:3])}{'...' if len(c.eyes) > 3 else ''}) — "
-                  f"intensity sum {c.intensity_sum:.1f}")
-    if report.cascades:
-        print(aglaia.subhead(f"Cascades ({len(report.cascades)})"))
-        for c in report.cascades[:5]:
-            print(f"  · {c.leader} → {c.follower} ({c.instances}x, median {c.median_gap_minutes:.1f}min)")
-    if report.quiet:
-        print(aglaia.subhead(f"Quiet eyes ({len(report.quiet)})"))
-        for q in report.quiet:
-            print(f"  · {q.eye}: silent {q.hours_silent:.1f}h")
-    if not (report.clusters or report.cascades or report.quiet):
-        print(aglaia.murmur("  no cross-eye patterns surfaced in window"))
-    return 0
-
-
-@hermes.register("console", "Zeus operator console — review and ratify pending actions")
-def _console(_argv: list[str]) -> int:
-    from olympus.olympians.zeus import zeus
-    touched = zeus.console()
-    print(aglaia.murmur(f"  Zeus touched {touched} action(s)"))
-    return 0
+# ─────────────────────────────────────────────────────────────────────
 
 
 def main(argv: list[str] | None = None) -> int:

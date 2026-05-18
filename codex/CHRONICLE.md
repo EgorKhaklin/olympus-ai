@@ -12,6 +12,89 @@ Newest first. Each entry names what changed, what was sworn, who decided.
 
 ---
 
+## 2026-05-18 — honest-gap closure (COMPOSITE)
+
+**Risk class:** COMPOSITE.
+**Delphi:** [`codex/oracles/delphi/2026-05-18-honest-gap-closure.md`](oracles/delphi/2026-05-18-honest-gap-closure.md)
+**Sworn on Styx at seq=26.**
+
+Zeus surfaced five remaining gaps to reach "the very best." All five shipped in one ship. The substrate now feels like one flowing system, the invariants are rigorously enforced, the CLI is mature, a real demo exists, and correlation is wired into action promotion.
+
+### Session cohesion (HIGH)
+
+- **`SessionReport.render(verbose=True|False)`** — rich phase-by-phase display showing the brief text, the proposals with their drifts/fixes/Momus dings, the correlation summary, and the action routing. The loop now reads as one flow.
+- **`Session.run_with_callback(on_phase=fn)`** — observability hook fired at every phase boundary; callbacks must not raise (loop continues regardless).
+- **Phase-by-phase wiring** — `_observe_hydra`, `_observe_argos`, `_synthesize`, `_correlate` (new), `_propose_and_contest`, `_promote`, `_record` — each phase fires a callback, populates report fields, never silently swallows state.
+- **`SessionReport.duration_ms`** — every session times itself.
+- **`hydra_alert_details` + `argos_alert_details` + `brief_recommendation_text` + `correlation_summary`** — actual content surfaces in the verbose render rather than just counts.
+
+### Correlation × action integration (LOWER)
+
+- **`hephaestus.surface_from(brief, correlation=...)`** — proposals now incorporate the CorrelationEngine's report.
+- **Cluster strength upgrades risk** — a slice corroborated by ≥3 eyes upgrades LOW → MEDIUM and MEDIUM → HIGH.
+- **Quiet eyes generate proposals** — an eye that has stopped depositing is itself a finding; surfaces as a MEDIUM proposal.
+- **Cascade patterns annotate rationale** — proposals reference cascade frequency where relevant.
+
+### Deep S1–S8 test suite (HIGH)
+
+One dedicated file per invariant, 5–10 tests each. **+59 new tests.** Total substrate suite now 135/135 passing.
+
+| invariant | file | what's covered |
+|---|---|---|
+| **S1** | `tests/test_invariant_S1.py` | append-only writes, recall order, per-kind isolation, actor filter, immutability under appends, kinds listing, body fields round-trip, kind-filename sanitization |
+| **S2** | `tests/test_invariant_S2.py` | replay determinism, seed stability across instances, seed uniqueness across classes, no `random` imports, Eros determinism on edge cases, 1000-distinct-id uniqueness, colony.deploy signature stability |
+| **S3** | `tests/test_invariant_S3.py` | AST-scan for forbidden writes, AST-scan for `open(mode='w')`, observe returns HeadFinding list, observe stability under repeat, no head imports action/session |
+| **S4** | `tests/test_invariant_S4.py` | no Eye imports sibling Eye, no Eye imports colony, no Eye reads pheromone log, every Eye runs in isolation, synthesis lives outside Eyes |
+| **S5** | `tests/test_invariant_S5.py` | Apollo refuses no-verify, accepts callable, consult records outcome, handles false return, handles verify raising, acceptance rate counts only verified, unverified returns None, predictions listing |
+| **S6** | `tests/test_invariant_S6.py` | delphi dir exists, at-least-one recorded, every delphi has Decision section, every delphi names Position, every delphi references Styx, action queue routes HIGH → delphi-pending, HIGH ratify swears on Styx |
+| **S7** | `tests/test_invariant_S7.py` | LOW auto-ratifies, LOW + contests queues, MEDIUM always queues, HIGH/COMPOSITE always delphi-pending, Zeus.can_perform('LOW') always True, HIGH requires oath, unknown risk class returns False, execute refuses unratified |
+| **S8** | `tests/test_invariant_S8.py` | Themis names S8, COSMOGONY mentions S8, Momus AP6 enforces understanding, eye_understanding_gap registered, no anonymous load-bearing memories, every session has session_id, every oath has sworn_by, Styx chain intact, action lifecycle reconstructible |
+
+### Mature CLI (MEDIUM)
+
+The `invoke` surface now has 19 errands plus three global flags:
+
+- **`invoke status`** — one-line health snapshot (hearth, styx, hydra, argos, actions, sessions)
+- **`invoke list [tier]`** — tree of named modules per tier
+- **`invoke describe <tier.god>`** — full docstring + public-interface listing for any god module
+- **`invoke history [N]`** — last N sessions from Mnemosyne
+- **`invoke version`** — show olympus version
+- **`invoke loop --interval N [--count K]`** — auto-session cadence; Ctrl-C to stop
+- **`invoke shell`** — interactive multi-errand REPL
+- **`invoke help <errand>`** — per-errand detail with global-flag reference
+- **`invoke session --verbose`** — rich render mode showing brief + proposals + contests
+- **`invoke session --json`** — machine-readable session report
+- **`--json` / `--quiet` / `--no-color`** — global flags consumed before dispatch, honored across errands
+
+### Notekeeper demo deployment (MEDIUM)
+
+`examples/notekeeper/` — a complete working deployment in ~350 lines of domain code:
+
+- **`DOMAIN.md`** — vocation, anti-mission, C1–C5 invariants with enforcement points, risk-class examples, three domain anti-patterns (AP-NK1..3)
+- **`notekeeper/notes.py`** — capture + topic inference + recall (stopword-aware, pure-function topic ranker)
+- **`notekeeper/eyes.py`** — three custom Eyes: `EyeUntopicedNotes` (C2), `EyeStaleNotes` (C3), `EyeCaptureVelocity` (C4)
+- **`notekeeper/heads.py`** — `HeadTopicDrift` for C5
+- **`notekeeper/predictions.py`** — two Apollo predictions with verify() callables
+- **`notekeeper/cli.py`** — `python3 -m notekeeper capture | list | topic | recent | stale | session | setup`
+- **`tests/test_notekeeper.py`** — 12 tests covering pure functions, capture, eyes, head, end-to-end integration with a real session run
+- **`README.md`** — 90-second walkthrough from clone to running deployment
+
+End-to-end demo: after `python3 -m notekeeper setup` + a few captures, `python3 -m notekeeper session` runs Olympus's full loop with **10 HYDRA heads** (9 substrate + notekeeper's `topic_drift`) and **12 Argos eyes** (9 substrate + 3 notekeeper). Athena's brief now incorporates the notekeeper data. The whole cognitive loop is alive against a real domain.
+
+### Verification
+
+- 135/135 substrate tests pass
+- 12/12 notekeeper tests pass
+- End-to-end notekeeper demo runs clean
+- Styx chain intact across 35+ oaths
+- Heracles 12/12 labors survive
+- `invoke status` returns clean snapshot
+- `invoke session --verbose` produces operator-readable flow with every phase showing its work
+
+The five gaps Zeus named are closed. Olympus is now genuinely-impressive-on-arrival.
+
+---
+
 ## 2026-05-18 — the maturation arc (COMPOSITE)
 
 **Risk class:** COMPOSITE (multi-workstream constitutional ship).

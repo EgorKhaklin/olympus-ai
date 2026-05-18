@@ -78,12 +78,17 @@ class Hephaestus:
     # Surface proposals from a brief (the loop's decide phase)
     # ─────────────────────────────────────────────────────────
 
-    def surface_from(self, brief: Any) -> list[Proposal]:
-        """Given an Athena brief, surface zero or more proposals.
+    def surface_from(self, brief: Any, correlation: Any = None) -> list[Proposal]:
+        """Given an Athena brief (and optional CorrelationEngine report),
+        surface zero or more proposals.
 
         Hephaestus's rule of thumb:
           - every ALERT in the brief becomes a proposal (one per unique slice)
           - cross-tier corroborations in recommendations become proposals
+          - cluster slices (correlation) UPGRADE the risk class of related proposals
+          - quiet eyes (correlation) generate proposals on their own — a stopped
+            observer is itself a finding
+          - cascade patterns (correlation) annotate the rationale
           - capped at 5 proposals per pass by Lachesis (prevents flooding)
         """
         from olympus.fates.lachesis import lachesis, Quota
@@ -92,10 +97,22 @@ class Hephaestus:
             lachesis.allot(Quota(name="hephaestus.per-pass",
                                  ceiling=5.0, units="proposals"))
 
+        # Index correlation signals by slice for risk-weighting
+        clustered_slices: dict[str, int] = {}
+        cascade_pairs: list[tuple[str, str, int]] = []
+        quiet_eyes: list[tuple[str, float]] = []
+        if correlation is not None:
+            for c in getattr(correlation, "clusters", []):
+                clustered_slices[c.slice] = len(c.eyes)
+            for c in getattr(correlation, "cascades", []):
+                cascade_pairs.append((c.leader, c.follower, c.instances))
+            for q in getattr(correlation, "quiet", []):
+                quiet_eyes.append((q.eye, q.hours_silent))
+
         surfaced: list[Proposal] = []
         seen_slices: set[str] = set()
 
-        # Walk the brief's findings; alerts get a proposal
+        # 1. Brief alerts → proposals (risk upgraded if slice is clustered)
         for f in brief.findings:
             severity = f.get("severity") or f.get("kind") or "info"
             if severity != "alert":
@@ -104,11 +121,26 @@ class Hephaestus:
             if slice_name in seen_slices:
                 continue
             seen_slices.add(slice_name)
-
             if not lachesis.measure("hephaestus.per-pass", 1.0):
-                break  # quota exhausted
+                break
 
-            risk = "MEDIUM" if "S" in str(f.get("detail", "")) else "LOW"
+            base_risk = "MEDIUM" if "S" in str(f.get("detail", "")) else "LOW"
+            cluster_strength = clustered_slices.get(slice_name, 0)
+            # Risk-upgrade: ≥3 corroborating eyes upgrades LOW → MEDIUM → HIGH
+            risk = base_risk
+            if cluster_strength >= 3 and risk == "MEDIUM":
+                risk = "HIGH"
+            elif cluster_strength >= 3 and risk == "LOW":
+                risk = "MEDIUM"
+
+            rationale_parts = [
+                f"alert surfaced by {f.get('source')} during session synthesis"
+            ]
+            if cluster_strength:
+                rationale_parts.append(
+                    f"corroborated by {cluster_strength} eye(s) (cluster)"
+                )
+
             p = self.propose(
                 drift_observed=(
                     f"{f.get('source', '?')} reports {severity} on slice "
@@ -119,11 +151,29 @@ class Hephaestus:
                     f"underlying cause or update the watcher predicate"
                 ),
                 risk_class=risk,
-                rationale=f"alert surfaced by {f.get('source')} during session synthesis",
+                rationale=" · ".join(rationale_parts),
             )
             surfaced.append(p)
 
-        # Recommendations with investigate/alert hints get proposals too
+        # 2. Quiet eyes → proposals (a stopped observer IS a finding)
+        for eye_name, hours in quiet_eyes:
+            if not lachesis.measure("hephaestus.per-pass", 1.0):
+                break
+            p = self.propose(
+                drift_observed=(
+                    f"correlation engine reports eye {eye_name!r} silent "
+                    f"for {hours:.0f} hour(s) — possible runtime failure"
+                ),
+                proposed_fix=(
+                    f"verify {eye_name} executes on next colony.deploy() and "
+                    f"either fix its scan() or retire it via Atropos"
+                ),
+                risk_class="MEDIUM",
+                rationale="quiet-eye signal from CorrelationEngine",
+            )
+            surfaced.append(p)
+
+        # 3. Brief recommendations with alert/investigate hints
         for rec in brief.recommendations:
             low = rec.lower()
             if "alert" not in low and "investigate" not in low:
