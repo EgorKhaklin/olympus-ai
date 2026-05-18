@@ -1,0 +1,68 @@
+Olympus — A Cognitive Substrate Built in the Shape of Greek Mythology
+Copyright 2026 Egor Khaklin
+
+This product is licensed under the Apache License, Version 2.0 (see the
+LICENSE file at the root of this repository, or
+http://www.apache.org/licenses/LICENSE-2.0).
+
+================================================================================
+About this work
+================================================================================
+
+Olympus is a cognitive substrate for AI agents organized as Greek
+mythology. The mythological hierarchy — primordials, titans, Olympians,
+underworld, fates, furies, graces, muses, heroes, monsters — is mapped
+onto the structural concerns of a long-running cognitive system. Each
+named figure owns one Python module. The architecture is the mythology.
+
+The pantheon comprises forty-three named principal figures plus the
+swarm tier of Argos's hundred eyes:
+
+  Above the pantheon       Zeus
+  Primordials              Chaos, Gaia, Nyx, Eros, Tartarus
+  Titans                   Mnemosyne, Themis, Cronus, Hyperion,
+                           Rhea, Oceanus, Iapetus, Coeus
+  Olympians                Zeus, Hera, Poseidon, Demeter, Athena,
+                           Apollo, Artemis, Ares, Aphrodite,
+                           Hephaestus, Hermes, Dionysus, Hestia
+  Underworld               Hades, Persephone, Hecate, Styx, Lethe
+  Fates                    Clotho, Lachesis, Atropos
+  Furies                   Alecto, Megaera, Tisiphone
+  Graces                   Aglaia, Euphrosyne, Thalia
+  Muses                    Calliope, Clio, Erato, Euterpe, Melpomene,
+                           Polyhymnia, Terpsichore, Thalia, Urania
+  Heroes                   Heracles, Perseus, Theseus, Odysseus,
+                           Orpheus, Atalanta, Momus
+  Monsters                 HYDRA, Argos, Cerberus, Sphinx, Medusa,
+                           Chimera, Minotaur, Typhon
+
+The cognitive-substrate patterns are an architectural contribution.
+The names are mythology — they were established by Hesiod, Homer, the
+Athenian tragedians, and centuries of Greek storytellers, long before
+computing existed.
+
+================================================================================
+Author
+================================================================================
+
+Egor Khaklin
+2026
+
+================================================================================
+Aesthetic + structural credits
+================================================================================
+
+Mythological references throughout follow the standard reconstructions
+of Hesiod (Theogony, Works and Days), Homer (Iliad, Odyssey), and the
+Library of Apollodorus. Specific role assignments (e.g., Mnemosyne as
+audit-of-record discipline, Argos as decentralized swarm) are this
+project's architectural choices, not historical claims about Greek
+religion.
+
+================================================================================
+Third-party components
+================================================================================
+
+This project contains no third-party libraries beyond the Python
+standard library at the substrate level. Deployments built on top of
+Olympus add their own dependencies via their own NOTICE files.

@@ -1,0 +1,26 @@
+# Olympus state — preserved across sessions but not source-controlled here
+underworld/hades/
+underworld/tartarus.jsonl
+underworld/styx.jsonl
+titans/mnemosyne/
+olympians/athena_briefs/
+olympians/hephaestus_proposals/
+olympians/hera_bindings.jsonl
+olympians/dionysus_transitions.jsonl
+olympians/hestia_hearth.json
+chronicle/journal/*.md
+chronicle/postmortems/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# OS
+.DS_Store
+.AppleDouble
+Thumbs.db
