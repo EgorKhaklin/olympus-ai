@@ -1,12 +1,12 @@
 <div align="center">
 
-<img src="codex/assets/mount-olympus.jpg" alt="Mount Olympus" height="50%" width="50%">
+<img src="codex/assets/mount-olympus.jpg" alt="Mount Olympus" height="25%" width="25%">
 
 ```
-                                      ⚡  O L Y M P U S  ⚡
-                              ────────────────────────────────────
-                               a cognitive substrate built in the
-                                    shape of greek mythology
+                                           ⚡  O L Y M P U S  ⚡
+                                  ────────────────────────────────────
+                                   a cognitive substrate built in the
+                                        shape of greek mythology
 ```
 
 **a complete pantheon · seventy-three named figures · zero abstractions you can't name**
