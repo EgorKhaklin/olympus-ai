@@ -23,10 +23,10 @@ class Gaia:
     @staticmethod
     def _discover_root() -> pathlib.Path:
         """Walk up from this file to find the Olympus root (the dir
-        containing COSMOGONY.md)."""
+        containing codex/COSMOGONY.md)."""
         here = pathlib.Path(__file__).resolve()
         for parent in [here, *here.parents]:
-            if (parent / "COSMOGONY.md").exists():
+            if (parent / "codex" / "COSMOGONY.md").exists():
                 return parent
         # Fallback — assume two levels up from this file
         return here.parent.parent

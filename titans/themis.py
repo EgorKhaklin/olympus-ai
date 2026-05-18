@@ -88,7 +88,7 @@ class Themis:
         return None
 
     def cosmogony_path(self) -> pathlib.Path:
-        return root.child("COSMOGONY.md")
+        return root.child("codex", "COSMOGONY.md")
 
     def cosmogony_mentions(self, invariant_id: str) -> bool:
         """True iff the constitutional document mentions this invariant id."""

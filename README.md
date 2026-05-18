@@ -7,9 +7,9 @@
                     shape of greek mythology
 ```
 
-**a complete pantheon · forty-three named gods · zero abstractions you can't name**
+**a complete pantheon · seventy-three named figures · zero abstractions you can't name**
 
-[Cosmogony](COSMOGONY.md) · [Pantheon](PANTHEON.md) · [Rites](RITES.md) · [Chronicle](CHRONICLE.md) · [Prophecies](PROPHECIES.md) · [Bestiary](BESTIARY.md)
+[Cosmogony](codex/COSMOGONY.md) · [Pantheon](codex/PANTHEON.md) · [Rites](codex/RITES.md) · [Chronicle](codex/CHRONICLE.md) · [Prophecies](codex/PROPHECIES.md) · [Bestiary](codex/BESTIARY.md)
 
 </div>
 
@@ -144,7 +144,7 @@ Eight claims that hold in every Olympus deployment, regardless of domain:
 | **S7** | Bounded autonomy — LOW automatic, MEDIUM proposed, HIGH requires Zeus's oath | `zeus.can_perform()` checks Styx |
 | **S8** | Anti-coercion — refuse changes that strengthen surveillance / centralization / unbounded retention | Constitutional; Momus enforces via AP6 |
 
-Full text in [COSMOGONY.md](COSMOGONY.md). Domain-specific invariants (C1–CN) live in your deployment's `DOMAIN.md`.
+Full text in [COSMOGONY.md](codex/COSMOGONY.md). Domain-specific invariants (C1–CN) live in your deployment's `DOMAIN.md`.
 
 ---
 
@@ -168,52 +168,60 @@ python3 -c "from titans.rhea import rhea; rhea.bring_forth()"
 python3 -c "from titans.coeus import coeus; print(coeus.ask('pantheon-population'))"
 
 # 5. read the cosmogony
-less COSMOGONY.md
+less codex/COSMOGONY.md
 ```
 
 ---
 
-## What's in here
+## Repository layout
 
 ```
 Olympus/
+├── README.md            you are here
+├── LICENSE
+├── NOTICE
+├── SECURITY.md
 │
-├── COSMOGONY.md         the constitution — substrate invariants S1–S8
-├── PANTHEON.md          full registry of every named module
-├── RITES.md             the agent runbook
-├── CHRONICLE.md         changelog
-├── PROPHECIES.md        roadmap
-├── BESTIARY.md          the monsters explained
+├── codex/               all prose documentation
+│   ├── COSMOGONY.md     the constitution — substrate invariants S1–S8
+│   ├── PANTHEON.md      full registry of every named module
+│   ├── RITES.md         the agent runbook
+│   ├── CHRONICLE.md     history
+│   ├── PROPHECIES.md    roadmap
+│   ├── BESTIARY.md      the monsters explained
+│   ├── style.md         tone and style
+│   ├── threat-model.md  substrate threats
+│   ├── journal/         Clio writes daily
+│   └── postmortems/     Melpomene writes after failures
 │
 ├── primordials/         chaos · gaia · nyx · tartarus · eros
 ├── titans/              mnemosyne · themis · cronus · hyperion ·
 │                        rhea · oceanus · iapetus · coeus
-├── olympians/           the twelve + hestia
-│   └── apollo/          (the prophecy surface — its own subpackage)
+├── olympians/           the twelve + hestia + apollo/ (subpackage)
 ├── underworld/          hades · persephone · hecate · styx · lethe
-│
 ├── fates/               clotho · lachesis · atropos
 ├── furies/              alecto · megaera · tisiphone
 ├── graces/              aglaia · euphrosyne · thalia
 ├── muses/               nine daughters of mnemosyne
-│
 ├── heroes/              heracles · perseus · theseus · odysseus ·
 │                        orpheus · atalanta · momus
 │
-├── monsters/            cerberus · sphinx · medusa · chimera ·
-│   ├── hydra/           minotaur · typhon
-│   └── argos/           PLUS the two big monster subsystems
-│       ├── eyes/        100-eye swarm
-│       ├── satyrs/
-│       ├── demes/
-│       └── phalanges/
+├── monsters/
+│   ├── cerberus · sphinx · medusa · chimera · minotaur · typhon
+│   ├── hydra/           8 mortal heads + 1 immortal
+│   └── argos/           the many-eyed swarm
+│       ├── eyes/        observation specialists
+│       ├── satyrs/      concrete checks
+│       ├── demes/       civic-class observers
+│       └── phalanges/   battle formations grouping eyes
 │
-├── oracles/             delphi/ (decision archive)
-├── rites/               ceremonies — invocation, kindling, consultation
-├── codex/               long-form documentation
-├── chronicle/           journal + post-mortems
-├── bestiary/            threat models
-└── tests/               coherence + invariant + bestiary tests
+├── oracles/
+│   └── delphi/          decision archive
+│
+├── scripts/
+│   └── invoke           the Hermes-dispatched CLI
+│
+└── tests/               coherence + invariant + smoke + residue
 ```
 
 ---

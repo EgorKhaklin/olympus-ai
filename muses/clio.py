@@ -13,9 +13,9 @@ from primordials.nyx import Nyx
 
 
 class Clio:
-    """Reader and writer of chronicle/journal/."""
+    """Reader and writer of codex/journal/."""
 
-    JOURNAL = "chronicle/journal"
+    JOURNAL = "codex/journal"
 
     def __init__(self) -> None:
         self.journal_path = root.child(self.JOURNAL)

@@ -1,57 +1,28 @@
-"""Argos Civitas — citizens of the swarm.
+"""Demes — the civic tier of Argos's swarm.
 
-Parallel to `monsters.argos/phalanxs/` and `monsters.argos/eyes/`.
-Where phalanxs command ants (military), citizens are civilians
-who observe the swarm itself (the Forum, the census, cross-phalanx
-patterns).
+Where Eyes watch slices and Satyrs handle concrete checks, Demes
+represent the Greek polis as a sociological model: each Deme is a
+named civic role with its own observation domain.
 
-The four civic classes:
-
-  - **Plebs** (Plebeians)     — cross-phalanx forum readers
-  - **Equites** (Equestrians) — cross-phalanx correlators
-  - **Augures** (Augurs)      — pattern interpreters (read auspices)
-  - **Censores** (Censors)    — keepers of the census roll
-
-Demes deposit to the same Pheromone table as ants. AoR is
-preserved via `deposited_by = citizen.NAME`. Citizen class is in
-`evidence.civitas_class`; observation type is in
-`evidence.observation_type`.
-
-Authorized by `delphi/2026-05-13-arc-e-civitas-civilian-classes.md`.
+  Mantis        the seer                — pattern surfacing
+  Demarchos     the deme-leader         — registry roll-keeper
+  Hippeus       the cavalry knight      — fast-correlation
+  Demos         the people              — public-forum activity
+  Tamias        the treasurer           — Plutus's ledger
+  Ephoros       the overseer            — protocol-compliance checker
 """
 
-from monsters.argos.demes.base import (
-    Deme, DemeFinding,
-    CIVITAS_PLEBS, CIVITAS_EQUITES, CIVITAS_AUGURES, CIVITAS_CENSORES,
-    CIVITAS_QUAESTORES, CIVITAS_TRIBUNI_PLEBIS,
-    VALID_CIVITAS_CLASSES,
-    propose_new_ant,
-)
-from monsters.argos.demes.plebs_forum_watcher import PlebsForumWatcher
-from monsters.argos.demes.eques_correlator import EquesCorrelator
-from monsters.argos.demes.augur_bloom_reader import AugurBloomReader
-from monsters.argos.demes.censor_roll_keeper import CensorRollKeeper
-from monsters.argos.demes.quaestor_treasurer import QuaestorTreasurer
-from monsters.argos.demes.tribuni_plebis_watcher import TribuniPlebisWatcher
+from monsters.argos.demes.base import Deme, DemeFinding
+from monsters.argos.demes.mantis import mantis
+from monsters.argos.demes.demarchos import demarchos
+from monsters.argos.demes.hippeus import hippeus
+from monsters.argos.demes.demos import demos
+from monsters.argos.demes.tamias import tamias
+from monsters.argos.demes.ephoros import ephoros
 
-
-ALL_DEMES = [
-    PlebsForumWatcher,        # Plebeians
-    EquesCorrelator,          # Equestrians
-    AugurBloomReader,         # Augurs
-    CensorRollKeeper,         # Censors
-    QuaestorTreasurer,        # Quaestores — financial magistrates ((legacy arc) / F1 / )
-    TribuniPlebisWatcher,     # Tribuni Plebis — usability advocates ((legacy arc) / G1 / )
-]
-
+ALL_DEMES = (mantis, demarchos, hippeus, demos, tamias, ephoros)
 
 __all__ = [
-    "Citizen", "DemeFinding",
-    "CIVITAS_PLEBS", "CIVITAS_EQUITES", "CIVITAS_AUGURES", "CIVITAS_CENSORES",
-    "CIVITAS_QUAESTORES", "CIVITAS_TRIBUNI_PLEBIS",
-    "VALID_CIVITAS_CLASSES",
-    "propose_new_ant",
-    "PlebsForumWatcher", "EquesCorrelator", "AugurBloomReader",
-    "CensorRollKeeper", "QuaestorTreasurer", "TribuniPlebisWatcher",
-    "ALL_DEMES",
+    "Deme", "DemeFinding", "ALL_DEMES",
+    "mantis", "demarchos", "hippeus", "demos", "tamias", "ephoros",
 ]

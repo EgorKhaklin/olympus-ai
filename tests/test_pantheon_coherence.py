@@ -52,7 +52,7 @@ class TestPantheonCoherence(unittest.TestCase):
             f"Pantheon-coherence: gods declared in PANTHEON.md but missing on disk: {missing}")
 
     def test_pantheon_doc_mentions_every_god(self):
-        pantheon_md = (ROOT / "PANTHEON.md").read_text(encoding="utf-8")
+        pantheon_md = (ROOT / "codex" / "PANTHEON.md").read_text(encoding="utf-8")
         missing: list[str] = []
         for names in EXPECTED.values():
             for name in names:
@@ -74,8 +74,19 @@ class TestPantheonCoherence(unittest.TestCase):
         heads = ROOT / "monsters" / "hydra" / "heads"
         self.assertTrue(heads.exists() and heads.is_dir())
         head_files = sorted(f.name for f in heads.glob("head_*.py"))
-        self.assertGreaterEqual(len(head_files), 9,
-            f"HYDRA must have at least 9 mortal heads; found {len(head_files)}: {head_files}")
+        self.assertEqual(len(head_files), 9,
+            f"HYDRA must have exactly 9 heads (8 mortal + 1 immortal); "
+            f"found {len(head_files)}: {head_files}")
+
+    def test_hydra_has_exactly_one_immortal(self):
+        """The Lernaean Hydra had exactly one immortal head."""
+        from monsters.hydra.host import hydra
+        immortal = [h for h in hydra.heads() if h.IMMORTAL]
+        mortal = [h for h in hydra.heads() if not h.IMMORTAL]
+        self.assertEqual(len(immortal), 1,
+            f"HYDRA must have exactly one immortal head; found {len(immortal)}")
+        self.assertEqual(len(mortal), 8,
+            f"HYDRA must have exactly eight mortal heads; found {len(mortal)}")
 
     def test_argos_has_four_subtiers(self):
         argos = ROOT / "monsters" / "argos"

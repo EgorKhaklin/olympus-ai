@@ -24,7 +24,7 @@ class TestPrimordials(unittest.TestCase):
     def test_gaia_resolves_root(self):
         from primordials.gaia import root
         self.assertTrue(root.root.is_dir())
-        self.assertTrue(root.exists("COSMOGONY.md"))
+        self.assertTrue(root.exists("codex/COSMOGONY.md"))
 
     def test_eros_is_deterministic(self):
         from primordials.eros import Eros

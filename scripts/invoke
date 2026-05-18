@@ -186,9 +186,9 @@ def _consult(argv: list[str]) -> int:
 
 @hermes.register("pantheon", "show the complete pantheon")
 def _pantheon(_argv: list[str]) -> int:
-    pantheon_md = ROOT / "PANTHEON.md"
+    pantheon_md = ROOT / "codex" / "PANTHEON.md"
     if not pantheon_md.exists():
-        print(aphrodite.wine_dark("PANTHEON.md missing"))
+        print(aphrodite.wine_dark("codex/PANTHEON.md missing"))
         return 1
     sys.stdout.write(pantheon_md.read_text(encoding="utf-8"))
     return 0

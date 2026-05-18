@@ -22,7 +22,7 @@ class PostMortem:
 
 
 class Melpomene:
-    POSTMORTEMS = "chronicle/postmortems"
+    POSTMORTEMS = "codex/postmortems"
 
     def __init__(self) -> None:
         self.path = root.child(self.POSTMORTEMS)

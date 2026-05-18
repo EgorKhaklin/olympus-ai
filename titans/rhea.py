@@ -23,7 +23,7 @@ class Rhea:
         "monsters/hydra", "monsters/argos",
         "underworld", "oracles/delphi",
         "fates", "furies", "graces", "muses",
-        "heroes", "chronicle/journal",
+        "heroes", "codex/journal",
         "codex", "rites", "bestiary",
     )
 
