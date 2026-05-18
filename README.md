@@ -119,6 +119,10 @@ The Greek mathematicians come home. **Pythagoras** (sacred constants φ/π/√2/
 
 The system is cared for. **Hygieia** (daughter of Asclepius — whole-substrate cohesion checks; cross-module consistency). **Phoenix** (cyclical regeneration — surfaces state due for rebirth). **Daedalus centrality** (load-bearing-figure ranking via betweenness centrality on the cognitive-flow graph). **Euterpe** (musical consonance scoring — octave, perfect fifth, perfect fourth, etc., as a complement to Pythagoras's φ-harmony). **`invoke today`** (single-action operator oracle). **Iris live mode** (`iris --live` writes a self-refreshing HTML page that polls the HTTP API).
 
+### 9. The oikoumene arc 🌍
+
+The substrate is inhabited by LLM agents. **`runtime/llm_bridge.py`** — pluggable interface; `EchoBridge` (safe default) and `AnthropicBridge` (claude-opus-4-7 + adaptive thinking). **`runtime/agents.py`** — five canonical roles: `hephaestus`, `momus`, `cassandra`, `athena`, `figure_proposer`. Each role renders a system prompt that includes the figure's docstring + the constitution + the AP catalog; the model thinks **in** the mythology, the substrate **enforces** the constitution on the output. **`invoke propose-figure`** — agents can extend the pantheon through the standard pipeline (Momus → Delphi → Zeus); LLM-generated code is **never** executed without operator review. **`codex/AGENTS.md`** documents the seam between prompt-grounding and external governance, and answers the recursion question directly.
+
 ---
 
 ## Quick start
@@ -245,6 +249,7 @@ Zeus         0.0769
 - **[`codex/SPECS.md`](codex/SPECS.md)** — the TLA+ formal-verification layer
 - **[`codex/PLUGINS.md`](codex/PLUGINS.md)** — third-party extensions via entry-points
 - **[`codex/INTELLIGENCE.md`](codex/INTELLIGENCE.md)** — how the substrate accumulates understanding
+- **[`codex/AGENTS.md`](codex/AGENTS.md)** — **how LLM agents inhabit the substrate** (prompt grounding + external governance + recursion gating)
 - **[`codex/CHRONICLE.md`](codex/CHRONICLE.md)** — every shipped arc in reverse chronological order
 - **[`codex/oracles/delphi/`](codex/oracles/delphi)** — strategic decisions, full debate, Styx oath references
 
@@ -267,12 +272,12 @@ The pantheon-coherence test (`tests/test_pantheon_coherence.py`) enforces that e
 | metric | value |
 |---|---|
 | named principal figures | **91** |
-| tests passing | **393 / 393** |
-| Styx oaths sworn | 90+ |
+| tests passing | **420 / 420** |
+| Styx oaths sworn | 96+ |
 | TLA+ specifications | 3 |
 | JSON Schemas | 7 |
-| arcs shipped | 8 (substance · self-improvement · missing-figures · compass-rose · recursion · labyrinth · phi · aegis) |
-| heavy-production overrides invoked | 5 |
+| arcs shipped | 9 (substance · self-improvement · missing-figures · compass-rose · recursion · labyrinth · phi · aegis · **oikoumene**) |
+| heavy-production overrides invoked | 6 |
 | ratification rate vs 1/φ | **0.98** harmony score |
 
 ---

@@ -12,6 +12,100 @@ Newest first. Each entry names what changed, what was sworn, who decided.
 
 ---
 
+## 2026-05-18 — the oikoumene arc 🌍 (HIGH-COMPOSITE, sixth boil-the-ocean override)
+
+**Risk class:** HIGH-COMPOSITE.
+**Delphi:** [`codex/oracles/delphi/2026-05-18-oikoumene-arc.md`](oracles/delphi/2026-05-18-oikoumene-arc.md)
+**Sworn on Styx at seq=105.**
+
+Zeus's critique was the right one:
+
+> *"Right now it's still mostly high-quality scaffolding and architecture. … we haven't yet seen closed, meaningful agent loops that demonstrate the substrate improving agent behavior in measurable ways. How do actual LLM agents inhabit this substrate? Is the mythology functioning as grounding/ontology that gets injected into prompts, or external governance/runtime? What's the recursion story?"*
+
+Five arcs built a beautiful empty city. This arc moves agents in. The name — **oikoumene** (οἰκουμένη) — is the Greek word for *the inhabited world*.
+
+### Phase 0 — system activated + incoherences fixed
+
+Per standing requirement, activated end-to-end before any code was written: HTTP API live; daemon ran 2 clean iterations; loopback federation succeeded in 36 ms; harmony at 0.9813 vs 1/φ.
+
+Hygieia surfaced 1 incoherence + 2 warnings. Each was **fixed in code**, not papered over:
+- `pan-vs-invariants` → well: check now honors `acknowledged_through`
+- `daedalus-vs-disk` → well: `_known_figures` walks subpackages + root .py modules; tier-names (furies/fates/graces/muses) whitelisted as concept-nodes
+- `plato-vs-disk` → well: added `cronus` + `oceanus` to taxonomy; tightened figure-definition to exclude implementation modules (action/cli/oracle/brief/head/…)
+
+Result: **6 well, 0 warning, 0 incoherent. 83/83 figures classified.**
+
+### What ships
+
+**LLM bridge** — `runtime/llm_bridge.py`
+The one place in Olympus that talks to an external LLM. Pluggable. Two built-in bridges:
+- **`AnthropicBridge`** — `claude-opus-4-7` with adaptive thinking, streaming via `.get_final_message()`. Optional `anthropic` SDK dep.
+- **`EchoBridge`** — deterministic stub; safe default; tests + zero-network operation.
+
+Selection via `OLYMPUS_LLM` env var. Unknown name falls back to echo. Plugins can register additional bridges via `olympus.llm_bridges` entry-point group. **Every call recorded to Mnemosyne under `llm.call`** with model id, prompt hash, head bytes, token counts.
+
+**Agents tier** — `runtime/agents.py`
+Five canonical roles, each tied to an existing figure:
+
+| role | figure | output |
+|---|---|---|
+| `hephaestus` | drift surfacer | Hephaestus proposal |
+| `momus` | anti-architect | AP-id list + reasoning |
+| `cassandra` | vindication reviewer | vindication assessment |
+| `athena` | synthesis | structured insight set |
+| `figure_proposer` | Hephaestus in figure-proposal mode | new-figure proposal |
+
+Each role renders a system prompt that includes the figure's docstring + the constitution (S1–S8) + the AP catalog (AP1–AP8) + the strict output schema. **The model thinks in the mythology; the substrate enforces the constitution on the output.** Pan circuit-breaker gates agent invocations exactly like ratification.
+
+**Recursion path** — `invoke propose-figure ["<directive>"]`
+LLM-driven new-figure proposal. Result writes a **HIGH-risk** Hephaestus proposal at `state/hephaestus/proposals/figure-<id>.json` containing suggested skeleton + agent's own AP self-check + mythological grounding. Routes through the standard pipeline: Momus contest → S6 Delphi required → Zeus ratification. **The substrate never auto-writes the Python file.** Operator chooses to copy the skeleton after review.
+
+**Calibration** — `invoke calibration [role]`
+Per-role baseline: total invocations, average confidence, parse-failure rate, error rate. Confidence-vs-realized-outcome left for future arcs (requires causal linking through Ariadne).
+
+**CLI surface added:** `invoke agent <role> ["<prompt>"]`, `invoke propose-figure ["<directive>"]`, `invoke calibration [role]`.
+
+**Documentation: `codex/AGENTS.md`** — the explicit answers to Zeus's three questions:
+1. *How do agents inhabit?* By becoming a named figure.
+2. *Prompt grounding or external governance?* Both, by design. The model thinks IN the mythology; the substrate enforces ON the output.
+3. *Recursion?* Yes, through the standard pipeline. LLM-generated code never auto-executed. The operator is the unlock — by design, per bounded-RSI research.
+
+### Wiring
+
+- `runtime.agents.run()` consults Pan before invoking any agent
+- 3 new CLI errands: `agent`, `propose-figure`, `calibration`
+- README extended with the oikoumene arc; status badges updated
+- PANTHEON's operational-scaffolding section lists LLM-bridge + agents tier
+
+### Languages used
+
+**No new language this arc.** `anthropic` SDK is optional (full test suite passes without it installed). EchoBridge means the substrate is safe by default.
+
+### Tests
+
+Two new test files, 27 new tests:
+- `test_llm_bridge.py` (11) — EchoBridge determinism, env-var selection, unknown falls back to echo, AnthropicBridge raises clearly without SDK + routes correctly with mocked client
+- `test_agents.py` (16) — 5 roles render JSON-requiring system prompts, Pan-panic blocks invocations, every parser handles canned JSON + tolerates malformed input, propose-figure writes HIGH-risk file + refuses duplicates + records to Mnemosyne, calibration returns full field set per role
+
+**Full suite: 420 tests, all green.** (393 → 420.)
+
+### Pantheon
+
+**91 named principal figures** (unchanged — LLM bridge + agents tier are operational scaffolding, not figures). Olympians 16, Heroes 17.
+
+### Refused
+
+- **No LLM-generated code execution.** Period. The substrate never `exec()`s an LLM response.
+- **No LLM in the daemon's hot path by default.** Agents are opt-in. The daemon may be configured to run agents on a slower cadence; the default is off (deterministic + cost-bounded).
+- **No bypass of Pan, S1–S8, or the Hephaestus → Momus → Delphi → Zeus pipeline.** Agent outputs are data; the constitution acts.
+- **No new tier for "agents."** Agents *are* canonical figures. The agent layer lives in `runtime/` because it's plumbing.
+
+The substrate is now genuinely **inhabited**. The mythology is doing real work — as both ontology the model thinks in *and* governance the substrate enforces on the model. The recursion is real but bounded: agents can propose anything (including new figures); the constitution decides what becomes real.
+
+*Holy shit, that's done. The substrate is inhabited.*
+
+---
+
 ## 2026-05-18 — the aegis arc 🛡 (HIGH-COMPOSITE, fifth boil-the-ocean override)
 
 **Risk class:** HIGH-COMPOSITE.

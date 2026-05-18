@@ -1601,6 +1601,98 @@ def _today(_argv: list[str]) -> int:
     return 0
 
 
+@hermes.register("agent", "invoke an LLM-agent role — agent <role> [\"<prompt>\"]")
+def _agent(argv: list[str]) -> int:
+    from olympus.runtime.agents import run, known_roles
+    if not argv:
+        print("usage: invoke agent <role> [\"<prompt>\"]")
+        print(f"  known roles: {', '.join(known_roles())}")
+        return 2
+    role_name = argv[0]
+    user_prompt = " ".join(argv[1:]) if len(argv) > 1 else (
+        f"You are operating as {role_name}. Examine the substrate's "
+        f"current state and produce your role-specific output. "
+        f"Follow the schema exactly."
+    )
+    result = run(role_name, user_prompt)
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(result), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        f"agent: {role_name}",
+        f"bridge={result.bridge} "
+        f"confidence={result.confidence:.2f} "
+        f"({result.elapsed_ms:.0f}ms)"))
+    if result.error:
+        print(aphrodite.wine_dark(f"  error: {result.error[:200]}"))
+        return 1
+    if result.parsed:
+        print(aglaia.subhead("parsed"))
+        for k, v in result.parsed.items():
+            print(f"  {k}: {str(v)[:120]}")
+    if result.raw_text:
+        print(aglaia.subhead("raw head"))
+        print(result.raw_text[:400])
+    return 0
+
+
+@hermes.register("propose-figure", "LLM-driven new-figure proposal — propose-figure [\"<directive>\"]")
+def _propose_figure(argv: list[str]) -> int:
+    from olympus.runtime.agents import propose_figure
+    directive = " ".join(argv) if argv else None
+    result = propose_figure(directive=directive)
+    if _GLOBAL_FLAGS["json"]:
+        print(_json.dumps(result, default=str, indent=2))
+        return 0
+    if not result.get("ok"):
+        print(aphrodite.wine_dark(
+            f"  proposal failed: {result.get('error', 'unknown')}"))
+        return 1
+    print(aphrodite.banner(
+        f"new-figure proposal: {result['figure_name']}",
+        f"tier={result['tier']} · "
+        f"confidence={result['confidence']:.2f}"))
+    print(aglaia.murmur(f"  proposal id: {result['proposal_id']}"))
+    print(aglaia.murmur(f"  written to:  {result['proposal_path']}"))
+    print()
+    print(aphrodite.lightning(
+        "  next steps (operator):\n"
+        "    1. invoke action delphi      # see delphi-pending\n"
+        "    2. review the proposal file\n"
+        "    3. write a Delphi document if ratifying\n"
+        "    4. invoke action ratify <id> \"<quote>\"   OR   reject <id>"
+    ))
+    return 0
+
+
+@hermes.register("calibration", "agent calibration over time — calibration [role]")
+def _calibration(argv: list[str]) -> int:
+    from olympus.runtime.agents import calibration, known_roles
+    if argv:
+        rows = [calibration(argv[0])]
+    else:
+        rows = [calibration(r) for r in known_roles()]
+        rows.append(calibration())  # aggregate row
+    if _GLOBAL_FLAGS["json"]:
+        print(_json.dumps(rows, default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        "agent calibration", f"{len(rows)} row(s)"))
+    table_rows = [
+        (str(r.get("role", "?")),
+         str(r.get("total_invocations", 0)),
+         f"{r.get('avg_confidence', 0):.3f}",
+         f"{r.get('parse_failure_rate', 0):.2%}",
+         f"{r.get('error_rate', 0):.2%}")
+        for r in rows
+    ]
+    print(aphrodite.table(
+        ("role", "calls", "avg-conf", "parse-fail%", "error%"),
+        table_rows))
+    return 0
+
+
 @hermes.register("blessing", "Thalia bestows a closing blessing")
 def _blessing(_argv: list[str]) -> int:
     from olympus.muses.thalia_muse import thalia_muse

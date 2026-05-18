@@ -100,6 +100,8 @@ _FIGURE_TO_SOLID: dict[str, str] = {
     "hera":       "cube",           # bindings registry
     "iapetus":    "cube",           # lifecycle state machine
     "lethe":      "cube",           # ephemeral cache
+    "cronus":     "cube",           # calendar / scheduling cadence = state
+    "oceanus":    "cube",           # I/O boundary = state
 
     # ─── Octahedron — reasoning ───────────────────────────
     "athena":     "octahedron",

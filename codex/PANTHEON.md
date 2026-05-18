@@ -265,9 +265,11 @@ Plus the presentation-layer module **Iris** (`src/olympus/iris/`) — the rainbo
 
 Plus the operational modules:
 - **Daemon** (`src/olympus/runtime/daemon.py`) + templates at `scripts/daemon/` — generates launchd / systemd units so the self-improvement loop runs continuously.
-- **HTTP API** (`src/olympus/runtime/http_api.py`) — read-only JSON surface bound to localhost; lets external observers query substrate state without Python coupling.
+- **HTTP API** (`src/olympus/runtime/http_api.py`) — read-only JSON surface (plus exactly one write route: `POST /proposals/raise`); lets external observers query substrate state without Python coupling.
 - **Plugin loader** (`src/olympus/runtime/plugins.py`) — discovers third-party packages via `importlib.metadata` entry_points and registers their handlers/eyes/healers.
+- **LLM bridge** (`src/olympus/runtime/llm_bridge.py`) — pluggable interface for LLM providers (`EchoBridge` default for safety/tests, `AnthropicBridge` for `claude-opus-4-7`). The substrate's *one place* that talks to external models.
+- **Agents tier** (`src/olympus/runtime/agents.py`) — role registry letting LLMs inhabit canonical figures (`hephaestus`, `momus`, `cassandra`, `athena`, `figure_proposer`). The agent layer lives in `runtime/` because it's plumbing; agents *are* canonical figures.
 
-Not gods; pure operational scaffolding.
+Not gods; pure operational scaffolding. See [`codex/AGENTS.md`](AGENTS.md) for how LLM agents inhabit the substrate.
 
 Plus the Argos swarm: **9 Eyes**, **4 Satyrs**, **6 Demes**, **4 Phalanges**.

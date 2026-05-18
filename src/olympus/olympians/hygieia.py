@@ -104,18 +104,25 @@ class Hygieia:
     @staticmethod
     def _check_pan_vs_invariants() -> HygieiaFinding:
         """Pan's persisted state should reflect the recent invariant
-        rate. If Pan says calm but invariants are firing fast, that's
-        incoherent."""
+        rate — but only invariants AFTER Pan's `acknowledged_through`
+        timestamp count. (Operator-cleared panics are by design.)"""
         from olympus.olympians.pan import pan
         state = pan.state()
-        # Count invariants in the last Pan window (defaults to 300s)
         window = pan.window_seconds
         cutoff = Nyx.now() - datetime.timedelta(seconds=window)
-        recent = [
-            m for m in mnemosyne.recall("invariant.violated")
-            if Hygieia._parse(m.remembered_at) and
-               Hygieia._parse(m.remembered_at) >= cutoff
-        ]
+        # Honor Pan's acknowledged_through: violations recorded at or
+        # before this ts are operator-acknowledged and don't count.
+        ack_dt: datetime.datetime | None = None
+        if state.acknowledged_through:
+            ack_dt = Hygieia._parse(state.acknowledged_through)
+        recent = []
+        for m in mnemosyne.recall("invariant.violated"):
+            ts = Hygieia._parse(m.remembered_at)
+            if ts is None or ts < cutoff:
+                continue
+            if ack_dt is not None and ts <= ack_dt:
+                continue
+            recent.append(m)
         recent_count = len(recent)
         threshold = pan.threshold
 
@@ -123,8 +130,8 @@ class Hygieia:
             return HygieiaFinding(
                 check="pan-vs-invariants",
                 status="warning",
-                detail=(f"Pan panicked but no invariants fired in last "
-                        f"{window:.0f}s — may need clear"),
+                detail=(f"Pan panicked but no NEW invariants fired in "
+                        f"last {window:.0f}s — may need clear"),
                 evidence={"panicked": True, "recent_count": 0,
                           "threshold": threshold},
             )
@@ -132,19 +139,23 @@ class Hygieia:
             return HygieiaFinding(
                 check="pan-vs-invariants",
                 status="incoherent",
-                detail=(f"Pan calm but {recent_count} invariants fired "
-                        f"in last {window:.0f}s (threshold {threshold})"),
+                detail=(f"Pan calm but {recent_count} NEW invariants "
+                        f"(post-ack) fired in last {window:.0f}s "
+                        f"(threshold {threshold})"),
                 evidence={"panicked": False, "recent_count": recent_count,
-                          "threshold": threshold},
+                          "threshold": threshold,
+                          "acknowledged_through": state.acknowledged_through},
             )
         return HygieiaFinding(
             check="pan-vs-invariants",
             status="well",
             detail=(f"Pan {'panicked' if state.panicked else 'calm'} · "
-                    f"{recent_count} recent invariants (threshold {threshold})"),
+                    f"{recent_count} new invariants in window "
+                    f"(threshold {threshold})"),
             evidence={"panicked": state.panicked,
                       "recent_count": recent_count,
-                      "threshold": threshold},
+                      "threshold": threshold,
+                      "acknowledged_through": state.acknowledged_through},
         )
 
     @staticmethod
@@ -177,37 +188,84 @@ class Hygieia:
             evidence={"in_flight": shoulders.current_count},
         )
 
+    # Implementation modules that aren't named figures — internal
+    # helpers / runners / dispatchers / domain primitives. These are
+    # excluded from the "figure" definition.
+    _IMPL_MODULES = frozenset({
+        "base", "host", "colony", "correlation", "head",
+        "brief", "oracle",          # apollo internals
+        "action", "cli", "meta", "session", "wisdom",  # root runners
+    })
+
+    @staticmethod
+    def _known_figures() -> set[str]:
+        """Walk the src/olympus tree and return every figure name.
+
+        A *figure* is a named Greek-mythological surface. Excluded:
+        implementation modules (action, cli, session, wisdom, meta,
+        base, host, colony, correlation, head, brief, oracle) — these
+        are runners/dispatchers, not figures.
+
+        Included:
+          - tier-direct modules (titans/atlas.py → 'atlas')
+          - tier-direct subpackages (monsters/hydra/ → 'hydra')
+          - notable subpackage children (olympians/apollo/pythia.py → 'pythia')
+          - top-level packages (iris/ next to olympians/)
+        """
+        from olympus.primordials.gaia import root as _root
+        figures: set[str] = set()
+        olympus_root = _root.child("src", "olympus")
+        for tier in ("primordials", "titans", "olympians", "underworld",
+                     "fates", "furies", "graces", "muses", "heroes",
+                     "monsters"):
+            tier_path = olympus_root / tier
+            if not tier_path.exists():
+                continue
+            for p in tier_path.iterdir():
+                if p.is_file() and p.suffix == ".py" \
+                   and not p.name.startswith("_") \
+                   and p.stem not in Hygieia._IMPL_MODULES:
+                    figures.add(p.stem)
+                elif p.is_dir() and not p.name.startswith("_"):
+                    figures.add(p.name)
+                    for sub in p.iterdir():
+                        if sub.is_file() and sub.suffix == ".py" \
+                           and not sub.name.startswith("_") \
+                           and sub.stem not in Hygieia._IMPL_MODULES:
+                            figures.add(sub.stem)
+        if (olympus_root / "iris").is_dir():
+            figures.add("iris")
+        return figures
+
     @staticmethod
     def _check_daedalus_vs_disk() -> HygieiaFinding:
         """Every node in Daedalus's _COGNITIVE_FLOW should correspond
-        to a known module. The check is approximate (names like
-        'ActionQueue' don't have a module — they're concepts)."""
+        to a known module. Concept-nodes (ActionQueue is a class, not
+        a module; Delphi names a directory under codex/; Furies is a
+        tier-name) are whitelisted."""
         from olympus.heroes.daedalus import Daedalus
-        from olympus.primordials.gaia import root as _root
         nodes = set()
         for src, dst, _ in Daedalus._COGNITIVE_FLOW:
             nodes.add(src.lower())
             nodes.add(dst.lower())
-        # Strip plural / non-figure names — names with capitals like
-        # ActionQueue / CorrelationEngine are concepts, not modules
+        # Strip filename-with-dot like 'ARCHITECTURE.md'
         candidates = {n for n in nodes
-                       if n.isalpha() or "-" not in n and "." not in n}
-        # Resolve against disk
-        known_figures = set()
-        for tier in ("primordials", "titans", "olympians", "underworld",
-                     "fates", "furies", "graces", "muses", "heroes",
-                     "monsters"):
-            tier_path = _root.child("src", "olympus", tier)
-            if tier_path.exists():
-                for p in tier_path.iterdir():
-                    if p.is_file() and p.suffix == ".py":
-                        known_figures.add(p.stem)
-                    elif p.is_dir() and not p.name.startswith("_"):
-                        known_figures.add(p.name)
-        # Concepts that are NOT modules but are valid graph nodes
-        non_module_nodes = {"actionqueue", "session", "correlationengine",
-                            "architecturemd", "wisdom"}
-        unresolved = candidates - known_figures - non_module_nodes
+                       if n.isalpha() or ("-" not in n and "." not in n)}
+        # Concepts that are NOT individual modules but ARE valid
+        # graph nodes — classes, tier names, external documents
+        non_module_nodes = {
+            "actionqueue",         # class in action.py
+            "correlationengine",   # class in argos
+            "session",             # module exists; covered by root scan
+            "wisdom",              # module exists; covered by root scan
+            "architecturemd",      # external doc reference
+            "delphi",              # files at codex/oracles/delphi/
+            "furies",              # tier name (alecto, megaera, tisiphone)
+            "fates",               # tier name (clotho, lachesis, atropos)
+            "graces",              # tier name
+            "muses",               # tier name
+        }
+        unresolved = candidates - Hygieia._known_figures() - non_module_nodes
         if unresolved:
             return HygieiaFinding(
                 check="daedalus-vs-disk",
@@ -220,7 +278,7 @@ class Hygieia:
             check="daedalus-vs-disk",
             status="well",
             detail=(f"all {len(candidates)} graph nodes resolve to "
-                    f"modules or known concepts"),
+                    f"modules or whitelisted concepts"),
             evidence={"node_count": len(candidates)},
         )
 
@@ -229,19 +287,7 @@ class Hygieia:
         """Plato's taxonomy should reference real modules. Figures on
         disk should be classified."""
         from olympus.heroes.plato import _FIGURE_TO_SOLID
-        from olympus.primordials.gaia import root as _root
-        known_figures = set()
-        for tier in ("primordials", "titans", "olympians", "underworld",
-                     "fates", "furies", "graces", "muses", "heroes",
-                     "monsters"):
-            tier_path = _root.child("src", "olympus", tier)
-            if tier_path.exists():
-                for p in tier_path.iterdir():
-                    if p.is_file() and p.suffix == ".py" \
-                       and not p.name.startswith("_"):
-                        known_figures.add(p.stem)
-                    elif p.is_dir() and not p.name.startswith("_"):
-                        known_figures.add(p.name)
+        known_figures = Hygieia._known_figures()
         classified = set(_FIGURE_TO_SOLID.keys())
         unclassified_on_disk = known_figures - classified
         classified_but_gone = classified - known_figures
