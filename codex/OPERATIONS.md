@@ -179,6 +179,112 @@ See `codex/PLUGINS.md` for the author guide.
 invoke plugins             # show what's loaded + what failed
 ```
 
+## Asking the substrate questions (interactive)
+
+The substrate can answer common questions in plain English from its
+own records — *not* via LLM, just pattern-matched templates. Limited
+but honest: every answer cites the Mnemosyne kind(s) it drew from.
+
+```bash
+invoke ask "what happened today"
+invoke ask "what are we worried about"
+invoke ask "how is the loop"
+invoke ask "who is pan"
+invoke ask "what has the substrate learned"
+invoke ask "help"
+```
+
+## Causal lineage (Ariadne's thread)
+
+When code uses `ariadne.thread(...)` instead of `mnemosyne.remember(...)`,
+each record gets a `trace_id` and an optional `parent_trace_id`.
+Then you can walk the causal chain:
+
+```bash
+invoke ariadne <trace_id>   # show the chain from leaf to root
+```
+
+The chain is bounded by `MAX_DEPTH=64` so cycles or pathological
+back-pointers don't loop forever.
+
+## Counterfactual reasoning (Nemesis)
+
+Nemesis asks: "what would have happened if we'd decided differently?"
+For each recent ratified action, she runs a Castor shadow with an
+alternative choice and Pollux-compares to what production did.
+
+```bash
+invoke nemesis              # one pass, max 3 counterfactuals
+invoke nemesis --max 1      # smaller pass
+invoke nemesis --keep-shadows  # don't clean up shadow dirs
+```
+
+Nemesis never tunes — she records gaps. Metis turns those gaps into
+proposals.
+
+## Self-audit (Momus red-team)
+
+Momus audits his own AP catalog by running a curated corpus of
+adversarial proposals through it. Any case that should have been
+caught but wasn't is a constitution gap.
+
+```bash
+invoke redteam              # 0 → all correct, non-zero → catalog has gap
+```
+
+## Narrative (Clio)
+
+Clio composes a structured weekly digest from Mnemosyne records,
+writing to `codex/journal/<date>-clio-digest.md`.
+
+```bash
+invoke narrate              # default window: 7 days
+invoke narrate --days 1     # today only
+invoke narrate --dry-run    # show what would be written
+```
+
+The daemon auto-runs `narrate` every 6 iterations.
+
+## Federation (Hermes between deployments)
+
+If two Olympus instances are running, they can exchange digests via
+the HTTP API:
+
+```bash
+invoke federate http://peer.example:8765      # fetch a peer's digest
+invoke federate                               # list known peers
+```
+
+Both sides remain read-only on each other's substrate state.
+
+## Formal specs (Themis's deepest layer)
+
+Themis publishes TLA+ specifications of the substrate's safety
+properties. See `codex/SPECS.md` for the full discussion.
+
+```bash
+invoke specs                       # list all specs
+invoke specs hephaestus-pipeline   # show one
+```
+
+## Raising a proposal via HTTP (the only write surface)
+
+The HTTP API has exactly one write route: `POST /proposals/raise`.
+A proposal raised this way enters the standard Hephaestus → Momus
+→ Delphi → Zeus pipeline.
+
+```bash
+curl -X POST http://127.0.0.1:8765/proposals/raise \
+  -H "Content-Type: application/json" \
+  -d '{
+    "summary": "rotate the test slice",
+    "proposed_fix": "rotate state/test.jsonl when > 5k lines",
+    "rationale": "approaching disk-fill",
+    "raised_by": "external-monitor",
+    "risk_class": "LOW"
+  }'
+```
+
 ---
 
 ## Panic and recovery

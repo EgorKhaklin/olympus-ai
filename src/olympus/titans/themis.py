@@ -79,6 +79,7 @@ SUBSTRATE_INVARIANTS: tuple[Invariant, ...] = (
 
 
 SCHEMAS_DIR = "codex/schemas"
+SPECS_DIR = "codex/specs"
 
 
 class Themis:
@@ -131,6 +132,54 @@ class Themis:
         """The Mnemosyne kinds that have a per-kind body schema. The
         kind 'prophecy.verified' maps to schema name 'prophecy-verified'."""
         return [k for k in self.schemas().keys() if k != "mnemosyne-record"]
+
+    # ─────────────────────────────────────────────────────────
+    # Formal specifications (labyrinth arc)
+    # ─────────────────────────────────────────────────────────
+
+    def specs_dir(self) -> pathlib.Path:
+        return root.child(*SPECS_DIR.split("/"))
+
+    def specs(self) -> dict[str, dict]:
+        """Return all formal specifications as {name: metadata}. Each
+        metadata dict carries `path`, `bytes`, `module_name`, and the
+        first comment block as `summary`."""
+        out: dict[str, dict] = {}
+        d = self.specs_dir()
+        if not d.exists():
+            return out
+        for path in sorted(d.glob("*.tla")):
+            text = path.read_text(encoding="utf-8")
+            # Module name: first line typically "----- MODULE Name -----"
+            module_name = ""
+            for line in text.splitlines():
+                stripped = line.strip()
+                if stripped.startswith("---") and "MODULE" in stripped:
+                    # Extract between "MODULE" and the next run of dashes
+                    parts = stripped.split()
+                    if "MODULE" in parts:
+                        idx = parts.index("MODULE")
+                        if idx + 1 < len(parts):
+                            module_name = parts[idx + 1]
+                    break
+            # Summary: first comment block (between (*** and ***))
+            summary = ""
+            start = text.find("(***")
+            end = text.find("***)", start + 4) if start >= 0 else -1
+            if start >= 0 and end > start:
+                summary = text[start + 4:end].strip()
+                # Trim each line, drop leading box-comment stars
+                lines = [ln.strip().lstrip("*").strip()
+                         for ln in summary.splitlines()]
+                summary = "\n".join(lines).strip()[:600]
+            out[path.stem] = {
+                "name": path.stem,
+                "module_name": module_name,
+                "path": str(path),
+                "bytes": path.stat().st_size,
+                "summary": summary,
+            }
+        return out
 
     def validate_record(self, kind: str, body: dict) -> list[str]:
         """Validate a Mnemosyne body against the per-kind schema, if

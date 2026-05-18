@@ -143,6 +143,33 @@ def run(*, interval_seconds: float = DEFAULT_INTERVAL_SECONDS,
             except Exception as exc:  # noqa: BLE001
                 improve_summary = f"improve-raised: {exc}"
 
+            # Labyrinth-arc extras — periodic deep work
+            extras: dict[str, str] = {}
+            try:
+                # Every 6th iteration: Clio narrates a weekly digest
+                if i % 6 == 0:
+                    from olympus.muses.clio import clio
+                    digest = clio.narrate(window_days=7)
+                    extras["clio"] = (f"digest written "
+                                       f"({digest.sessions_run} sessions, "
+                                       f"{digest.proposals_ratified} ratified)")
+            except Exception as exc:  # noqa: BLE001
+                extras["clio"] = f"failed: {type(exc).__name__}: {exc}"
+
+            try:
+                # Every 12th iteration: Nemesis runs a counterfactual
+                # (bounded — max 1 per pass to keep iteration time
+                # reasonable)
+                if i % 12 == 0:
+                    from olympus.heroes.nemesis import nemesis
+                    nrep = nemesis.consider(max_per_pass=1,
+                                              cleanup_shadows=True)
+                    extras["nemesis"] = (f"{nrep.total} counterfactual(s) "
+                                          f"({nrep.actions_considered} "
+                                          f"considered)")
+            except Exception as exc:  # noqa: BLE001
+                extras["nemesis"] = f"failed: {type(exc).__name__}: {exc}"
+
             duration_ms = (time.perf_counter() - start) * 1000.0
             entry = IterationLog(
                 iteration=i, ts=Nyx.now().isoformat(),
@@ -150,7 +177,8 @@ def run(*, interval_seconds: float = DEFAULT_INTERVAL_SECONDS,
                 session_ok=session_ok, improve_ok=improve_ok,
                 panicked=False,
                 detail={"session": session_summary,
-                        "improve": improve_summary},
+                        "improve": improve_summary,
+                        **extras},
             )
             _log_line({"event": "daemon.iteration", **entry.__dict__})
             if on_iteration is not None:

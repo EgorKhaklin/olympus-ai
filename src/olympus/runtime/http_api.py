@@ -39,7 +39,7 @@ SERVER_BANNER = "olympus-http-api/1.0"
 def _route_root(_query: dict) -> tuple[int, dict]:
     return 200, {
         "service": "olympus-http-api",
-        "version": "1.0",
+        "version": "1.1",
         "routes": [
             "GET /",
             "GET /healthz",
@@ -49,10 +49,19 @@ def _route_root(_query: dict) -> tuple[int, dict]:
             "GET /panic",
             "GET /schemas",
             "GET /schemas/<kind>",
+            "GET /specs",
             "GET /mnemosyne/<kind>?limit=N",
+            "POST /proposals/raise",
         ],
-        "read_only": True,
+        "read_only_writes": "POST /proposals/raise enters the Hephaestus "
+                            "→ Momus → Delphi → Zeus pipeline; substrate "
+                            "state is never mutated directly via HTTP",
     }
+
+
+def _route_specs(_query: dict) -> tuple[int, dict]:
+    from olympus.titans.themis import themis
+    return 200, {"specs": themis.specs()}
 
 
 def _route_healthz(_query: dict) -> tuple[int, dict]:
@@ -116,6 +125,70 @@ def _route_schemas(_query: dict, *,
     return 200, schemas[key]
 
 
+def _route_raise_proposal(body: dict) -> tuple[int, dict]:
+    """POST /proposals/raise — the ONLY write surface. Accepts a JSON
+    body and creates a Hephaestus-channel proposal under
+    state/hephaestus/proposals/. The proposal then routes through the
+    standard Momus → Delphi → Zeus pipeline.
+
+    S3 (read-only observation) is preserved: this does NOT write to
+    substrate state directly; it adds to the proposal queue, which is
+    the same queue every internal source uses."""
+    import json as _json
+    import uuid
+    from olympus.primordials.gaia import root
+    from olympus.primordials.nyx import Nyx
+    from olympus.titans.mnemosyne import mnemosyne
+
+    # Validate required fields
+    required = ("summary", "proposed_fix", "rationale", "raised_by")
+    missing = [f for f in required if not body.get(f)]
+    if missing:
+        return 400, {"error": "missing required fields", "missing": missing,
+                     "required": list(required)}
+    risk = body.get("risk_class", "LOW")
+    if risk not in {"LOW", "MEDIUM", "HIGH", "COMPOSITE"}:
+        return 400, {"error": f"invalid risk_class {risk!r}",
+                     "allowed": ["LOW", "MEDIUM", "HIGH", "COMPOSITE"]}
+
+    pid = f"http-{Nyx.now().strftime('%Y%m%dT%H%M%SZ')}-{uuid.uuid4().hex[:8]}"
+    proposal = {
+        "id": pid,
+        "drift_observed": (
+            f"{body['raised_by']} raised via HTTP API: "
+            f"{body['summary']}"
+        ),
+        "summary": body["summary"],
+        "proposed_fix": body["proposed_fix"],
+        "rationale": body["rationale"],
+        "risk_class": risk,
+        "raised_by": body["raised_by"],
+        "raised_at": Nyx.now().isoformat(),
+        "raised_via": "http-api",
+    }
+    proposals_dir = root.child("state", "hephaestus", "proposals")
+    proposals_dir.mkdir(parents=True, exist_ok=True)
+    target = proposals_dir / f"{pid}.json"
+    target.write_text(_json.dumps(proposal, indent=2), encoding="utf-8")
+
+    mnemosyne.remember(
+        kind="http.proposal-raised",
+        actor=f"http-api:{body['raised_by']}",
+        summary=f"proposal {pid} raised via HTTP — {body['summary'][:80]}",
+        proposal_id=pid,
+        risk_class=risk,
+        raised_by=body["raised_by"],
+        proposal_path=str(target),
+    )
+    return 201, {
+        "ok": True,
+        "proposal_id": pid,
+        "risk_class": risk,
+        "next_step": "proposal will route through Momus → Delphi → Zeus",
+        "proposal_path": str(target),
+    }
+
+
 def _route_mnemosyne(query: dict, *, kind: str) -> tuple[int, dict]:
     from olympus.titans.mnemosyne import mnemosyne
     limit = int(query.get("limit", ["50"])[0])
@@ -158,6 +231,8 @@ def dispatch(path: str, query: dict[str, list[str]]) -> tuple[int, dict]:
         return _route_schemas(query)
     if path.startswith("/schemas/"):
         return _route_schemas(query, kind=path[len("/schemas/"):])
+    if path == "/specs":
+        return _route_specs(query)
     if path.startswith("/mnemosyne/"):
         kind = path[len("/mnemosyne/"):]
         if not kind:
@@ -165,6 +240,15 @@ def dispatch(path: str, query: dict[str, list[str]]) -> tuple[int, dict]:
         return _route_mnemosyne(query, kind=kind)
     return 404, {"error": f"no route for {path!r}",
                  "routes": _route_root({})[1]["routes"]}
+
+
+def dispatch_post(path: str, body: dict) -> tuple[int, dict]:
+    """POST dispatch — exactly one route. The constitutional reason for
+    keeping this tiny: every new write surface is a new attack surface."""
+    if path == "/proposals/raise":
+        return _route_raise_proposal(body)
+    return 405, {"error": f"POST not allowed at {path!r}",
+                 "allowed_post_routes": ["/proposals/raise"]}
 
 
 # ─────────────────────────────────────────────────────────
@@ -196,11 +280,42 @@ class OlympusHandler(BaseHTTPRequestHandler):
             status, payload = 500, {"error": f"{type(exc).__name__}: {exc}"}
         self._write(status, payload)
 
-    def _method_not_allowed(self) -> None:
-        self._write(405, {"error": "this API is read-only; "
-                                    "use `invoke` for mutations"})
+    # The only path that accepts POST — every other POST returns 405
+    # BEFORE we even try to parse the body. This keeps the API honestly
+    # read-only-except-for-this-one-route.
+    _POST_ALLOWED_PATHS = ("/proposals/raise",)
 
-    do_POST = _method_not_allowed
+    def do_POST(self) -> None:  # noqa: N802
+        """The only allowed POST routes go through dispatch_post; any
+        other path returns 405 without inspecting the body."""
+        try:
+            parsed = urlparse(self.path)
+            if parsed.path not in self._POST_ALLOWED_PATHS:
+                self._write(405, {
+                    "error": f"POST not allowed at {parsed.path!r}",
+                    "allowed_post_routes": list(self._POST_ALLOWED_PATHS),
+                })
+                return
+            length = int(self.headers.get("Content-Length", "0"))
+            raw = self.rfile.read(length) if length > 0 else b""
+            try:
+                body = json.loads(raw) if raw else {}
+            except json.JSONDecodeError as exc:
+                self._write(400, {"error": f"body is not JSON: {exc}"})
+                return
+            if not isinstance(body, dict):
+                self._write(400, {"error": "POST body must be a JSON object"})
+                return
+            status, payload = dispatch_post(parsed.path, body)
+        except Exception as exc:  # noqa: BLE001
+            status, payload = 500, {"error": f"{type(exc).__name__}: {exc}"}
+        self._write(status, payload)
+
+    def _method_not_allowed(self) -> None:
+        self._write(405, {"error": "this API is read-only except for "
+                                    "POST /proposals/raise; "
+                                    "use `invoke` for other mutations"})
+
     do_PUT = _method_not_allowed
     do_DELETE = _method_not_allowed
     do_PATCH = _method_not_allowed

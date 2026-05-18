@@ -1049,6 +1049,217 @@ def _plugins(_argv: list[str]) -> int:
     return 0
 
 
+@hermes.register("specs", "Themis — list formal specifications (TLA+) — specs [name]")
+def _specs(argv: list[str]) -> int:
+    from olympus.titans.themis import themis
+    specs = themis.specs()
+    if argv:
+        name = argv[0]
+        if name not in specs:
+            print(aphrodite.wine_dark(
+                f"no spec {name!r}; available: {', '.join(sorted(specs))}"
+            ))
+            return 1
+        spec = specs[name]
+        if _GLOBAL_FLAGS["json"]:
+            print(_json.dumps(spec, indent=2, default=str))
+            return 0
+        print(aphrodite.banner(f"spec: {name}", spec.get("module_name", "")))
+        print(aglaia.murmur(f"  path: {spec.get('path')}"))
+        print(aglaia.murmur(f"  bytes: {spec.get('bytes')}"))
+        print()
+        print(spec.get("summary", ""))
+        return 0
+    if _GLOBAL_FLAGS["json"]:
+        print(_json.dumps(specs, indent=2, default=str))
+        return 0
+    if not specs:
+        print(aglaia.murmur("  no specs in codex/specs/"))
+        return 0
+    rows = [(s["name"], s["module_name"],
+             str(s["bytes"]),
+             (s.get("summary") or "").split("\n")[0][:60])
+            for s in specs.values()]
+    print(aphrodite.banner("Themis — formal specifications (TLA+)",
+                           f"{len(specs)} spec(s) in codex/specs/"))
+    print(aphrodite.table(("name", "module", "bytes", "first-line"), rows))
+    return 0
+
+
+@hermes.register("ariadne", "Ariadne — walk a causal chain — ariadne <trace_id>")
+def _ariadne(argv: list[str]) -> int:
+    from olympus.heroes.ariadne import ariadne
+    if not argv:
+        print("usage: invoke ariadne <trace_id>")
+        return 2
+    chain = ariadne.chain(argv[0])
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(chain), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        f"Ariadne — chain from {argv[0]}",
+        f"depth={chain.depth} root_reached={chain.root_reached}"))
+    if not chain.events:
+        print(aglaia.murmur("  no events found for that trace_id"))
+        return 0
+    for i, ev in enumerate(chain.events):
+        marker = "└─" if i == len(chain.events) - 1 else "├─"
+        print(f"  {marker} [{ev.kind}] {ev.actor} — {ev.summary[:80]}")
+    return 0
+
+
+@hermes.register("nemesis", "Nemesis — run counterfactual on recent actions")
+def _nemesis(argv: list[str]) -> int:
+    from olympus.heroes.nemesis import nemesis
+    keep = "--keep-shadows" in argv
+    max_n = 3
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--max" and i + 1 < len(argv):
+            max_n = int(argv[i + 1]); i += 2; continue
+        i += 1
+    report = nemesis.consider(max_per_pass=max_n,
+                                cleanup_shadows=not keep)
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(report), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        "Nemesis — counterfactual pass",
+        f"considered {report.actions_considered} · "
+        f"{report.total} counterfactual(s) · "
+        f"{report.skipped_already_examined} skipped"))
+    for cf in report.counterfactuals:
+        print(aglaia.subhead(f"action {cf.subject_action_id[:24]}"))
+        print(f"  actual: {cf.actual_outcome}")
+        print(f"  counterfactual: {cf.counterfactual_choice}")
+        print(f"  gap: {cf.gap_summary}")
+    return 0
+
+
+@hermes.register("redteam", "Momus — adversarial self-audit of AP catalog")
+def _redteam(_argv: list[str]) -> int:
+    from olympus.heroes.momus import momus
+    report = momus.red_team()
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(report), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        "Momus — red-team pass",
+        f"{report.correct}/{report.total} correct · "
+        f"{len(report.slipped_through)} slipped · "
+        f"{len(report.false_alarms)} false-alarmed"))
+    rows = [
+        (r.name[:30],
+         "✓" if r.correctly_handled else "✗",
+         ",".join(r.expected_aps) or "—",
+         ",".join(r.actual_dings) or "—")
+        for r in report.results
+    ]
+    print(aphrodite.table(
+        ("case", "ok?", "expected", "actual"), rows))
+    if report.slipped_through:
+        print(aphrodite.wine_dark(
+            f"\n  ⚠ {len(report.slipped_through)} adversarial proposal(s) "
+            f"slipped through — AP catalog has gaps"))
+        return 1
+    return 0
+
+
+@hermes.register("narrate", "Clio — auto-write a digest — narrate [--days N]")
+def _narrate(argv: list[str]) -> int:
+    from olympus.muses.clio import clio
+    days = 7
+    write = "--dry-run" not in argv
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--days" and i + 1 < len(argv):
+            days = int(argv[i + 1]); i += 2; continue
+        i += 1
+    digest = clio.narrate(window_days=days, write=write)
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(digest), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        f"Clio — digest for last {days}d",
+        digest.path or "(not written; --dry-run)"))
+    print(f"  sessions: {digest.sessions_run}")
+    print(f"  ratified: {digest.proposals_ratified} · "
+          f"rejected: {digest.proposals_rejected}")
+    print(f"  panics: {digest.panics_entered} · "
+          f"vindications: {digest.vindications}")
+    if digest.headlines:
+        print(aglaia.subhead("Headlines"))
+        for h in digest.headlines[:5]:
+            print(f"  · {h}")
+    return 0
+
+
+@hermes.register("federate", "Hermes — fetch a peer Olympus digest — federate <url>")
+def _federate(argv: list[str]) -> int:
+    from olympus.runtime.federation import federate, known_peers
+    if not argv:
+        peers = known_peers(limit=20)
+        if _GLOBAL_FLAGS["json"]:
+            import dataclasses as _dc
+            print(_json.dumps([_dc.asdict(p) for p in peers],
+                              default=str, indent=2))
+            return 0
+        if not peers:
+            print(aglaia.murmur("  no federations recorded"))
+            return 0
+        print(aphrodite.banner("Hermes — known peers",
+                                f"{len(peers)} digest(s)"))
+        rows = [(p.fetched_at[:19], p.peer_url[:40],
+                 "✓" if p.reachable else "✗",
+                 f"{p.elapsed_ms:.0f}ms")
+                for p in peers]
+        print(aphrodite.table(("when", "peer", "ok", "elapsed"), rows))
+        return 0
+    digest = federate(argv[0])
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(digest), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        f"federated {digest.peer_url}",
+        f"reachable={digest.reachable} "
+        f"status={digest.status_code} "
+        f"({digest.elapsed_ms:.0f}ms)"))
+    if digest.error:
+        print(aphrodite.wine_dark(f"  error: {digest.error}"))
+    if digest.peer_status:
+        hearth = (digest.peer_status.get("hearth") or {}).get("name")
+        styx = (digest.peer_status.get("styx") or {}).get("total_oaths")
+        print(aglaia.murmur(f"  peer hearth: {hearth}"))
+        print(aglaia.murmur(f"  peer styx oaths: {styx}"))
+    if digest.peer_specs:
+        print(aglaia.murmur(f"  peer specs: {', '.join(digest.peer_specs)}"))
+    return 0 if digest.reachable else 1
+
+
+@hermes.register("ask", "ask the substrate — ask \"<question>\"")
+def _ask(argv: list[str]) -> int:
+    from olympus.runtime.dialogue import ask
+    question = " ".join(argv)
+    answer = ask(question)
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(answer), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        f"ask: {question[:60]}",
+        f"matched: {answer.matched_template}"))
+    print(answer.text)
+    if answer.sources:
+        print()
+        print(aglaia.murmur(f"  sources: {', '.join(answer.sources[:5])}"))
+    return 0
+
+
 @hermes.register("blessing", "Thalia bestows a closing blessing")
 def _blessing(_argv: list[str]) -> int:
     from olympus.muses.thalia_muse import thalia_muse

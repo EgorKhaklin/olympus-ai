@@ -25,8 +25,13 @@ class TestDispatch(unittest.TestCase):
         status, body = dispatch("/", {})
         self.assertEqual(status, 200)
         self.assertEqual(body["service"], "olympus-http-api")
-        self.assertTrue(body["read_only"])
+        # Labyrinth arc: API gained POST /proposals/raise. The substrate
+        # state is still read-only — writes go to the proposal queue,
+        # not to substrate state — but the field name reflects that.
+        self.assertIn("read_only_writes", body)
+        self.assertIn("Hephaestus", body["read_only_writes"])
         self.assertIn("GET /healthz", body["routes"])
+        self.assertIn("POST /proposals/raise", body["routes"])
 
     def test_healthz(self):
         from olympus.runtime.http_api import dispatch

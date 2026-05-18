@@ -36,7 +36,8 @@ EXPECTED = {
                     "polyhymnia", "terpsichore", "thalia_muse", "urania"],
     "heroes":      ["heracles", "perseus", "theseus", "odysseus",
                     "orpheus", "atalanta", "momus", "prometheus",
-                    "cassandra", "daedalus", "castor", "pollux"],
+                    "cassandra", "daedalus", "castor", "pollux",
+                    "ariadne", "nemesis"],
     "monsters":    ["cerberus", "sphinx", "medusa", "chimera",
                     "minotaur", "typhon"],
 }
