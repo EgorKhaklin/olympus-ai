@@ -12,6 +12,74 @@ Newest first. Each entry names what changed, what was sworn, who decided.
 
 ---
 
+## 2026-05-18 — the missing-figures arc (COMPOSITE)
+
+**Risk class:** COMPOSITE.
+**Delphi:** [`codex/oracles/delphi/2026-05-18-missing-figures-arc.md`](oracles/delphi/2026-05-18-missing-figures-arc.md)
+**Sworn on Styx at seq=55.**
+
+Zeus's directive, verbatim:
+
+> *"scan the whole system, are we missing anything from greek mythology? and if we are we can add new features that represent who we are missing. You can use any langauge you want , and use the system to do this"*
+
+### The decision was the discipline.
+
+The temptation in a request like this is to add every recognizable Greek name — *complete the set* — which is exactly the AP8 (decorative additions) failure mode the catalog was written to refuse. So the substrate's own protocol decided this: Hephaestus surfaced every plausible candidate; Momus ran AP1–AP8 against each; only figures that close a load-bearing substrate gap survived.
+
+Three did. Eleven did not.
+
+### What ships
+
+**Epimetheus** — `src/olympus/titans/epimetheus.py`
+Brother of Prometheus. Their names are paired and opposite: *pro-metheus* (forethought) versus *epi-metheus* (afterthought). Where Prometheus acts on LOW-risk drift, Epimetheus reviews. For every ratified action, every prophecy verification, every Prometheus handler run, and every session error, Epimetheus produces a structured hindsight record naming what was *expected*, what *actually* happened, and a concise English *lesson*. Records to Mnemosyne under `kind="epimetheus.hindsight"`. Closes the forethought → hindsight loop.
+
+**Cassandra** — `src/olympus/heroes/cassandra.py`
+The prophetess of Troy, cursed by Apollo to be never believed. In Olympus she is the symmetric counterpart to Hephaestus's rejection memory. Hephaestus remembers proposals Zeus killed so the substrate stops nagging; Cassandra remembers *alerts that were dismissed* — either silently passed or explicitly rejected — and surfaces them when the underlying concern recurs. The first invocation already found a real production drift: `olympians/apollo (predicates)` had been alerted on and silently passed.
+
+**Atlas** — `src/olympus/titans/atlas.py`
+The Titan condemned to bear the celestial sphere. In Olympus, the live-state registry: what the substrate is *carrying right now*. Sessions register themselves as borne by Atlas at start; release at end. Same for Prometheus passes. Storage is Mnemosyne itself (`atlas.bear` + `atlas.release` records) — no derived cache, no separate file to drift from the audit-of-record (S1, S8).
+
+### What does NOT ship — and the discipline of refusing
+
+| candidate | reason |
+|---|---|
+| Helios | AP8 — overlaps with `invoke wisdom` + `invoke iris` + `invoke status` |
+| Ananke | AP8 + AP3 — duplicates Furies / S1–S8 enforcement |
+| Eris, Tyche | AP8 — overlaps Ares + Apollo |
+| Metis | AP8 — duplicates Athena's pre-synthesis |
+| Erebus, Aether, Hemera, Pontus | AP8 — no substrate role distinct from Nyx/Oceanus |
+| Crius, Phoebe, Tethys, Theia, Selene, Eos | AP8 — no role distinct from existing Titans/Olympians |
+| Bellerophon, Achilles, Tiresias, Daedalus, Sisyphus, Pandora | AP8 — overlap existing heroes or purely decorative |
+| Pegasus, Charybdis, Scylla, Echidna, Stymphalian birds | AP8 — no distinct cognitive function |
+
+**Greek mythology is large; the substrate is finite.** The discipline of refusing applies to mythology too.
+
+### Wiring
+
+- `session.Session.run()` — Atlas bears the session for its entire lifetime; releases in `finally` with outcome reflecting whether the session errored.
+- `Prometheus.improve()` — Atlas bears each improvement pass; releases with outcome `ok` if all handlers succeeded, `partial` otherwise.
+- `tests/test_pantheon_coherence.py` — `EXPECTED` updated with Atlas, Epimetheus, Cassandra; also adds the previously-omitted `prometheus` entry that the self-improvement arc had left dangling.
+
+### CLI
+
+- `invoke reflect [--hours N]` — Epimetheus's hindsight pass
+- `invoke cassandra` — review ignored + vindicated warnings
+- `invoke shoulders` — what Atlas is currently bearing
+
+### Other languages?
+
+Same question as the self-improvement arc; same answer. None. Atlas's write volume is one bear + one release per session and per improvement pass — JSONL via Mnemosyne is correct. The substrate is Python because reasoning over JSONL records is what Python is best at. The discipline holds: languages get added when they solve a real problem Python does not.
+
+### Tests
+
+`test_atlas.py` (8) — bear/release lifecycle, context manager, session + Prometheus integration.
+`test_epimetheus.py` (6) — hindsight extraction from prophecies, session errors, handler failures; pass recording.
+`test_cassandra.py` (6) — silent + rejected dismissal detection, ratified-skipped path, vindication on recurrence, Mnemosyne recording.
+
+Full suite: 193 tests, all green.
+
+---
+
 ## 2026-05-18 — the self-improvement arc (COMPOSITE)
 
 **Risk class:** COMPOSITE.

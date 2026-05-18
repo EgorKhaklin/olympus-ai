@@ -46,6 +46,8 @@ If you add a new module, register it here. If a module exists on disk but is mis
 | **Oceanus** | `src/olympus/titans/oceanus.py` | the world-encircling river | I/O boundary |
 | **Iapetus** | `src/olympus/titans/iapetus.py` | mortality, father of Prometheus | lifecycle state machine |
 | **Coeus** | `src/olympus/titans/coeus.py` | the axis of heaven, intellect | investigation / queries |
+| **Atlas** | `src/olympus/titans/atlas.py` | bearer of the heavens, condemned to hold the celestial sphere | live-state registry of in-flight operations |
+| **Epimetheus** | `src/olympus/titans/epimetheus.py` | afterthought, brother of Prometheus | post-hoc hindsight (expected-vs-actual over events) |
 
 ---
 
@@ -138,6 +140,8 @@ If you add a new module, register it here. If a module exists on disk but is mis
 | **Orpheus** | `src/olympus/heroes/orpheus.py` | descent into Hades | archive retrieval |
 | **Atalanta** | `src/olympus/heroes/atalanta.py` | the fastest mortal | benchmark runner |
 | **Momus** | `src/olympus/heroes/momus.py` | mockery (banished from Olympus) | the Anti-Architect (AP1–AP8) |
+| **Prometheus** | `src/olympus/heroes/prometheus.py` | titan of forethought, fire-bringer | bounded auto-improver (handler registry on ratified-LOW actions) |
+| **Cassandra** | `src/olympus/heroes/cassandra.py` | prophetess of Troy, cursed never to be believed | vindication memory — dismissed warnings that later recurred |
 
 ---
 
@@ -228,16 +232,18 @@ When a mortal head is cut (rewritten), its replacement may take a different form
 | tier | count |
 |------|------:|
 | Primordials | 5 |
-| Titans | 8 |
+| Titans | 10 |
 | Olympians (incl. Hestia + Apollo subpackage) | 13 |
 | Underworld | 5 |
 | Fates | 3 |
 | Furies | 3 |
 | Graces | 3 |
 | Muses | 9 |
-| Heroes | 7 |
+| Heroes | 9 |
 | Monsters (top-level) | 8 |
 | HYDRA heads | 9 (8 mortal + 1 immortal) |
-| **Total named principal figures** | **73** |
+| **Total named principal figures** | **77** |
+
+Plus the presentation-layer module **Iris** (`src/olympus/iris/`) — the rainbow-messenger between Olympus and mortals; static dashboard. Iris is an Olympian by myth but lives outside the `olympians/` directory because she is structurally a renderer, not a god participating in the cognitive loop.
 
 Plus the Argos swarm: **9 Eyes**, **4 Satyrs**, **6 Demes**, **4 Phalanges**.

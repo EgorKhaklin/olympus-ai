@@ -88,26 +88,36 @@ class Prometheus:
     def improve(self) -> ImprovementReport:
         """Run one improvement pass. Each registered handler runs in
         the order it was registered; failures are caught and recorded;
-        the loop continues. Returns a full report."""
+        the loop continues. Returns a full report. Atlas bears the
+        pass for its lifetime so `invoke shoulders` can show it."""
+        from olympus.titans.atlas import atlas
         report = ImprovementReport(started_at=Nyx.now().isoformat())
-        for name, handler in self._handlers.items():
-            result = self._invoke_one(name, handler, action=None)
-            report.results.append(result)
-            report.handlers_invoked += 1
-            if result.succeeded:
-                report.handlers_succeeded += 1
-        report.ended_at = Nyx.now().isoformat()
+        burden = atlas.bear(op="improvement-pass",
+                            owner="prometheus",
+                            handlers=list(self._handlers.keys()))
+        try:
+            for name, handler in self._handlers.items():
+                result = self._invoke_one(name, handler, action=None)
+                report.results.append(result)
+                report.handlers_invoked += 1
+                if result.succeeded:
+                    report.handlers_succeeded += 1
+            report.ended_at = Nyx.now().isoformat()
 
-        mnemosyne.remember(
-            kind="prometheus.pass",
-            actor="prometheus",
-            summary=(f"improvement pass: {report.handlers_succeeded}/"
-                     f"{report.handlers_invoked} handler(s) succeeded"),
-            handlers=[r.handler for r in report.results],
-            succeeded=report.handlers_succeeded,
-            invoked=report.handlers_invoked,
-        )
-        return report
+            mnemosyne.remember(
+                kind="prometheus.pass",
+                actor="prometheus",
+                summary=(f"improvement pass: {report.handlers_succeeded}/"
+                         f"{report.handlers_invoked} handler(s) succeeded"),
+                handlers=[r.handler for r in report.results],
+                succeeded=report.handlers_succeeded,
+                invoked=report.handlers_invoked,
+            )
+            return report
+        finally:
+            outcome = ("ok" if report.handlers_succeeded ==
+                       report.handlers_invoked else "partial")
+            atlas.release(burden.id, outcome=outcome)
 
     def loop(self, *, interval_seconds: float = 600.0,
              max_iterations: int = -1) -> None:

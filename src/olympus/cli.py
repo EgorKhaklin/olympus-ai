@@ -572,6 +572,94 @@ def _iris(argv: list[str]) -> int:
     return 0
 
 
+@hermes.register("reflect", "Epimetheus produces hindsights — reflect [--hours N]")
+def _reflect(argv: list[str]) -> int:
+    from olympus.titans.epimetheus import epimetheus
+    hours = 24.0
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--hours" and i + 1 < len(argv):
+            hours = float(argv[i + 1]); i += 2; continue
+        i += 1
+    report = epimetheus.reflect(lookback_hours=hours)
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(report), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        "Epimetheus — hindsight pass",
+        f"lookback {hours}h · {report.total} record(s) · "
+        f"{report.surprising} surprising",
+    ))
+    if not report.records:
+        print(aglaia.murmur("  no events in window worth reflecting on"))
+        return 0
+    rows = [
+        (r.subject_kind, r.subject_id[:24],
+         "!" if r.surprising else "·",
+         r.lesson[:90])
+        for r in report.records[:20]
+    ]
+    print(aphrodite.table(("kind", "subject", "?", "lesson"), rows))
+    return 0
+
+
+@hermes.register("cassandra", "ignored warnings + vindications")
+def _cassandra(_argv: list[str]) -> int:
+    from olympus.heroes.cassandra import cassandra
+    report = cassandra.review()
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(report), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        "Cassandra — the unbelieved prophetess",
+        f"{report.total_ignored} ignored · "
+        f"{report.total_vindicated} vindicated",
+    ))
+    if report.vindicated:
+        print(aglaia.subhead("Vindicated (told you so)"))
+        for v in report.vindicated[:10]:
+            print(f"  · slice {v.slice!r}: dismissed {v.dismissal_kind} "
+                  f"— recurred {v.recurrences_after_dismissal}x")
+    if report.ignored:
+        print(aglaia.subhead(f"Ignored warnings ({len(report.ignored)})"))
+        for w in report.ignored[:15]:
+            print(f"  · {w.slice}  "
+                  f"[{w.dismissal_kind}]  "
+                  f"{w.alert_count} alert(s)")
+    if not (report.vindicated or report.ignored):
+        print(aglaia.murmur("  no dismissed warnings — clean history"))
+    return 0
+
+
+@hermes.register("shoulders", "Atlas — what the substrate is currently carrying")
+def _shoulders(_argv: list[str]) -> int:
+    from olympus.titans.atlas import atlas
+    report = atlas.shoulders()
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(report), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        "Atlas — burdens currently borne",
+        f"{report.current_count} in flight",
+    ))
+    if report.current:
+        rows = [
+            (b.op, b.owner[:24], b.started_at[:19], b.id[:12])
+            for b in report.current
+        ]
+        print(aphrodite.table(("op", "owner", "since", "id"), rows))
+    else:
+        print(aglaia.murmur("  the heavens rest light — no current burdens"))
+    if report.recently_released:
+        print(aglaia.subhead("Recently released"))
+        for b in report.recently_released:
+            print(f"  · {b.op:18s}  {b.released_at[:19]}  ({b.outcome})")
+    return 0
+
+
 @hermes.register("blessing", "Thalia bestows a closing blessing")
 def _blessing(_argv: list[str]) -> int:
     from olympus.muses.thalia_muse import thalia_muse

@@ -21,7 +21,8 @@ if str(ROOT / "src") not in sys.path:
 EXPECTED = {
     "primordials": ["chaos", "gaia", "nyx", "eros", "tartarus"],
     "titans":      ["mnemosyne", "themis", "cronus", "hyperion",
-                    "rhea", "oceanus", "iapetus", "coeus"],
+                    "rhea", "oceanus", "iapetus", "coeus",
+                    "atlas", "epimetheus"],
     "olympians":   ["zeus", "hera", "poseidon", "demeter", "athena",
                     "artemis", "ares", "aphrodite", "hephaestus",
                     "hermes", "dionysus", "hestia"],
@@ -32,7 +33,8 @@ EXPECTED = {
     "muses":       ["calliope", "clio", "erato", "euterpe", "melpomene",
                     "polyhymnia", "terpsichore", "thalia_muse", "urania"],
     "heroes":      ["heracles", "perseus", "theseus", "odysseus",
-                    "orpheus", "atalanta", "momus"],
+                    "orpheus", "atalanta", "momus", "prometheus",
+                    "cassandra"],
     "monsters":    ["cerberus", "sphinx", "medusa", "chimera",
                     "minotaur", "typhon"],
 }

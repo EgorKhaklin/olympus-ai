@@ -283,11 +283,18 @@ class Session:
         """Execute one full cognitive pass. Always returns a SessionReport;
         catastrophic errors are captured in report.error rather than raising."""
         import time
+        from olympus.titans.atlas import atlas
         start_t = time.perf_counter()
         report = SessionReport(
             session_id=self.id,
             directive=self.directive,
             started_at=self.started_at.isoformat(),
+        )
+        # Atlas bears the session for its entire lifetime — operators
+        # can answer "what's running right now?" via `invoke shoulders`.
+        burden = atlas.bear(
+            op="session", owner=self.id,
+            directive=self.directive or "",
         )
 
         def _cb(phase: str, detail: str = "") -> None:
@@ -336,6 +343,10 @@ class Session:
             hymn = polyhymnia.hymn()
             report.styx_total = hymn.total_oaths
             report.styx_intact = hymn.intact
+            # Release Atlas's burden (outcome reflects whether the
+            # session errored). Always runs — even on KeyboardInterrupt.
+            atlas.release(burden.id,
+                          outcome=("error" if report.error else "ok"))
 
         return report
 
