@@ -155,6 +155,8 @@ If you add a new module, register it here. If a module exists on disk but is mis
 | **Pollux** | `src/olympus/heroes/pollux.py` | immortal twin of the Dioscuri | comparator — diffs prod-vs-shadow session reports |
 | **Ariadne** | `src/olympus/heroes/ariadne.py` | princess of Crete, giver of the thread | causal-lineage tracer — threads trace_id/parent_trace_id through Mnemosyne |
 | **Nemesis** | `src/olympus/heroes/nemesis.py` | goddess of retribution and divine balance | counterfactual reasoner — measures gap between what was done and what could have been |
+| **Pythagoras** | `src/olympus/heroes/pythagoras.py` | mathematician of Samos, father of sacred numerics | constants (φ, π, √2, e), Fibonacci, golden-section search, harmony scoring, Pythagorean triples |
+| **Plato** | `src/olympus/heroes/plato.py` | philosopher of the five regular solids | five-solid taxonomy of substrate work (tetrahedron/cube/octahedron/dodecahedron/icosahedron → fire/earth/air/cosmos/water → observation/state/reasoning/authority/execution) |
 
 ---
 
@@ -252,10 +254,10 @@ When a mortal head is cut (rewritten), its replacement may take a different form
 | Furies | 3 |
 | Graces | 3 |
 | Muses | 9 |
-| Heroes | 14 |
+| Heroes | 16 |
 | Monsters (top-level) | 8 |
 | HYDRA heads | 9 (8 mortal + 1 immortal) |
-| **Total named principal figures** | **87** |
+| **Total named principal figures** | **89** |
 
 Plus the presentation-layer module **Iris** (`src/olympus/iris/`) — the rainbow-messenger between Olympus and mortals; static dashboard. Iris is an Olympian by myth but lives outside the `olympians/` directory because she is structurally a renderer, not a god participating in the cognitive loop.
 

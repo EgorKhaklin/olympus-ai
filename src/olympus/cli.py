@@ -1260,6 +1260,199 @@ def _ask(argv: list[str]) -> int:
     return 0
 
 
+@hermes.register("pythagoras", "Pythagoras — sacred constants, Fibonacci, harmony")
+def _pythagoras(argv: list[str]) -> int:
+    from olympus.heroes.pythagoras import (PHI, PHI_INVERSE, PI, E,
+                                              SQRT2, SQRT3, SQRT5,
+                                              fib_sequence, fib_backoff,
+                                              harmony,
+                                              pythagorean_triples)
+    if argv and argv[0] == "fib":
+        n = int(argv[1]) if len(argv) > 1 else 15
+        seq = fib_sequence(n)
+        if _GLOBAL_FLAGS["json"]:
+            print(_json.dumps(seq)); return 0
+        print(aphrodite.banner(f"Fibonacci — first {n}", str(seq)))
+        return 0
+    if argv and argv[0] == "backoff":
+        n = int(argv[1]) if len(argv) > 1 else 8
+        base = float(argv[2]) if len(argv) > 2 else 1.0
+        delays = [fib_backoff(i, base_seconds=base) for i in range(n)]
+        if _GLOBAL_FLAGS["json"]:
+            print(_json.dumps(delays)); return 0
+        rows = [(str(i), f"{d:.3f}s") for i, d in enumerate(delays)]
+        print(aphrodite.banner("Fibonacci backoff",
+                                f"base={base}s, attempts 0..{n-1}"))
+        print(aphrodite.table(("attempt", "delay"), rows))
+        return 0
+    if argv and argv[0] == "harmony":
+        if len(argv) < 2:
+            print("usage: invoke pythagoras harmony <ratio>")
+            return 2
+        r = float(argv[1])
+        score = harmony(r)
+        if _GLOBAL_FLAGS["json"]:
+            import dataclasses as _dc
+            print(_json.dumps(_dc.asdict(score),
+                              default=str, indent=2))
+            return 0
+        print(aphrodite.banner(f"harmony({r})",
+                                f"nearest {score.nearest_anchor} "
+                                f"({score.nearest_value:.6f})"))
+        print(f"  distance: {score.distance:.6f}")
+        print(f"  score:    {score.score:.6f}")
+        return 0
+    if argv and argv[0] == "triples":
+        below = int(argv[1]) if len(argv) > 1 else 50
+        trips = list(pythagorean_triples(below))
+        if _GLOBAL_FLAGS["json"]:
+            print(_json.dumps(trips)); return 0
+        print(aphrodite.banner(
+            f"Pythagorean triples (c < {below})",
+            f"{len(trips)} primitive triples"))
+        for a, b, c in trips:
+            print(f"  {a}² + {b}² = {c}²")
+        return 0
+    # Default: print the constants
+    if _GLOBAL_FLAGS["json"]:
+        print(_json.dumps({
+            "phi": PHI, "phi_inverse": PHI_INVERSE,
+            "pi": PI, "e": E,
+            "sqrt2": SQRT2, "sqrt3": SQRT3, "sqrt5": SQRT5,
+        }, indent=2))
+        return 0
+    print(aphrodite.banner("Pythagoras — sacred constants", ""))
+    rows = [
+        ("φ (phi)",      f"{PHI:.10f}"),
+        ("1/φ",           f"{PHI_INVERSE:.10f}"),
+        ("π (pi)",        f"{PI:.10f}"),
+        ("e (Euler)",     f"{E:.10f}"),
+        ("√2",            f"{SQRT2:.10f}"),
+        ("√3",            f"{SQRT3:.10f}"),
+        ("√5",            f"{SQRT5:.10f}"),
+    ]
+    print(aphrodite.table(("constant", "value"), rows))
+    print(aglaia.murmur(
+        "  also: invoke pythagoras fib N | backoff N B | "
+        "harmony R | triples N"))
+    return 0
+
+
+@hermes.register("plato", "Plato — five-solids taxonomy — plato [classify <name>]")
+def _plato(argv: list[str]) -> int:
+    from olympus.heroes.plato import plato
+    if argv and argv[0] == "classify" and len(argv) >= 2:
+        name = argv[1]
+        s = plato.classify(name)
+        if s is None:
+            print(aphrodite.wine_dark(
+                f"  {name!r} is not classified in Plato's taxonomy"))
+            return 1
+        if _GLOBAL_FLAGS["json"]:
+            import dataclasses as _dc
+            print(_json.dumps(_dc.asdict(s), indent=2)); return 0
+        print(aphrodite.banner(
+            f"{name} → {s.name}",
+            f"{s.element} · {s.function}"))
+        print(f"  vertices: {s.vertices}")
+        print(f"  {s.description}")
+        return 0
+    # Default: show the taxonomy
+    cosmos = plato.cosmos()
+    by_solid: dict[str, list[str]] = {}
+    for figure, info in cosmos.items():
+        by_solid.setdefault(info["solid"], []).append(figure)
+    if _GLOBAL_FLAGS["json"]:
+        print(_json.dumps(by_solid, indent=2, default=str)); return 0
+    print(aphrodite.banner("Plato — five-solid taxonomy",
+                            f"{len(cosmos)} figures classified"))
+    for s in plato.solids():
+        members = sorted(by_solid.get(s.name, []))
+        print(aglaia.subhead(
+            f"{s.name} ({s.element} · {s.function}) — "
+            f"{len(members)} figure(s)"))
+        if members:
+            print("  " + ", ".join(members))
+    return 0
+
+
+@hermes.register("harmony", "Pythagoras — substrate ratios scored against φ, 1/φ, 1, 2")
+def _harmony(_argv: list[str]) -> int:
+    from olympus.heroes.pythagoras import harmony
+    from olympus.titans.mnemosyne import mnemosyne
+    metrics: list[tuple[str, float, str, float]] = []
+    # ratification_rate = ratified / (ratified + rejected)
+    ratifications = len(mnemosyne.recall("action.ratified"))
+    rejections = len(mnemosyne.recall("action.rejected"))
+    if ratifications + rejections > 0:
+        r = ratifications / (ratifications + rejections)
+        h = harmony(r)
+        metrics.append(("ratification_rate", r,
+                          h.nearest_anchor, h.score))
+    # prophecy acceptance
+    profs = mnemosyne.recall("prophecy.verified")
+    accepted = sum(1 for m in profs
+                    if (m.body or {}).get("accepted") is True)
+    rejected_p = sum(1 for m in profs
+                      if (m.body or {}).get("accepted") is False)
+    if accepted + rejected_p > 0:
+        r = accepted / (accepted + rejected_p)
+        h = harmony(r)
+        metrics.append(("prophecy_acceptance", r,
+                          h.nearest_anchor, h.score))
+    # Pythia consultation success rate
+    cons = mnemosyne.recall("pythia.consultation")
+    ok = sum(1 for m in cons
+              if 200 <= int((m.body or {}).get("status", 0)) < 400)
+    if cons:
+        r = ok / len(cons)
+        h = harmony(r)
+        metrics.append(("pythia_success", r,
+                          h.nearest_anchor, h.score))
+    if _GLOBAL_FLAGS["json"]:
+        print(_json.dumps([{
+            "metric": m, "ratio": r, "nearest": n, "score": s,
+        } for m, r, n, s in metrics], indent=2))
+        return 0
+    print(aphrodite.banner(
+        "harmony — substrate ratios vs sacred anchors",
+        f"{len(metrics)} metric(s) observed"))
+    if not metrics:
+        print(aglaia.murmur(
+            "  insufficient data — run more sessions first"))
+        return 0
+    rows = [(m, f"{r:.4f}", n, f"{s:.4f}") for m, r, n, s in metrics]
+    print(aphrodite.table(
+        ("metric", "ratio", "nearest", "score"), rows))
+    return 0
+
+
+@hermes.register("geometry", "Plato + Pythagoras combined — taxonomy + harmony")
+def _geometry(_argv: list[str]) -> int:
+    from olympus.runtime.http_api import dispatch
+    status, body = dispatch("/geometry", {})
+    if _GLOBAL_FLAGS["json"]:
+        print(_json.dumps(body, default=str, indent=2))
+        return 0
+    print(aphrodite.banner("geometry — sacred + numerical layer",
+                            f"{len(body.get('platonic_solids', []))} solids · "
+                            f"{len(body.get('harmony_metrics', {}))} harmony "
+                            f"metric(s)"))
+    print(aglaia.subhead("Platonic solids"))
+    for s in body.get("platonic_solids", []):
+        ms = s.get("members", [])
+        print(f"  {s['name']:13s} ({s['element']:7s} · "
+              f"{s['function']:11s}) {len(ms):3d} figure(s)")
+    metrics = body.get("harmony_metrics", {})
+    if metrics:
+        print(aglaia.subhead("Harmony metrics"))
+        for name, info in metrics.items():
+            print(f"  {name:25s} ratio={info['ratio']:.4f} "
+                  f"→ {info['nearest_anchor']:13s} "
+                  f"score={info['score']:.4f}")
+    return 0
+
+
 @hermes.register("blessing", "Thalia bestows a closing blessing")
 def _blessing(_argv: list[str]) -> int:
     from olympus.muses.thalia_muse import thalia_muse

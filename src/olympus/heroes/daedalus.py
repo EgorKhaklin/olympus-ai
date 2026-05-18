@@ -171,6 +171,150 @@ class Daedalus:
         ])
         return "\n".join(lines)
 
+    # ─────────────────────────────────────────────────────────
+    # Sacred-geometry SVG (phi arc) — Metatron's Cube + Vesica Piscis
+    # ─────────────────────────────────────────────────────────
+
+    # The 13 canonical figures for Metatron's Cube — the 12 Olympians
+    # + Hestia. Order matters: index 0 is the center; 1..6 form the
+    # inner hexagon (the seed-of-life ring); 7..12 form the outer
+    # hexagon. Edges connect every node to every other (78 total).
+    _METATRON_13: tuple[str, ...] = (
+        "Zeus",        # 0 — center
+        "Hera",        # 1..6 inner hexagon
+        "Poseidon",
+        "Demeter",
+        "Athena",
+        "Apollo",
+        "Artemis",
+        "Ares",        # 7..12 outer hexagon
+        "Aphrodite",
+        "Hephaestus",
+        "Hermes",
+        "Dionysus",
+        "Hestia",
+    )
+
+    def render_metatron_cube(self, *,
+                              size: int = 520,
+                              radius_inner: float | None = None,
+                              radius_outer: float | None = None,
+                              ) -> str:
+        """Render Metatron's Cube as inline SVG. 13 nodes for the 13
+        canonical Olympian figures; every-vertex-to-every-vertex edges
+        in a faded ink so the underlying sacred geometry shows.
+        Returns the SVG element as a string (suitable for embedding
+        in a markdown file)."""
+        import math as _m
+        cx, cy = size / 2, size / 2
+        ri = radius_inner if radius_inner is not None else size * 0.18
+        ro = radius_outer if radius_outer is not None else size * 0.36
+        node_r = max(14, int(size * 0.035))
+
+        # Coordinates for the 13 nodes
+        coords: list[tuple[float, float]] = [(cx, cy)]
+        for i in range(6):
+            theta = -_m.pi / 2 + i * (2 * _m.pi / 6)
+            coords.append((cx + ri * _m.cos(theta),
+                            cy + ri * _m.sin(theta)))
+        for i in range(6):
+            # Outer hexagon offset by 30° so it interleaves with inner
+            theta = -_m.pi / 2 + _m.pi / 6 + i * (2 * _m.pi / 6)
+            coords.append((cx + ro * _m.cos(theta),
+                            cy + ro * _m.sin(theta)))
+
+        # Build the SVG
+        lines: list[str] = [
+            f'<svg xmlns="http://www.w3.org/2000/svg" '
+            f'viewBox="0 0 {size} {size}" '
+            f'role="img" aria-label="Metatron\'s Cube of the 13 canonical Olympian figures" '
+            f'style="background:#0f0f17">',
+            '  <defs>',
+            '    <style>',
+            '      .edge { stroke: rgba(212,160,23,0.18); fill: none; }',
+            '      .vesica { stroke: rgba(255,255,255,0.05); fill: none; }',
+            '      .node-circle { stroke: #d4a017; stroke-width: 1.5; '
+            'fill: #2d1a1f; }',
+            '      .node-center { fill: #7e3a3a; }',
+            '      .label { fill: #ecebe4; font: bold 11px '
+            '"Helvetica Neue", Arial; text-anchor: middle; '
+            'dominant-baseline: middle; }',
+            '    </style>',
+            '  </defs>',
+            '  <!-- vesica-piscis ring of seed-of-life circles -->',
+        ]
+        for x, y in coords:
+            lines.append(
+                f'  <circle class="vesica" cx="{x:.2f}" cy="{y:.2f}" '
+                f'r="{ri:.2f}"/>'
+            )
+        # Edges — every node to every other
+        lines.append('  <!-- every-to-every edges -->')
+        for i in range(len(coords)):
+            for j in range(i + 1, len(coords)):
+                xi, yi = coords[i]
+                xj, yj = coords[j]
+                lines.append(
+                    f'  <line class="edge" '
+                    f'x1="{xi:.2f}" y1="{yi:.2f}" '
+                    f'x2="{xj:.2f}" y2="{yj:.2f}"/>'
+                )
+        # Nodes (drawn last so they sit on top of the edges)
+        lines.append('  <!-- nodes -->')
+        for i, (x, y) in enumerate(coords):
+            cls = "node-circle node-center" if i == 0 else "node-circle"
+            lines.append(
+                f'  <circle class="{cls}" cx="{x:.2f}" cy="{y:.2f}" '
+                f'r="{node_r}"/>'
+            )
+            # Label slightly below
+            label = self._METATRON_13[i]
+            lines.append(
+                f'  <text class="label" x="{x:.2f}" '
+                f'y="{y + node_r + 13:.2f}">{label}</text>'
+            )
+        lines.append('</svg>')
+        return "\n".join(lines)
+
+    def render_vesica_piscis(self, *,
+                              left_label: str = "Athena (synthesis)",
+                              right_label: str = "Hephaestus (drift)",
+                              center_label: str = "proposal",
+                              size: int = 420) -> str:
+        """Render the Vesica Piscis — two circles intersecting; the
+        labels name the two domains and the meaning of their overlap."""
+        cx = size / 2
+        cy = size / 2
+        r = size * 0.28
+        offset = r * 0.5  # gives the canonical vesica-piscis overlap
+        return (
+            f'<svg xmlns="http://www.w3.org/2000/svg" '
+            f'viewBox="0 0 {size} {int(size * 0.7)}" '
+            f'role="img" aria-label="Vesica Piscis — {left_label} meets {right_label}" '
+            f'style="background:#0f0f17">\n'
+            f'  <defs>\n'
+            f'    <style>\n'
+            f'      .v-circle {{ stroke: #d4a017; stroke-width: 2.5; '
+            f'fill: rgba(212,160,23,0.04); }}\n'
+            f'      .v-label {{ fill: #ecebe4; font: bold 13px '
+            f'"Helvetica Neue", Arial; text-anchor: middle; }}\n'
+            f'      .v-center {{ fill: #f0c43a; font: italic 12px '
+            f'"Helvetica Neue", Arial; text-anchor: middle; }}\n'
+            f'    </style>\n'
+            f'  </defs>\n'
+            f'  <circle class="v-circle" cx="{cx - offset:.2f}" '
+            f'cy="{cy:.2f}" r="{r:.2f}"/>\n'
+            f'  <circle class="v-circle" cx="{cx + offset:.2f}" '
+            f'cy="{cy:.2f}" r="{r:.2f}"/>\n'
+            f'  <text class="v-label" x="{cx - offset - r * 0.5:.2f}" '
+            f'y="{cy + r + 30:.2f}">{left_label}</text>\n'
+            f'  <text class="v-label" x="{cx + offset + r * 0.5:.2f}" '
+            f'y="{cy + r + 30:.2f}">{right_label}</text>\n'
+            f'  <text class="v-center" x="{cx:.2f}" y="{cy:.2f}">'
+            f'{center_label}</text>\n'
+            f'</svg>'
+        )
+
     def render_tier_map(self) -> str:
         """Mermaid diagram of the static tier layout."""
         from olympus.titans.coeus import coeus
@@ -232,6 +376,12 @@ class Daedalus:
         """The complete ARCHITECTURE.md document."""
         ts = Nyx.now().isoformat()
         lineage = self._source_hash()
+        metatron = self.render_metatron_cube()
+        vesica = self.render_vesica_piscis(
+            left_label="Athena (synthesis)",
+            right_label="Hephaestus (drift)",
+            center_label="proposal",
+        )
         return f"""<div align="center">
 
 # ARCHITECTURE
@@ -243,6 +393,31 @@ class Daedalus:
 </div>
 
 <!-- lineage: cognitive-flow-sha256={lineage} -->
+
+---
+
+## The thirteen — Metatron's Cube
+
+The twelve Olympians plus Hestia, arranged in the canonical sacred-
+geometry layout. Every node connects to every other node; the inner
+ring is the seed-of-life hexagon; Zeus sits at the cosmic axis.
+
+<div align="center">
+
+{metatron}
+
+</div>
+
+## Where domains meet — Vesica Piscis
+
+The intersection of Athena's synthesis and Hephaestus's drift is
+where a proposal is born. The overlap is the proposal itself.
+
+<div align="center">
+
+{vesica}
+
+</div>
 
 ---
 

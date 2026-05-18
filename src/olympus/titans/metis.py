@@ -34,7 +34,7 @@ from __future__ import annotations
 import datetime
 import json
 from dataclasses import dataclass, field, asdict
-from typing import Any
+from typing import Any, Callable
 
 from olympus.primordials.gaia import root
 from olympus.primordials.nyx import Nyx
@@ -93,6 +93,50 @@ def _recent(kind: str, *, cutoff: datetime.datetime | None) -> list[Any]:
 
 class Metis:
     """The swallowed counsel. Observes outcomes; advises parameters."""
+
+    # ─────────────────────────────────────────────────────────
+    # Golden-section search advisor (phi arc)
+    # ─────────────────────────────────────────────────────────
+
+    def golden_search_parameter(self, *,
+                                  parameter_name: str,
+                                  evaluate: Callable[[float], float],
+                                  lo: float, hi: float,
+                                  current_value: float | None = None,
+                                  minimize: bool = True,
+                                  tol: float = 1e-3,
+                                  ) -> Recommendation:
+        """Advise a numerical parameter value by golden-section search.
+
+        `evaluate(x)` should return a single scalar — lower is better
+        if minimize=True. The implementation calls
+        pythagoras.golden_section_search, records the trace under
+        pythagoras.search, and returns a Recommendation that Metis can
+        emit through the standard proposal pipeline.
+        """
+        from olympus.heroes.pythagoras import golden_section_search
+        best_x, best_f = golden_section_search(
+            fn=evaluate, lo=lo, hi=hi,
+            tol=tol, minimize=minimize,
+            name=f"metis::{parameter_name}",
+        )
+        rationale = (
+            f"golden-section search of {parameter_name!r} in "
+            f"[{lo:g}, {hi:g}] (tol={tol:g}) selected x≈{best_x:.6g} "
+            f"with f≈{best_f:.6g}"
+        )
+        if current_value is not None:
+            rationale += f"; current value is {current_value:g}"
+        return Recommendation(
+            parameter=parameter_name,
+            current=current_value if current_value is not None
+                    else "unknown",
+            proposed=float(best_x),
+            rationale=rationale,
+            confidence=0.7,
+            risk_class="LOW",
+            evidence_kinds=["pythagoras.search"],
+        )
 
     def advise(self, *,
                lookback_hours: float = 168.0,

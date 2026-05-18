@@ -39,11 +39,22 @@ class Hecate:
         attempt: Callable[[], T],
         on: Crossroads,
         max_retries: int = 3,
+        *,
+        backoff: str = "fibonacci",
+        base_seconds: float = 0.0,
+        sleep_fn: Callable[[float], None] | None = None,
     ) -> T | None:
         """Try `attempt`. If it raises:
           1. Up to `max_retries` retries (if on.retry is provided).
           2. Quarantine the exception via Tartarus.
           3. Call on.abandon if provided, else on.escalate.
+
+        Phi arc: retry timing uses Fibonacci backoff by default
+        (`pythagoras.fib_backoff`). The ratio between successive
+        delays approaches φ ≈ 1.618 — smoother than exponential's
+        2.0. Pass `backoff='none'` to disable; pass `sleep_fn` to
+        actually sleep between retries (omitted by default so existing
+        callers don't gain a side-effect).
         """
         last_exc: Exception | None = None
         retries = max_retries if on.retry else 0
@@ -57,6 +68,13 @@ class Hecate:
                     i + 1, retries + 1, exc,
                 )
                 if i < retries and on.retry:
+                    delay = self._compute_delay(
+                        attempt_index=i,
+                        backoff=backoff,
+                        base_seconds=base_seconds,
+                    )
+                    if sleep_fn is not None and delay > 0:
+                        sleep_fn(delay)
                     on.retry()
                     continue
                 break
@@ -78,6 +96,24 @@ class Hecate:
         if last_exc:
             raise last_exc
         return None
+
+    @staticmethod
+    def _compute_delay(*, attempt_index: int, backoff: str,
+                        base_seconds: float) -> float:
+        """Pure function — no I/O — returns seconds.
+
+        backoff='fibonacci' → pythagoras.fib_backoff (default)
+        backoff='fixed'      → base_seconds × (attempt+1)
+        backoff='none'       → 0
+        """
+        if base_seconds <= 0 or backoff == "none":
+            return 0.0
+        if backoff == "fibonacci":
+            from olympus.heroes.pythagoras import fib_backoff
+            return fib_backoff(attempt_index, base_seconds=base_seconds)
+        if backoff == "fixed":
+            return base_seconds * (attempt_index + 1)
+        return 0.0
 
 
 hecate = Hecate()

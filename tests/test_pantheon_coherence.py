@@ -37,7 +37,7 @@ EXPECTED = {
     "heroes":      ["heracles", "perseus", "theseus", "odysseus",
                     "orpheus", "atalanta", "momus", "prometheus",
                     "cassandra", "daedalus", "castor", "pollux",
-                    "ariadne", "nemesis"],
+                    "ariadne", "nemesis", "pythagoras", "plato"],
     "monsters":    ["cerberus", "sphinx", "medusa", "chimera",
                     "minotaur", "typhon"],
 }

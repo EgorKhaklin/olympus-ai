@@ -12,6 +12,80 @@ Newest first. Each entry names what changed, what was sworn, who decided.
 
 ---
 
+## 2026-05-18 — the phi arc φ (HIGH-COMPOSITE, fourth boil-the-ocean override)
+
+**Risk class:** HIGH-COMPOSITE.
+**Delphi:** [`codex/oracles/delphi/2026-05-18-phi-arc.md`](oracles/delphi/2026-05-18-phi-arc.md)
+**Sworn on Styx at seq=87.**
+
+Zeus's directive, verbatim (abridged):
+
+> *"Completely think outside the box using geometric / numerical thinking like the metatron's cube, golden ratio, etc... keep following the greek mythology story. ... Boil the ocean."*
+
+This is the fourth heavy-production override. The geometric-numerical dimension is not an aesthetic veneer — **the Greek mathematicians are the source of sacred geometry**. Pythagoras formalized the golden ratio. Plato named the five regular solids. φ is the Greek letter Phi. This arc brings them into Olympus where they belong, *with load-bearing roles*.
+
+### What ships
+
+**Pythagoras** — `heroes/pythagoras.py`
+The sacred-numerics module. Constants (φ, π, √2, e, √3, √5), Fibonacci sequence, **Fibonacci-scaled backoff** (`fib_backoff` — ratio approaches φ ≈ 1.618, smoother than exponential's 2.0), **golden-section search** (unimodal optimization in O(log n) calls; trace recorded under `pythagoras.search` for S8), **harmony scoring** (proximity of a ratio to φ, 1/φ, 1, 2), Pythagorean-triples generator. Pure stdlib.
+
+**Plato** — `heroes/plato.py`
+Five-solid taxonomy. Tetrahedron/cube/octahedron/dodecahedron/icosahedron → fire/earth/air/cosmos/water → observation/state/reasoning/authority/execution. 79 figures classified. A *second navigational axis* through the pantheon, orthogonal to tier. **Live demo:** `invoke plato` shows 10 tetrahedron / 13 cube / 9 octahedron / 12 dodecahedron / 35 icosahedron.
+
+**Daedalus SVG diagrams** — extension of `heroes/daedalus.py`
+Metatron's Cube (13 nodes for canonical 12 Olympians + Hestia; every-vertex-to-every-vertex edges = C(13,2) = 78) and Vesica Piscis (two intersecting circles labeled with overlapping domains). Inline SVG in `codex/ARCHITECTURE.md`; GitHub renders natively. ARCHITECTURE.md now combines 2 Mermaid + 2 SVG.
+
+**Metis golden-section search** — extension of `titans/metis.py`
+`metis.golden_search_parameter(name, evaluate_fn, lo, hi)` calls Pythagoras's optimizer to *find* parameter values rather than guess them. Produces a Recommendation with `evidence_kinds=["pythagoras.search"]`. Still routes through Hephaestus → Momus → Delphi → Zeus.
+
+**Hecate Fibonacci backoff** — extension of `underworld/hecate.py`
+Retry timing uses `pythagoras.fib_backoff` by default. Existing callers unaffected (`base_seconds=0` means no sleep). New `sleep_fn` parameter actually paces retries. **Demo:** `invoke pythagoras backoff 8 1.0` produces 1, 1, 2, 3, 5, 8, 13, 21 seconds — perfect Fibonacci curve.
+
+**HTTP `/geometry` route** — extension of `runtime/http_api.py`
+Returns the constants + Plato's taxonomy + live substrate harmony metrics as JSON.
+
+### The numerical revelation
+
+The substrate's *actual* ratification_rate as of this commit is **0.5991** — score against 1/φ (0.618) is **0.9812**. The substrate is, in fact, in harmony with the golden ratio. (`invoke harmony` reports this any time.)
+
+### Wiring
+
+- 4 new CLI errands: `pythagoras` (with sub-verbs `fib`, `backoff`, `harmony`, `triples`), `plato` (with `classify`), `harmony`, `geometry`
+- `test_pantheon_coherence::EXPECTED` updated — Heroes 16
+- `OlympusHandler` adds `GET /geometry` route + lists it in `/`
+
+### Languages used
+
+**SVG-in-markdown** is the new format this arc. It's XML, which we've already used (launchd plist), applied in a new context. Pure stdlib emits it; GitHub renders it. The right tool. Lean, Coq, sympy, numpy — refused.
+
+### Tests
+
+Five new test files, 48 new tests:
+- `test_pythagoras.py` (17) — constants, Fibonacci, backoff growth + cap + φ-ratio approach, golden-section minimum/maximum, harmony anchors, triples theorem
+- `test_plato.py` (9) — five solids present, vertex counts, elements, classify, case-insensitive, members, cosmos coverage
+- `test_daedalus_svg.py` (8) — Metatron is valid XML with 13 circles + 78 edges + all labels; Vesica Piscis 2 circles + 3 labels; full doc embeds 2 SVGs
+- `test_metis_phi.py` (4) — finds minimum, maximizes, records to Mnemosyne, evidence_kinds populated
+- `test_hecate_fib.py` (6) — Fibonacci/fixed/none modes, base=0 returns 0, sleep_fn invoked, existing callers unaffected
+
+**Full suite: 365 tests, all green.** (317 → 365.)
+
+### Pantheon
+
+**89 named principal figures** (was 87). Heroes 16.
+
+### Refused
+
+- **No claim that φ has metaphysical significance.** Harmony score is a single-number summary, not a proof.
+- **No new tier for mathematicians.** Pythagoras and Plato live in `heroes/` next to Daedalus (himself a historical figure later mythologized). The tier admits historical figures alongside mythological ones; the Delphi notes this acknowledgment.
+- **No sympy/numpy dependency.** Every Pythagoras function is stdlib-implementable.
+- **No automatic Metis adoption of golden-section results.** Still proposes; Zeus ratifies.
+
+The substrate now also reasons *geometrically* about itself: organized by the Platonic solids; tuned by the golden ratio; backed off by Fibonacci; visualized in Metatron's Cube. The Greek mathematicians have come home.
+
+*Holy shit, that's done.*
+
+---
+
 ## 2026-05-18 — the labyrinth arc (HIGH-COMPOSITE, third boil-the-ocean override)
 
 **Risk class:** HIGH-COMPOSITE.

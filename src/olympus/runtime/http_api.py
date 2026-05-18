@@ -50,6 +50,7 @@ def _route_root(_query: dict) -> tuple[int, dict]:
             "GET /schemas",
             "GET /schemas/<kind>",
             "GET /specs",
+            "GET /geometry",
             "GET /mnemosyne/<kind>?limit=N",
             "POST /proposals/raise",
         ],
@@ -62,6 +63,65 @@ def _route_root(_query: dict) -> tuple[int, dict]:
 def _route_specs(_query: dict) -> tuple[int, dict]:
     from olympus.titans.themis import themis
     return 200, {"specs": themis.specs()}
+
+
+def _route_geometry(_query: dict) -> tuple[int, dict]:
+    """Plato's taxonomy + Pythagoras's harmony report."""
+    from olympus.heroes.plato import plato
+    from olympus.heroes.pythagoras import (PHI, PHI_INVERSE, PI, E,
+                                              SQRT2, SQRT3, SQRT5,
+                                              harmony)
+    from olympus.titans.mnemosyne import mnemosyne
+    cosmos = plato.cosmos()
+    by_solid: dict[str, list[str]] = {}
+    for figure, info in cosmos.items():
+        by_solid.setdefault(info["solid"], []).append(figure)
+    for k in by_solid:
+        by_solid[k].sort()
+
+    # Real substrate ratios — score each against the harmonic anchors
+    ratifications = mnemosyne.recall("action.ratified")
+    rejections = mnemosyne.recall("action.rejected")
+    accepted = sum(1 for m in mnemosyne.recall("prophecy.verified")
+                    if (m.body or {}).get("accepted") is True)
+    rejected_p = sum(1 for m in mnemosyne.recall("prophecy.verified")
+                      if (m.body or {}).get("accepted") is False)
+
+    metrics: dict[str, dict[str, float | str]] = {}
+    if (ratifications or rejections):
+        denom = len(ratifications) + len(rejections)
+        if denom > 0:
+            ratio = len(ratifications) / denom
+            h = harmony(ratio)
+            metrics["ratification_rate"] = {
+                "ratio": ratio,
+                "nearest_anchor": h.nearest_anchor,
+                "score": h.score,
+            }
+    if (accepted + rejected_p) > 0:
+        ratio = accepted / (accepted + rejected_p)
+        h = harmony(ratio)
+        metrics["prophecy_acceptance"] = {
+            "ratio": ratio,
+            "nearest_anchor": h.nearest_anchor,
+            "score": h.score,
+        }
+
+    return 200, {
+        "constants": {
+            "phi": PHI, "phi_inverse": PHI_INVERSE,
+            "pi": PI, "e": E,
+            "sqrt2": SQRT2, "sqrt3": SQRT3, "sqrt5": SQRT5,
+        },
+        "platonic_solids": [
+            {"name": s.name, "vertices": s.vertices,
+             "element": s.element, "function": s.function,
+             "description": s.description,
+             "members": by_solid.get(s.name, [])}
+            for s in plato.solids()
+        ],
+        "harmony_metrics": metrics,
+    }
 
 
 def _route_healthz(_query: dict) -> tuple[int, dict]:
@@ -233,6 +293,8 @@ def dispatch(path: str, query: dict[str, list[str]]) -> tuple[int, dict]:
         return _route_schemas(query, kind=path[len("/schemas/"):])
     if path == "/specs":
         return _route_specs(query)
+    if path == "/geometry":
+        return _route_geometry(query)
     if path.startswith("/mnemosyne/"):
         kind = path[len("/mnemosyne/"):]
         if not kind:

@@ -267,6 +267,30 @@ invoke specs                       # list all specs
 invoke specs hephaestus-pipeline   # show one
 ```
 
+## Sacred geometry layer (Pythagoras + Plato)
+
+Pythagoras owns the sacred constants and numerical primitives.
+Plato organizes the pantheon by function via the five Platonic solids.
+
+```bash
+invoke pythagoras                   # show φ, π, √2, e, √3, √5
+invoke pythagoras fib 15            # first 15 Fibonacci numbers
+invoke pythagoras backoff 8 1.0     # 8 Fibonacci backoff delays
+invoke pythagoras harmony 1.618     # score against φ, 1/φ, 1, 2
+invoke pythagoras triples 50        # Pythagorean triples below 50
+
+invoke plato                        # five-solid taxonomy of the pantheon
+invoke plato classify athena        # which solid does Athena belong to?
+
+invoke harmony                      # substrate ratios vs sacred anchors
+invoke geometry                     # combined Plato + Pythagoras view
+```
+
+Hecate's retry path now uses Fibonacci backoff by default — smoother
+than exponential. Metis can use `golden_section_search` to *find*
+optimal parameter values rather than guessing them. See
+`codex/GEOMETRY.md`.
+
 ## Raising a proposal via HTTP (the only write surface)
 
 The HTTP API has exactly one write route: `POST /proposals/raise`.
