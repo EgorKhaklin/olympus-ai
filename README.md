@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="codex/assets/mount-olympus.jpg" alt="Mount Olympus" width="100%">
+
 ```
                         ⚡  O L Y M P U S  ⚡
                 ────────────────────────────────────
