@@ -109,6 +109,10 @@ class Hephaestus:
             for q in getattr(correlation, "quiet", []):
                 quiet_eyes.append((q.eye, q.hours_silent))
 
+        # Hephaestus reads what Zeus already killed — the loop doesn't nag.
+        recently_rejected = self._recently_rejected_drift_signatures(window_days=7)
+        chronic_drifts = self._chronically_rejected_drift_signatures(threshold=3)
+
         surfaced: list[Proposal] = []
         seen_slices: set[str] = set()
 
@@ -121,6 +125,34 @@ class Hephaestus:
             if slice_name in seen_slices:
                 continue
             seen_slices.add(slice_name)
+
+            # Rejection-aware: chronic check first (emit fatigue signal once),
+            # then recently-rejected (silent skip).
+            drift_sig = self._drift_signature(
+                source=f.get("source", "?"),
+                slice_name=slice_name,
+            )
+            if drift_sig in chronic_drifts:
+                # Replace the would-be proposal with a single fatigue signal,
+                # once per pass.
+                if not any("proposal-fatigue" in p.drift_observed
+                           for p in surfaced):
+                    if lachesis.measure("hephaestus.per-pass", 1.0):
+                        surfaced.append(self.propose(
+                            drift_observed=(f"proposal-fatigue: drift "
+                                            f"signature {drift_sig!r} has been "
+                                            f"rejected ≥3 times — Hephaestus "
+                                            f"stops nagging"),
+                            proposed_fix=("review whether the underlying "
+                                          "predicate should be retired or the "
+                                          "domain rule changed"),
+                            risk_class="LOW",
+                            rationale="rejection-history saturation",
+                        ))
+                continue
+            if drift_sig in recently_rejected:
+                continue
+
             if not lachesis.measure("hephaestus.per-pass", 1.0):
                 break
 
@@ -190,6 +222,74 @@ class Hephaestus:
 
         lachesis.reset("hephaestus.per-pass")
         return surfaced
+
+    # ─────────────────────────────────────────────────────────
+    # Rejection memory — Hephaestus learns what Zeus killed
+    # ─────────────────────────────────────────────────────────
+
+    @staticmethod
+    def _drift_signature(*, source: str, slice_name: str) -> str:
+        """Canonical signature for a drift, used to compare across sessions.
+        Same source + slice → same signature. Source can be 'hydra' or
+        'argos' or '?'."""
+        return f"{source}::{slice_name}"
+
+    def _recently_rejected_drift_signatures(self, *, window_days: int = 7) -> set[str]:
+        """Read action.rejected memories from the last window_days; return
+        the set of drift signatures the operator has refused recently."""
+        from olympus.titans.mnemosyne import mnemosyne
+        from olympus.titans.cronus import Cronus
+        cutoff_s = window_days * 86400.0
+        out: set[str] = set()
+        for m in mnemosyne.recall("action.rejected"):
+            if Cronus.age_seconds(m.remembered_at) > cutoff_s:
+                continue
+            sig = self._signature_for_action_id(m.body.get("action_id", ""))
+            if sig:
+                out.add(sig)
+        return out
+
+    def _chronically_rejected_drift_signatures(self, *, threshold: int = 3) -> set[str]:
+        """Drift signatures that have been rejected ≥ threshold times total."""
+        from olympus.titans.mnemosyne import mnemosyne
+        counts: dict[str, int] = {}
+        for m in mnemosyne.recall("action.rejected"):
+            sig = self._signature_for_action_id(m.body.get("action_id", ""))
+            if sig:
+                counts[sig] = counts.get(sig, 0) + 1
+        return {sig for sig, n in counts.items() if n >= threshold}
+
+    def _signature_for_action_id(self, action_id: str) -> str | None:
+        """Look up an action_id → its originating proposal → drift signature.
+        Reads from the proposals on disk."""
+        if not action_id:
+            return None
+        # action ids are 'act-<proposal_id>'
+        if action_id.startswith("act-"):
+            pid = action_id[4:]
+        else:
+            pid = action_id
+        target = self.proposals_path / f"{pid}.json"
+        if not target.exists():
+            return None
+        try:
+            with target.open("r", encoding="utf-8") as f:
+                d = json.load(f)
+        except Exception:  # noqa: BLE001
+            return None
+        drift = d.get("drift_observed", "")
+        # Parse signature from the drift text written by surface_from
+        # Format: "{source} reports {sev} on slice '{slice}': ..."
+        import re as _re
+        match = _re.match(
+            r"(hydra|argos|\?)\s+reports.*?slice\s+'([^']+)'",
+            drift,
+        )
+        if match:
+            return self._drift_signature(
+                source=match.group(1), slice_name=match.group(2),
+            )
+        return None
 
 
 hephaestus = Hephaestus()

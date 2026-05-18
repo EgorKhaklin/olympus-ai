@@ -12,6 +12,77 @@ Newest first. Each entry names what changed, what was sworn, who decided.
 
 ---
 
+## 2026-05-18 — the substance arc (COMPOSITE)
+
+**Risk class:** COMPOSITE.
+**Delphi:** [`codex/oracles/delphi/2026-05-18-substance-arc.md`](oracles/delphi/2026-05-18-substance-arc.md)
+**Sworn on Styx at seq=37.**
+
+Zeus's critique, verbatim:
+
+> *"Right now it reads as a very well-designed constitutional framework more than a running cognitive engine. … The mythology has to justify its overhead by producing clearer thinking and better behavior than simpler named components would."*
+
+Reached through the architecture: Hephaestus surfaced three candidates (history-aware reasoning across all gods, LLM-injected synthesis, more eyes + heads). Momus contested via AP1–AP8; history-aware reasoning was the only zero-ding answer. LLM-injection dinged AP6 (understanding-obscuring) + AP1 (no ground-touch). More-observers dinged AP8 (decorative) + AP3 (instance-vs-class).
+
+### Athena reads Mnemosyne
+
+`athena.compose_from(...)` now pulls the last 7 session.completed memories and the prior brief archive. The Brief gains five new fields:
+
+- **insights** — concrete English claims from cross-session reasoning
+- **recurring_slices** — alerted in ≥3 of last 7 sessions
+- **newly_alerted_slices** — alerting now, not in last 5
+- **resolved_slices** — alerted last session, not this one
+- **stable_slices** — INFO in majority of recent priors
+
+The brief now says things like *"slice 'codex/journal/' has alerted in 4 of the last 7 session(s) — pattern, not noise."* A single-session view cannot make that claim.
+
+### Apollo's prophecies become operational
+
+`apollo.consult_due()` auto-verifies every prediction whose horizon has passed. Outcomes are recorded in Mnemosyne under `kind="prophecy.verified"`. `apollo.trend(window=10)` returns the rolling acceptance rate. The session calls `consult_due()` at start — prophecies that drift past their horizon are no longer dead weight, they get graded automatically.
+
+### Hephaestus reads `action.rejected`
+
+Before surfacing a proposal, Hephaestus computes a drift signature (`{source}::{slice}`) and checks two sets:
+
+- **recently_rejected** (last 7 days) — silent skip
+- **chronic** (≥3 rejections ever) — emit a single `proposal-fatigue` signal instead
+
+The agent stops nagging on drifts Zeus has already killed.
+
+### The Furies fire in the loop
+
+Each session now starts with a Tisiphone Styx-verify pass. If the chain is broken, Alecto raises an immediate ALERT visible in `SessionReport.fury_alerts`. The Furies are no longer decorative — they are part of every pass.
+
+### SessionReport.deltas
+
+Each session compares to the most recent prior `session.completed` memory:
+
+- `delta_prior_session_id` — what we're comparing to
+- `delta_hydra_change` / `delta_argos_change` — count trend
+- `delta_new_alerts` — slices alerting now that weren't before
+- `delta_resolved_alerts` — slices that resolved since last pass
+
+The verbose render surfaces deltas at the TOP of the session output — *what changed* is the first thing the operator sees.
+
+### `invoke wisdom`
+
+New CLI command. Reads Mnemosyne, the Brief archive, Styx, and the action queue. Surfaces concrete cross-session claims: ratification rate, error rate, recurring slices, prophecy accuracy, repeated drifts, oath frequency by actor. The substrate explains what it has learned, quantitatively.
+
+### codex/INTELLIGENCE.md
+
+A new top-level doc that addresses Zeus's critique directly: *how does mythology-organized substrate produce clearer thinking than flat naming?* Names the five concrete intelligence claims and explains why the mythology earns its overhead. The substance argument made in operator-readable prose.
+
+### Verification
+
+- 154/154 tests pass (was 147, +7 new for history-aware reasoning + prophecy cycle + rejection memory + session deltas + wisdom)
+- End-to-end `invoke session` now surfaces insights: *"14 slice(s) have been stable across the last 7 sessions"*
+- `invoke wisdom` surfaces quantitative claims: *"of 93 proposal(s) ever surfaced by Hephaestus, 27% were ratified by Zeus"*
+- Styx chain intact across 38+ oaths
+
+Zeus's critique is closed. The mythology earns its overhead by accumulating legible understanding session-over-session — a flat substrate could implement the same logic, but the *names* compress the API in a way that survives across contributors.
+
+---
+
 ## 2026-05-18 — honest-gap closure (COMPOSITE)
 
 **Risk class:** COMPOSITE.

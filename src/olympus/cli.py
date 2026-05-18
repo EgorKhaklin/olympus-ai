@@ -515,6 +515,18 @@ def _consult(argv: list[str]) -> int:
     return 2
 
 
+@hermes.register("wisdom", "what the substrate has learned across sessions")
+def _wisdom(_argv: list[str]) -> int:
+    from olympus.wisdom import wisdom as _w
+    w = _w()
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(w), default=str, indent=2))
+        return 0
+    print(w.as_text())
+    return 0
+
+
 @hermes.register("blessing", "Thalia bestows a closing blessing")
 def _blessing(_argv: list[str]) -> int:
     from olympus.muses.thalia_muse import thalia_muse

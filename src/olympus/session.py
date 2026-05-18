@@ -94,6 +94,28 @@ class SessionReport:
     duration_ms: float = 0.0
     error: str | None = None
 
+    # History-aware fields surfaced from Athena's brief
+    insights: list[str] = field(default_factory=list)
+    recurring_slices: list[dict[str, Any]] = field(default_factory=list)
+    newly_alerted_slices: list[str] = field(default_factory=list)
+    resolved_slices: list[str] = field(default_factory=list)
+
+    # Prophecy verification (Apollo consult_due)
+    prophecies_verified: int = 0
+    prophecies_accepted: int = 0
+    prophecies_rejected: int = 0
+    prophecy_results: list[dict[str, Any]] = field(default_factory=list)
+
+    # Fury alerts (real-time invariant violations)
+    fury_alerts: list[dict[str, Any]] = field(default_factory=list)
+
+    # Session-to-session deltas
+    delta_new_alerts: list[str] = field(default_factory=list)
+    delta_resolved_alerts: list[str] = field(default_factory=list)
+    delta_prior_session_id: str = ""
+    delta_hydra_change: int = 0       # +/- vs prior
+    delta_argos_change: int = 0       # +/- vs prior
+
     # ─────────────────────────────────────────────────────────
     # Rendering — turn a report into operator-readable output
     # ─────────────────────────────────────────────────────────
@@ -118,6 +140,44 @@ class SessionReport:
         out.append(f"  {DIM}{subtitle}{RESET}")
         out.append("")
 
+        # Deltas — what changed since the last session (surfaced first)
+        if (self.delta_new_alerts or self.delta_resolved_alerts
+                or self.delta_prior_session_id):
+            out.append(f"{GOLD}❦ {BOLD}Deltas vs prior session{RESET} "
+                       f"{DIM}({self.delta_prior_session_id[:16]}){RESET}")
+            sign = lambda n: f"+{n}" if n >= 0 else f"{n}"
+            out.append(f"  HYDRA findings: {sign(self.delta_hydra_change)}  ·  "
+                       f"Argos pheromones: {sign(self.delta_argos_change)}")
+            if self.delta_new_alerts:
+                out.append(f"  {WINE}new alerts:{RESET} "
+                           f"{', '.join(self.delta_new_alerts[:3])}"
+                           f"{' …' if len(self.delta_new_alerts) > 3 else ''}")
+            if self.delta_resolved_alerts:
+                out.append(f"  {LAUREL}resolved:{RESET} "
+                           f"{', '.join(self.delta_resolved_alerts[:3])}"
+                           f"{' …' if len(self.delta_resolved_alerts) > 3 else ''}")
+            out.append("")
+
+        # Furies — invariant violations surfaced in this session
+        if self.fury_alerts:
+            out.append(f"{GOLD}❦ {BOLD}Furies{RESET} {DIM}— invariant violations{RESET}")
+            for a in self.fury_alerts:
+                out.append(f"  {WINE}◐ {a['fury']} ALERT:{RESET} "
+                           f"{a['invariant_id']} — {a['detail'][:120]}")
+            out.append("")
+
+        # Apollo — prophecy verification results
+        if self.prophecies_verified:
+            out.append(f"{GOLD}❦ {BOLD}Apollo{RESET} {DIM}— prophecy verification{RESET}")
+            out.append(f"  {self.prophecies_verified} verified: "
+                       f"{LAUREL}{self.prophecies_accepted} accepted{RESET}, "
+                       f"{WINE}{self.prophecies_rejected} rejected{RESET}")
+            if verbose:
+                for r in self.prophecy_results[:5]:
+                    sym = "✓" if r.get("outcome") is True else "✗"
+                    out.append(f"    {sym} {r.get('name')}  (horizon {r.get('horizon')})")
+            out.append("")
+
         # Phase 1: HYDRA
         out.append(f"{GOLD}❦ {BOLD}HYDRA{RESET} {DIM}— read-only observation across 9 heads{RESET}")
         out.append(f"  {self.hydra_findings} findings  "
@@ -140,11 +200,16 @@ class SessionReport:
         out.append("")
 
         # Phase 3: Athena synthesis
-        out.append(f"{GOLD}❦ {BOLD}Athena{RESET} {DIM}— cross-tier synthesis{RESET}")
+        out.append(f"{GOLD}❦ {BOLD}Athena{RESET} {DIM}— cross-tier synthesis + history-aware reasoning{RESET}")
         out.append(f"  brief {self.brief_label!r}")
         out.append(f"  {self.brief_findings} findings · {self.brief_recommendations} recommendations · "
                    f"confidence {self.brief_confidence:.2f}")
+        if self.insights:
+            out.append(f"  {SEA}insights from history:{RESET}")
+            for ins in self.insights[:5]:
+                out.append(f"    {SEA}→{RESET} {ins}")
         if verbose and self.brief_recommendation_text:
+            out.append(f"  recommendations:")
             for r in self.brief_recommendation_text:
                 out.append(f"    {SEA}→{RESET} {r}")
         out.append("")
@@ -235,6 +300,10 @@ class Session:
         try:
             _cb("preflight", "Hestia + Rhea checks")
             self._preflight()
+            _cb("furies.tisiphone", "Tisiphone verifies Styx chain")
+            self._fury_integrity(report)
+            _cb("apollo.consult-due", "Apollo verifies due predictions")
+            self._consult_due_prophecies(report)
             _cb("observe.hydra", "HYDRA heads observing slices")
             self._observe_hydra(report)
             _cb("observe.argos", "Argos eyes scanning")
@@ -243,6 +312,8 @@ class Session:
             self._synthesize(report)
             _cb("correlate", "CorrelationEngine over recent pheromones")
             self._correlate(report)
+            _cb("deltas", "computing session-to-session deltas")
+            self._compute_deltas(report)
             _cb("propose", "Hephaestus surfacing proposals from brief")
             self._propose_and_contest(report)
             _cb("promote", "promoting to action queue")
@@ -322,7 +393,12 @@ class Session:
         self._argos_census = c
 
     def _synthesize(self, report: SessionReport) -> None:
-        """Athena turns HYDRA + Argos into a brief."""
+        """Athena turns HYDRA + Argos into a brief.
+
+        Athena now reads Mnemosyne for prior session shape and surfaces
+        cross-session insights (recurring slices, newly alerted, resolved,
+        stable). The brief earns its keep by saying things that aren't
+        in this session's findings alone."""
         label = f"session-{self.id[:16]}"
         brief = athena.compose_from(
             hydra_report=self._hydra_report,
@@ -335,7 +411,66 @@ class Session:
         report.brief_recommendations = len(brief.recommendations)
         report.brief_recommendation_text = list(brief.recommendations)
         report.brief_confidence = brief.confidence
+        # History-aware fields from Athena
+        report.insights = list(brief.insights)
+        report.recurring_slices = list(brief.recurring_slices)
+        report.newly_alerted_slices = list(brief.newly_alerted_slices)
+        report.resolved_slices = list(brief.resolved_slices)
         self._brief = brief
+
+    # ─────────────────────────────────────────────────────────
+    # New phases — Furies + prophecy + deltas
+    # ─────────────────────────────────────────────────────────
+
+    def _fury_integrity(self, report: SessionReport) -> None:
+        """Tisiphone verifies Styx chain at session start. If broken,
+        Alecto raises an ALERT immediately and the loop continues with
+        the violation surfaced in the report."""
+        from olympus.furies.tisiphone import tisiphone
+        from olympus.furies.alecto import alecto
+        verdict = tisiphone.verify_styx()
+        if not verdict.intact:
+            alert = alecto.raise_alert(
+                invariant_id="S1+S6",
+                detail=verdict.detail,
+                evidence={"first_bad_seq": verdict.first_bad_seq},
+            )
+            report.fury_alerts.append({
+                "fury": "alecto",
+                "invariant_id": alert.invariant_id,
+                "detail": alert.detail,
+                "raised_at": alert.raised_at,
+            })
+
+    def _consult_due_prophecies(self, report: SessionReport) -> None:
+        """Apollo auto-verifies every prediction whose horizon has passed
+        and that has not yet been verified. Prophecy becomes operational."""
+        from olympus.olympians.apollo import apollo
+        results = apollo.consult_due()
+        report.prophecies_verified = len(results)
+        report.prophecies_accepted = sum(1 for r in results if r.get("outcome") is True)
+        report.prophecies_rejected = sum(1 for r in results if r.get("outcome") is False)
+        report.prophecy_results = results
+
+    def _compute_deltas(self, report: SessionReport) -> None:
+        """Compare this session to the most recent prior session.completed.
+        Surface what changed: new alerts, resolved alerts, count trends."""
+        prior = mnemosyne.recall("session.completed")
+        # The current session hasn't been recorded yet; the most recent
+        # entry IS the prior session.
+        if not prior:
+            return
+        prior_m = prior[-1]
+        report.delta_prior_session_id = prior_m.body.get("session_id", "")
+
+        prior_hydra = prior_m.body.get("hydra_findings", 0)
+        prior_argos = prior_m.body.get("argos_pheromones", 0)
+        report.delta_hydra_change = report.hydra_findings - prior_hydra
+        report.delta_argos_change = report.argos_pheromones - prior_argos
+
+        # Resolved-from-prior + newly-alerted reuse Athena's reasoning
+        report.delta_resolved_alerts = list(report.resolved_slices)
+        report.delta_new_alerts = list(report.newly_alerted_slices)
 
     def _correlate(self, report: SessionReport) -> None:
         """CorrelationEngine over the recent pheromone log — surfaces

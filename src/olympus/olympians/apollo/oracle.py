@@ -52,7 +52,8 @@ class Apollo:
         return self._predictions.get(name)
 
     def consult(self, name: str) -> bool | None:
-        """Run verify() on the named prediction; record the outcome."""
+        """Run verify() on the named prediction; record the outcome.
+        Also writes the outcome to Mnemosyne so it's reconstructible."""
         p = self._predictions.get(name)
         if p is None:
             return None
@@ -62,9 +63,33 @@ class Apollo:
             outcome = bool(p.verify())
         except Exception as exc:
             p.evidence["verify_error"] = f"{type(exc).__name__}: {exc}"
+            self._remember_outcome(p, accepted=None,
+                                    error=p.evidence["verify_error"])
             return None
         p.accepted = outcome
+        self._remember_outcome(p, accepted=outcome)
         return outcome
+
+    def consult_due(self) -> list[dict[str, Any]]:
+        """Auto-verify every prediction whose horizon has passed and
+        whose outcome has not yet been recorded. Returns a list of
+        per-prediction result dicts. Called at session start so prophecy
+        becomes operational, not just declarative."""
+        import datetime as _dt
+        today = _dt.date.today()
+        results: list[dict[str, Any]] = []
+        for p in self._predictions.values():
+            if p.accepted is not None:
+                continue  # already verified
+            if p.horizon > today:
+                continue  # horizon not yet reached
+            outcome = self.consult(p.name)
+            results.append({
+                "name": p.name,
+                "horizon": p.horizon.isoformat(),
+                "outcome": outcome,
+            })
+        return results
 
     def acceptance_rate(self) -> float | None:
         """Of predictions with a known accepted/rejected outcome, what
@@ -74,6 +99,47 @@ class Apollo:
         if not verified:
             return None
         return sum(1 for p in verified if p.accepted) / len(verified)
+
+    def trend(self, *, window: int = 10) -> dict[str, Any]:
+        """Acceptance-rate trend over the last `window` verified predictions.
+        Useful for Hephaestus risk weighting (low-acceptance domain →
+        higher proposal risk)."""
+        from olympus.titans.mnemosyne import mnemosyne
+        outcomes = mnemosyne.recall("prophecy.verified")[-window:]
+        if not outcomes:
+            return {"window": window, "count": 0, "accepted": 0,
+                    "rejected": 0, "rate": None}
+        accepted = sum(1 for m in outcomes if m.body.get("accepted") is True)
+        rejected = sum(1 for m in outcomes if m.body.get("accepted") is False)
+        total = accepted + rejected
+        return {
+            "window": window,
+            "count": len(outcomes),
+            "accepted": accepted,
+            "rejected": rejected,
+            "rate": (accepted / total) if total else None,
+        }
+
+    def _remember_outcome(self, p: Prediction, *,
+                          accepted: bool | None, error: str | None = None) -> None:
+        """Apollo writes verification outcomes to Mnemosyne so the
+        agent's prediction history is reconstructible (S8)."""
+        from olympus.titans.mnemosyne import mnemosyne
+        if accepted is None:
+            summary = f"prophecy {p.name!r} verify() raised: {error}"
+        else:
+            summary = (f"prophecy {p.name!r} verified "
+                       f"{'ACCEPTED' if accepted else 'REJECTED'}")
+        mnemosyne.remember(
+            kind="prophecy.verified",
+            actor="apollo",
+            summary=summary,
+            prediction=p.name,
+            statement=p.statement,
+            horizon=p.horizon.isoformat(),
+            accepted=accepted,
+            error=error,
+        )
 
 
 apollo = Apollo()

@@ -8,7 +8,7 @@
 
 **a complete pantheon · seventy-three named figures · zero abstractions you can't name**
 
-[Cosmogony](codex/COSMOGONY.md) · [Pantheon](codex/PANTHEON.md) · [Rites](codex/RITES.md) · [Chronicle](codex/CHRONICLE.md) · [Prophecies](codex/PROPHECIES.md) · [Bestiary](codex/BESTIARY.md)
+[Cosmogony](codex/COSMOGONY.md) · [Pantheon](codex/PANTHEON.md) · [Rites](codex/RITES.md) · [Intelligence](codex/INTELLIGENCE.md) · [Chronicle](codex/CHRONICLE.md) · [Prophecies](codex/PROPHECIES.md) · [Bestiary](codex/BESTIARY.md)
 
 </div>
 
