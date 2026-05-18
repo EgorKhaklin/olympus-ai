@@ -1,13 +1,10 @@
 <div align="center">
 
-<img src="codex/assets/olympus-banner.jpg" alt="Olympus" height="25%" width="25%">
+<img src="codex/assets/olympus-banner.jpg" alt="Olympus" width="25%">
 
-```
-                                           ⚡  O L Y M P U S  ⚡
-                                  ────────────────────────────────────
-                                   a cognitive substrate built in the
-                                        shape of greek mythology
-```
+# ⚡ &nbsp; O L Y M P U S &nbsp; ⚡
+
+***a cognitive substrate built in the shape of greek mythology***
 
 **a complete pantheon · seventy-three named figures · zero abstractions you can't name**
 
@@ -260,10 +257,8 @@ Mythology is the densest pre-existing API for talking about agents-among-agents.
 
 <div align="center">
 
-```
-                    "May the threads spun for you be long,
-                       and may the hearth-fire never go out."
-```
+***"May the threads spun for you be long,***
+***and may the hearth-fire never go out."***
 
 Apache 2.0 · See [LICENSE](LICENSE) and [NOTICE](NOTICE)
 
