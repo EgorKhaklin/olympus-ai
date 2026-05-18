@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Iris — Olympus dashboard</title>
+    <style>/*__IRIS_CSS__*/</style>
+</head>
+<body>
+
+<header class="iris-banner">
+    <h1>I R I S</h1>
+    <div class="subtitle">the rainbow-messenger between Olympus and mortals</div>
+    <div class="meta">built __BUILT_AT__ · olympus __OLYMPUS_VERSION__</div>
+</header>
+
+<main>
+
+    <section class="counts" id="counts"></section>
+
+    <section class="panel">
+        <h2>Session timeline <span class="annot">last 15 cognitive passes (most recent first)</span></h2>
+        <div class="panel-body" id="timeline"></div>
+    </section>
+
+    <section class="panel">
+        <h2>Slice heatmap <span class="annot">where Hydra's heads have looked, and what they found</span></h2>
+        <div class="panel-body" id="heatmap"></div>
+    </section>
+
+    <section class="panel">
+        <h2>Apollo — prophecy verifications<span class="annot" id="prophecies-rate"></span></h2>
+        <div class="panel-body" id="prophecies"></div>
+    </section>
+
+    <section class="panel">
+        <h2>Hephaestus — proposals <span class="annot">ratified and rejected drifts</span></h2>
+        <div class="panel-body" id="proposals"></div>
+    </section>
+
+    <section class="panel">
+        <h2>Prometheus — improvement passes <span class="annot">the substrate improving itself</span></h2>
+        <div class="panel-body" id="prometheus"></div>
+    </section>
+
+    <section class="panel">
+        <h2>Prometheus — per-handler outcomes <span class="annot">drilldown of recent improvement work</span></h2>
+        <div class="panel-body" id="prometheus-handlers"></div>
+    </section>
+
+    <section class="panel">
+        <h2>Styx — the oath chain <span class="annot">cryptographic continuity of constitutional decisions</span></h2>
+        <div class="panel-body" id="styx"></div>
+    </section>
+
+</main>
+
+<footer class="iris-footer">
+    <p class="quote">"May the threads spun for you be long, and may the hearth-fire never go out."</p>
+    <p>Iris is a static snapshot — rebuild with <code>invoke iris</code>.</p>
+</footer>
+
+<script type="application/json" id="olympus-data">__IRIS_DATA__</script>
+<script>
+"use strict";
+(function () {
+    var node = document.getElementById("olympus-data");
+    try { window.OLYMPUS_DATA = JSON.parse(node.textContent); }
+    catch (e) { window.OLYMPUS_DATA = {}; }
+})();
+/*__IRIS_JS__*/
+</script>
+
+</body>
+</html>

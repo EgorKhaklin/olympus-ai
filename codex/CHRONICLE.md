@@ -12,6 +12,78 @@ Newest first. Each entry names what changed, what was sworn, who decided.
 
 ---
 
+## 2026-05-18 — the self-improvement arc (COMPOSITE)
+
+**Risk class:** COMPOSITE.
+**Delphi:** [`codex/oracles/delphi/2026-05-18-self-improvement-arc.md`](oracles/delphi/2026-05-18-self-improvement-arc.md)
+**Sworn on Styx at seq=46.**
+
+Zeus's directive, verbatim:
+
+> *"Use the system now to improve the system itself... so it has more bite, and put it on a cognitive self improvement loop. I noticed we've only used Python, do you need any other language to make this all better"*
+
+The architecture reached two decisions in parallel: **how** Olympus improves itself, and **what** languages it needs.
+
+### Q1 — Prometheus (the bounded auto-improver)
+
+Hephaestus surfaced three candidates: Prometheus (handler-registry, bounded to LOW-risk + zero Momus contests), LLM-driven self-modification, and manual-only. Momus dinged LLM-self-modification on AP6 (understanding-obscuring) + AP1 (no ground-touch) + S2 (non-determinism) + S7 (autonomous code edits are HIGH-risk). Manual-only dinged AP5 (declines explicit Zeus directive). **Prometheus took zero dings — it ratified.**
+
+`src/olympus/heroes/prometheus.py` — a Titan of forethought. Each pass dispatches a handler registry; each handler returns `(before, after)` state recorded to Mnemosyne (S8 reconstructability). Five built-in handlers ship:
+
+- **state-rotation** — rotate JSONL files > 10k lines
+- **brief-archive-compact** — keep last 50 briefs in `state/athena/`, archive older
+- **prophecy-graduate** — mark predictions accepted 5+ consecutive times
+- **prophecy-retire** — mark predictions rejected 3+ times
+- **dead-eye-flag** — surface eyes silent for 30+ days for Zeus review
+
+Prometheus does not edit source code, modify the constitution, or take any action without a recorded drift signature. Domain deployments register additional handlers via `prometheus.register(name, fn)`.
+
+### Q2 — Bash for cron, vanilla JS + HTML for visualization. No Rust, TypeScript, or SQL.
+
+Honest assessment per language:
+
+| language | verdict | reason |
+|---|:---:|---|
+| **Bash** | ✅ ship | cron is bash's native habitat — pure orchestration |
+| **HTML + vanilla JS** | ✅ ship | dashboards need rendering; no build step required |
+| Rust | ❌ refuse | AP8 (decorative) — no current need |
+| TypeScript | ❌ refuse | vanilla JS suffices; build complexity unjustified |
+| SQL | ❌ refuse | JSONL meets every current need; rows would obscure audit (AP6) |
+
+Languages get added when they solve a real problem Python doesn't. Currently: nothing else does.
+
+### scripts/loop.sh
+
+Pure-bash orchestration. `./scripts/loop.sh` runs one pass (cron-safe). `./scripts/loop.sh --loop --interval 600` runs continuously. `--dry-run` reports without invoking. Crontab example documented in the script's `--help`.
+
+### Iris — the rainbow-messenger
+
+`src/olympus/iris/` reads `state/*.jsonl` and renders a single self-contained HTML file (CSS + JS + JSON-data island inlined). No server. No framework. No fetch. Open `state/iris/index.html` in any browser. Palette echoes Aphrodite (gold / wine / marble / sea / laurel). Seven panels:
+
+- **session timeline** — last 15 cognitive passes with hydra/argos/proposals/furies counts
+- **slice heatmap** — where Hydra's heads have looked, ranked by alert intensity
+- **Apollo prophecies** — verifications with acceptance rate
+- **Hephaestus proposals** — ratified and rejected, with drift signatures
+- **Prometheus passes + per-handler outcomes** — the substrate improving itself
+- **Styx chain status** — total oaths, last seq, last hash, last sworn
+
+### CLI
+
+- `invoke improve` — Prometheus runs one pass
+- `invoke improve --loop --interval N` — runs continuously
+- `invoke iris` — build the dashboard
+- `invoke iris --open` — build + open in browser
+
+### Tests
+
+`test_prometheus.py` (7) — handler registration, dispatch, before/after recording, failure isolation, built-in handler resilience.
+`test_iris_build.py` (7) — snapshot purity, render produces self-contained HTML, no external refs, all panel mounts present, `</script>` breakout neutralized.
+`test_loop_invocation.py` (5) — script exists/executable, bash shebang, dry-run wiring, --help documents crontab, unknown flags rejected.
+
+Full suite: 173 tests, all green.
+
+---
+
 ## 2026-05-18 — the substance arc (COMPOSITE)
 
 **Risk class:** COMPOSITE.

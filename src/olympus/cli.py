@@ -527,6 +527,51 @@ def _wisdom(_argv: list[str]) -> int:
     return 0
 
 
+@hermes.register("improve", "Prometheus runs one self-improvement pass — improve [--loop] [--interval N]")
+def _improve(argv: list[str]) -> int:
+    from olympus.heroes.prometheus import prometheus
+    if "--loop" in argv:
+        interval = 600.0
+        max_iter = -1
+        i = 0
+        while i < len(argv):
+            a = argv[i]
+            if a == "--interval" and i + 1 < len(argv):
+                interval = float(argv[i + 1]); i += 2; continue
+            if a == "--count" and i + 1 < len(argv):
+                max_iter = int(argv[i + 1]); i += 2; continue
+            i += 1
+        prometheus.loop(interval_seconds=interval, max_iterations=max_iter)
+        return 0
+
+    report = prometheus.improve()
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(report), default=str, indent=2))
+        return 0
+    print(aphrodite.banner("Prometheus — improvement pass",
+                           f"{report.handlers_succeeded}/{report.handlers_invoked} succeeded"))
+    rows = [
+        (r.handler, "ok" if r.succeeded else "FAIL", r.detail[:80])
+        for r in report.results
+    ]
+    print(aphrodite.table(("handler", "result", "detail"), rows))
+    return 0 if report.handlers_succeeded == report.handlers_invoked else 1
+
+
+@hermes.register("iris", "build the static dashboard — iris [--open]")
+def _iris(argv: list[str]) -> int:
+    from olympus.iris import build
+    open_it = "--open" in argv
+    out = build(open_in_browser=open_it)
+    print(aphrodite.laurel(f"iris built — {out}"))
+    if open_it:
+        print(aglaia.murmur("  opened in browser"))
+    else:
+        print(aglaia.murmur(f"  open with: open {out}"))
+    return 0
+
+
 @hermes.register("blessing", "Thalia bestows a closing blessing")
 def _blessing(_argv: list[str]) -> int:
     from olympus.muses.thalia_muse import thalia_muse
