@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="codex/assets/olympus-banner.jpg" alt="Olympus" width="25%">
+<img src="codex/assets/olympus-banner.jpg" alt="Olympus" width="50%">
 
 # ⚡ &nbsp; O L Y M P U S &nbsp; ⚡
 
