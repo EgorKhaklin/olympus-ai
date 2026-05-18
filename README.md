@@ -279,7 +279,7 @@ The pantheon-coherence test (`tests/test_pantheon_coherence.py`) enforces that e
 
 ## Authority
 
-Maintained by [Egor Khaklin](https://github.com/EgorKhaklin). Co-authored with Claude. Every decision is sworn on Styx — the cryptographic oath chain is the source of truth for "who decided what."
+Maintained by [Egor Khaklin](https://github.com/EgorKhaklin). Every decision is sworn on Styx — the cryptographic oath chain is the source of truth for "who decided what."
 
 The mythology is the architecture. The architecture is the law. The law is enforced by tests, contested by Momus, ratified by Zeus, proved by Themis, and remembered by Mnemosyne.
 
