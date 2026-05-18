@@ -65,5 +65,83 @@ class Athena:
             d = json.load(f)
         return Brief(**d)
 
+    # ─────────────────────────────────────────────────────────
+    # Real synthesis — consume HYDRA + Argos directly
+    # ─────────────────────────────────────────────────────────
+
+    def compose_from(self, hydra_report: Any, argos_census: Any, *,
+                     label: str, directive: str | None = None) -> Brief:
+        """Synthesize a brief from a HydraReport + Argos Census.
+
+        Strategy:
+          - Every HYDRA ALERT becomes a high-severity finding
+          - Every Argos alert pheromone becomes a finding
+          - HYDRA drifts + Argos drifts become medium-severity findings
+          - Recommendations are surfaced from any slice with ≥2 findings
+            (cross-tier corroboration, the load-bearing pattern)
+          - Confidence is a function of corroboration count
+        """
+        findings: list[dict[str, Any]] = []
+        slice_to_signals: dict[str, list[str]] = {}
+
+        # HYDRA contributions
+        for f in getattr(hydra_report, "findings", []):
+            severity = getattr(f.severity, "value", str(f.severity))
+            findings.append({
+                "source": "hydra",
+                "head": f.head,
+                "slice": f.slice,
+                "severity": severity,
+                "detail": f.detail,
+            })
+            slice_to_signals.setdefault(f.slice, []).append(f"hydra:{f.head}:{severity}")
+
+        # Argos contributions
+        for p in getattr(argos_census, "pheromones", []):
+            findings.append({
+                "source": "argos",
+                "eye": p.eye,
+                "slice": p.slice,
+                "kind": p.kind,
+                "intensity": p.intensity,
+                "detail": p.detail,
+            })
+            slice_to_signals.setdefault(p.slice, []).append(f"argos:{p.eye}:{p.kind}")
+
+        # Surface recommendations from any slice with ≥2 signals (corroboration)
+        recommendations: list[str] = []
+        for slice_name, signals in slice_to_signals.items():
+            if len(signals) >= 2:
+                alert_count = sum(1 for s in signals if "alert" in s)
+                if alert_count:
+                    recommendations.append(
+                        f"slice '{slice_name}' surfaced in {len(signals)} signal(s) "
+                        f"with {alert_count} alert(s) — investigate"
+                    )
+                else:
+                    recommendations.append(
+                        f"slice '{slice_name}' has {len(signals)} corroborating signal(s) — "
+                        f"likely stable; consider promoting to a baseline expectation"
+                    )
+
+        if directive:
+            recommendations.append(
+                f"operator directive: {directive!r} — synthesize against the brief above"
+            )
+
+        # Confidence: proportional to how many slices were observed by both tiers
+        cross_tier = sum(
+            1 for sigs in slice_to_signals.values()
+            if any("hydra:" in s for s in sigs) and any("argos:" in s for s in sigs)
+        )
+        confidence = min(0.5 + 0.1 * cross_tier, 0.95)
+
+        return self.compose(
+            label=label,
+            findings=findings,
+            recommendations=recommendations,
+            confidence=confidence,
+        )
+
 
 athena = Athena()

@@ -199,6 +199,129 @@ def _blessing(_argv: list[str]) -> int:
     return 0
 
 
+# ─────────────────────────────────────────────────────────────────────
+# Loop + action + meta + correlation + labors errands
+# ─────────────────────────────────────────────────────────────────────
+
+
+@hermes.register("session", "run one cognitive-loop session — optional directive")
+def _session(argv: list[str]) -> int:
+    from olympus.session import run_session
+    directive = " ".join(argv) if argv else None
+    r = run_session(directive)
+    print(aglaia.section(f"session {r.session_id[:16]}"))
+    if r.directive:
+        print(aglaia.murmur(f"  directive: {r.directive}"))
+    rows = [
+        ("HYDRA",      f"{r.hydra_findings} findings ({r.hydra_alerts} alerts, {r.hydra_drifts} drifts)"),
+        ("Argos",      f"{r.argos_pheromones} pheromones ({r.argos_alerts} alerts)"),
+        ("Athena",     f"brief {r.brief_label!r} — {r.brief_findings} findings, "
+                       f"{r.brief_recommendations} recs, confidence={r.brief_confidence:.2f}"),
+        ("Hephaestus", f"{r.proposals_count} proposal(s) surfaced"),
+        ("Momus",      f"{r.contests_count} contest(s) issued"),
+        ("Actions",    f"{r.actions_promoted} promoted "
+                       f"({r.actions_autoratified} auto, "
+                       f"{r.actions_queued_for_zeus} queued, "
+                       f"{r.actions_delphi_pending} delphi)"),
+        ("Styx",       f"{r.styx_total} oaths · chain {'intact' if r.styx_intact else 'BROKEN'}"),
+    ]
+    print(aphrodite.table(("phase", "outcome"), rows))
+    if r.error:
+        print(aphrodite.wine_dark(f"  ERROR: {r.error}"))
+        return 1
+    return 0
+
+
+@hermes.register("action", "action queue — action <review|delphi|ratify|reject>")
+def _action(argv: list[str]) -> int:
+    from olympus.action import action_queue
+    if not argv:
+        print("usage: invoke action <review|delphi|ratify <id> [quote]|reject <id> [reason]>")
+        return 2
+    verb = argv[0]
+    if verb == "review":
+        pending = action_queue.pending()
+        if not pending:
+            print(aglaia.murmur("  no actions await Zeus"))
+            return 0
+        rows = [(a.id[:24], a.risk_class, a.summary[:80]) for a in pending]
+        print(aphrodite.table(("id", "risk", "summary"), rows))
+        return 0
+    if verb == "delphi":
+        delphi = action_queue.delphi_pending()
+        if not delphi:
+            print(aglaia.murmur("  no actions awaiting Delphi"))
+            return 0
+        rows = [(a.id[:24], a.risk_class, a.summary[:80]) for a in delphi]
+        print(aphrodite.table(("id", "risk", "summary"), rows))
+        return 0
+    if verb == "ratify" and len(argv) >= 2:
+        action_id = argv[1]
+        quote = " ".join(argv[2:]) if len(argv) > 2 else "ratified via CLI"
+        try:
+            a = action_queue.ratify(action_id, quote=quote)
+            print(aphrodite.laurel(f"ratified {a.id[:24]}"))
+            return 0
+        except (KeyError, RuntimeError) as exc:
+            print(aphrodite.wine_dark(str(exc)))
+            return 1
+    if verb == "reject" and len(argv) >= 2:
+        action_id = argv[1]
+        reason = " ".join(argv[2:]) if len(argv) > 2 else "rejected via CLI"
+        try:
+            a = action_queue.reject(action_id, reason=reason)
+            print(aphrodite.laurel(f"rejected {a.id[:24]}"))
+            return 0
+        except KeyError as exc:
+            print(aphrodite.wine_dark(str(exc)))
+            return 1
+    print(aphrodite.wine_dark(f"unknown action subcommand: {verb!r}"))
+    return 2
+
+
+@hermes.register("meta", "Olympus self-portrait (Olympus reasoning about Olympus)")
+def _meta(_argv: list[str]) -> int:
+    from olympus.meta import portrait
+    print(portrait().as_text())
+    return 0
+
+
+@hermes.register("correlate", "Argos CorrelationEngine — cross-eye patterns over a time window")
+def _correlate(argv: list[str]) -> int:
+    from olympus.monsters.argos.correlation import correlation
+    from olympus.monsters.argos.colony import colony
+    window_hours = float(argv[0]) if argv else 24.0
+    known_eyes = [e.NAME for e in colony.eyes()]
+    report = correlation.correlate(window_hours=window_hours, known_eyes=known_eyes)
+    print(aphrodite.banner("Argos correlation",
+                           f"window: {window_hours}h · {report.pheromones_considered} pheromone(s)"))
+    if report.clusters:
+        print(aglaia.subhead(f"Clusters ({len(report.clusters)})"))
+        for c in report.clusters[:5]:
+            print(f"  · slice {c.slice!r}: {len(c.eyes)} eye(s) "
+                  f"({', '.join(c.eyes[:3])}{'...' if len(c.eyes) > 3 else ''}) — "
+                  f"intensity sum {c.intensity_sum:.1f}")
+    if report.cascades:
+        print(aglaia.subhead(f"Cascades ({len(report.cascades)})"))
+        for c in report.cascades[:5]:
+            print(f"  · {c.leader} → {c.follower} ({c.instances}x, median {c.median_gap_minutes:.1f}min)")
+    if report.quiet:
+        print(aglaia.subhead(f"Quiet eyes ({len(report.quiet)})"))
+        for q in report.quiet:
+            print(f"  · {q.eye}: silent {q.hours_silent:.1f}h")
+    if not (report.clusters or report.cascades or report.quiet):
+        print(aglaia.murmur("  no cross-eye patterns surfaced in window"))
+    return 0
+
+
+@hermes.register("console", "Zeus operator console — review and ratify pending actions")
+def _console(_argv: list[str]) -> int:
+    from olympus.olympians.zeus import zeus
+    touched = zeus.console()
+    print(aglaia.murmur(f"  Zeus touched {touched} action(s)"))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     """Entry point. `invoke ...` (pip-installed) and `./scripts/invoke ...`
     both land here."""

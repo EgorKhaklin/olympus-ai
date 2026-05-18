@@ -12,7 +12,75 @@ Newest first. Each entry names what changed, what was sworn, who decided.
 
 ---
 
-## 2026-05-18 — restructure to namespaced `src/olympus/`
+## 2026-05-18 — the maturation arc (COMPOSITE)
+
+**Risk class:** COMPOSITE (multi-workstream constitutional ship).
+**Delphi:** [`codex/oracles/delphi/2026-05-18-maturation-arc.md`](oracles/delphi/2026-05-18-maturation-arc.md)
+**Sworn on Styx at seq=20.**
+**Authorized by Zeus** (the "boil the ocean" directive, verbatim in the Delphi).
+
+Olympus was a beautiful set of parts. This arc made it a running cognitive substrate. All five workstreams Zeus named — runtime cohesion, invariant enforcement, hardening, documentation, advanced maturation — landed in one ship.
+
+### 1 — Core Runtime Cohesion
+
+The canonical loop now exists in `src/olympus/session.py`. One `Session` is one full pass: Zeus → Rhea → HYDRA → Argos → Athena (real synthesis from both observation tiers) → Hephaestus (surfaces proposals from the brief) → Momus (contests via AP1–AP8 heuristics) → action queue (risk-class-routed promotion) → Mnemosyne → Polyhymnia. Every link is wired; every link records.
+
+- **`src/olympus/session.py`** — `Session`, `SessionReport`, `run_session()`. Wraps every phase in error boundaries; captures errors without crashing the loop.
+- **`src/olympus/action.py`** — `ActionQueue` with append-only log at `state/action_queue.jsonl`. LOW + no contests auto-ratifies; MEDIUM and contested LOW queue for Zeus; HIGH/COMPOSITE land in `delphi-pending` and require a Styx-sworn ratification.
+- **Athena enhancement** — `compose_from(hydra_report, argos_census, label, directive)` reads both observation tiers, surfaces cross-tier corroborations, computes confidence proportional to overlap.
+- **Hephaestus enhancement** — `surface_from(brief)` walks the brief's findings + recommendations and emits proposals (capped by a Lachesis quota).
+- **Momus enhancement** — `contest_via_brief(proposal, brief)` runs eight AP heuristics over the proposal's text and context, returning the AP ids that fire.
+- **Zeus enhancement** — `review_pending()`, `review_delphi()`, `ratify()`, `reject()`, `console()` (interactive REPL).
+
+### 2 — Testing & Invariant Enforcement
+
+The substrate now has 76 tests covering every load-bearing claim.
+
+- **`tests/test_invariant_enforcement.py`** — real teeth on S2 (replay every Eye twice; assert identical), S3 (AST-scan HYDRA heads for forbidden write calls), S4 (AST-scan for sibling-Eye imports), S5 (Apollo rejects predictions without verify()), S8 (no load-bearing memory may be anonymous).
+- **`tests/test_property_styx.py`** — three property tests on Styx: append-only (snapshots are prefixes), chain integrity (prev_hash linking), tamper detection (corrupt one byte → first_bad_seq surfaces).
+- **`tests/test_session_runner.py`** — end-to-end loop coverage including cross-tier confidence assertion.
+- **`tests/test_action_queue.py`** — LOW auto-ratifies, MEDIUM queues, HIGH delphi-pending, contested LOW queues, execution failure quarantines to Hades.
+- **`tests/test_runtime.py`** — boundary decorator behavior, atomic_append under 8 concurrent writers (160 rows; all parse), JSONL integrity detection, compaction.
+- **`tests/test_correlation.py`** — cluster + cascade + quiet detection.
+- **`tests/test_meta_and_llm.py`** — self-portrait shape, NullAdapter behavior, adapter factories raise cleanly when optional SDKs missing.
+- **`tests/test_heracles_labors.py`** — all twelve canonical labors are now real substrate kill-tests. Each labor is a specific assertion about HYDRA, Argos, Artemis, Ares, Lethe, Poseidon, Atropos, Hera, Demeter, Apollo, Cerberus, or the cosmogony itself.
+
+### 3 — Hardening & Operational Maturity
+
+- **`src/olympus/runtime/boundaries.py`** — `@bounded(name=...)` decorator: catches any exception, returns `BoundaryResult(ok=False, error=...)`, optionally quarantines + records.
+- **`src/olympus/runtime/concurrency.py`** — `with_lock(name)` (Megaera-watched named lock); `atomic_append(path, line)` using fcntl LOCK_EX so concurrent appends never interleave bytes. Wired into colony pheromone writes.
+- **`src/olympus/runtime/persistence.py`** — `integrity_check()`, `rotate_jsonl(max_lines=N)`, `compact_jsonl(keep_predicate=fn)`. Tmp-file-then-rename for crash-safe rewrites.
+- **`src/olympus/runtime/recovery.py`** — `retire_component(name, final_state, reason)` runs the canonical Iapetus phase progression and archives final state to Hades.
+- **Lachesis enforcement wired** into `colony.deploy()` (per-eye-per-deploy cap of 50 pheromones) and `hephaestus.surface_from()` (per-pass cap of 5 proposals).
+
+### 4 — Documentation
+
+- **`codex/BUILDING.md`** — a 10-step walkthrough from clone to a working domain-specific deployment with a real Eye, a real Head, and a real Apollo prediction.
+- **`codex/DOMAIN-TEMPLATE.md`** — the copy-paste template for `DOMAIN.md`, with sections for vocation, anti-mission, C1–CN invariants, risk-class examples, operator info, cadences, and domain anti-patterns.
+- **`codex/FLOW.md`** — the cognitive loop end-to-end as a Mermaid diagram, plus a single-pheromone's journey through twelve numbered steps.
+- **`codex/threat-model.md`** — expanded with concrete recovery runbooks for all seven Typhon scenarios (T1–T7).
+- **`codex/PATTERNS.md`** — formalization of the ten reusable patterns (P1–P10) underlying Olympus. Each pattern has shape, Olympus instance, invariant preserved, anti-pattern defended against. Usable with or without Olympus.
+
+### 5 — Advanced Maturation
+
+- **`src/olympus/monsters/argos/correlation.py`** — `CorrelationEngine` that walks the pheromone log and produces three kinds of cross-eye signals: clusters (multiple eyes on same slice), cascades (eye A frequently followed by eye B within minutes), quiet eyes (eyes that have stopped depositing). Cross-eye patterns are emergent — no single Eye sees them.
+- **`src/olympus/meta.py`** — Olympus reasoning about Olympus. `portrait()` composes a `SelfPortrait` from Coeus, Themis, HYDRA, Argos, Polyhymnia, Mnemosyne, and the action queue. Readable text rendering via `.as_text()`.
+- **`src/olympus/llm/`** — optional LLM adapter pattern. `NullAdapter` (default; preserves LLM-free claim), plus factory functions `anthropic_adapter()` and `openai_adapter()` that lazy-import vendor SDKs. Olympus does NOT depend on any LLM vendor.
+
+### CLI surface
+
+`invoke` now dispatches 13 errands: `prime`, `bring-forth`, `kindle`, `remember`, `swear`, `verify`, `labors`, `consult` (chart/population/hymn/brief), `pantheon`, `blessing`, `session`, `action` (review/delphi/ratify/reject), `meta`, `correlate`, `console`.
+
+### Verification
+
+- 76/76 tests pass
+- End-to-end `invoke session "..."` runs the full loop in < 1s
+- `invoke correlate 24` finds 72 cascade patterns across recent test pheromones
+- `invoke meta` produces a full self-portrait
+- Styx now holds 26 oaths; chain intact
+- Heracles's 12 labors all survive (real substrate kill-tests)
+
+---
 
 **Risk class:** HIGH (filesystem restructure — every import touched).
 **Delphi:** [`codex/oracles/delphi/2026-05-18-namespaced-src-layout.md`](oracles/delphi/2026-05-18-namespaced-src-layout.md)

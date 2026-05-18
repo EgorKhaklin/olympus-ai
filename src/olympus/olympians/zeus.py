@@ -64,7 +64,7 @@ class Zeus:
         if risk_class == "LOW":
             return True
         if risk_class == "MEDIUM":
-            return (root.child("oracles/delphi").exists())  # implies proposal infrastructure
+            return root.child("codex", "oracles", "delphi").exists()
         # HIGH / COMPOSITE need an authorization in Styx
         from olympus.underworld.styx import oath_of
         oaths = oath_of(f"zeus:{self.name}")
@@ -72,6 +72,86 @@ class Zeus:
             o["statement"].startswith(f"AUTHORIZE risk={risk_class}")
             for o in oaths
         )
+
+    # ─────────────────────────────────────────────────────────
+    # Operator console — review + ratify pending actions
+    # ─────────────────────────────────────────────────────────
+
+    def review_pending(self) -> list:
+        """List actions awaiting Zeus's ratification."""
+        from olympus.action import action_queue
+        return action_queue.pending()
+
+    def review_delphi(self) -> list:
+        """List actions awaiting HIGH / COMPOSITE Delphi."""
+        from olympus.action import action_queue
+        return action_queue.delphi_pending()
+
+    def ratify(self, action_id: str, quote: str):
+        """Approve a queued or delphi-pending action with an authorization quote."""
+        from olympus.action import action_queue
+        return action_queue.ratify(action_id, quote=quote, by=f"zeus:{self.name}")
+
+    def reject(self, action_id: str, reason: str):
+        """Reject a queued action with a recorded reason."""
+        from olympus.action import action_queue
+        return action_queue.reject(action_id, reason=reason, by=f"zeus:{self.name}")
+
+    def console(self) -> int:
+        """Tiny interactive REPL for review/ratify/reject. Returns the
+        number of actions Zeus touched. Intended for short operator
+        sessions, not long-running interaction."""
+        from olympus.action import action_queue
+        from olympus.olympians.aphrodite import aphrodite
+        from olympus.graces.aglaia import aglaia
+
+        touched = 0
+        while True:
+            pending = action_queue.pending()
+            delphi = action_queue.delphi_pending()
+            print(aglaia.section(f"Zeus console — {len(pending)} queued, {len(delphi)} delphi-pending"))
+
+            if not pending and not delphi:
+                print(aglaia.murmur("  no actions await Zeus."))
+                break
+
+            all_actions = pending + delphi
+            rows = [(a.id[:24], a.risk_class, a.status, a.summary[:80]) for a in all_actions]
+            print(aphrodite.table(("id", "risk", "status", "summary"), rows))
+
+            try:
+                cmd = input("\n  ratify <id> | reject <id> <reason> | q : ").strip()
+            except (KeyboardInterrupt, EOFError):
+                print()
+                break
+            if cmd == "q" or not cmd:
+                break
+            parts = cmd.split(maxsplit=2)
+            verb = parts[0]
+            if verb == "ratify" and len(parts) >= 2:
+                aid = parts[1]
+                quote = parts[2] if len(parts) > 2 else "ratified at console"
+                # accept prefix-match on id
+                full = next((a.id for a in all_actions if a.id.startswith(aid)), None)
+                if full is None:
+                    print(aphrodite.wine_dark(f"  no action matches {aid!r}"))
+                    continue
+                self.ratify(full, quote=quote)
+                print(aphrodite.laurel(f"  ratified {full[:24]}"))
+                touched += 1
+            elif verb == "reject" and len(parts) >= 2:
+                aid = parts[1]
+                reason = parts[2] if len(parts) > 2 else "rejected at console"
+                full = next((a.id for a in all_actions if a.id.startswith(aid)), None)
+                if full is None:
+                    print(aphrodite.wine_dark(f"  no action matches {aid!r}"))
+                    continue
+                self.reject(full, reason=reason)
+                print(aphrodite.laurel(f"  rejected {full[:24]}"))
+                touched += 1
+            else:
+                print(aphrodite.wine_dark(f"  unknown command: {cmd!r}"))
+        return touched
 
 
 zeus = Zeus()

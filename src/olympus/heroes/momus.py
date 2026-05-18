@@ -97,5 +97,83 @@ class Momus:
         used to render an adversarial review."""
         return [self.by_id(a) for a in ap_ids if self.by_id(a)]
 
+    # ─────────────────────────────────────────────────────────
+    # Auto-contest: read a proposal in context of the brief and decide
+    # which APs apply, by heuristic.
+    # ─────────────────────────────────────────────────────────
+
+    def contest_via_brief(self, proposal: object, brief: object) -> list[str]:
+        """Returns a list of AP ids that fire for this proposal in the
+        context of the brief. Heuristic rules — not exhaustive, but
+        enough to give Momus a meaningful voice in the loop."""
+        ap_ids: list[str] = []
+        drift = (getattr(proposal, "drift_observed", "") or "").lower()
+        fix = (getattr(proposal, "proposed_fix", "") or "").lower()
+        risk = (getattr(proposal, "risk_class", "") or "").upper()
+        rationale = (getattr(proposal, "rationale", "") or "").lower()
+
+        findings = getattr(brief, "findings", [])
+        recommendations = getattr(brief, "recommendations", [])
+        confidence = getattr(brief, "confidence", 0.0)
+
+        # AP1 — self-observation without ground-touch
+        #   Fires when the proposal references no concrete artifact outside
+        #   the cognitive layer (e.g., 'something feels off in the brief')
+        if not any(token in drift for token in [
+            "slice", "file", "path", "module", "code", "test", "log",
+            ".py", ".md", "olympus/",
+        ]):
+            ap_ids.append("AP1")
+
+        # AP2 — scope creep via bundle
+        #   Fires when the fix sentence contains an 'and' joining two
+        #   distinct verbs.
+        verb_pairs = (
+            ("rewrite", "refactor"), ("delete", "rename"), ("add", "remove"),
+            ("amend", "ship"), ("migrate", "redesign"),
+        )
+        if any(a in fix and b in fix for a, b in verb_pairs):
+            ap_ids.append("AP2")
+
+        # AP3 — instance-level rule for class-level drift
+        #   Fires when the fix names a specific file/version (vs. a pattern)
+        if any(tok in fix for tok in [".py:", "line ", "this specific"]):
+            ap_ids.append("AP3")
+
+        # AP4 — premature constitutional elevation
+        #   Fires when the fix touches COSMOGONY / S1-S8 and the brief
+        #   doesn't already corroborate (≥2 sources on the same slice)
+        if any(t in fix for t in ["cosmogony", "constitution", "s1", "s2",
+                                   "s3", "s4", "s5", "s6", "s7", "s8"]):
+            if confidence < 0.7:
+                ap_ids.append("AP4")
+
+        # AP5 — decline-and-surface violation
+        #   Fires when a HIGH/COMPOSITE proposal is recommended for
+        #   autonomous action.
+        if risk in {"HIGH", "COMPOSITE"} and "auto" in fix:
+            ap_ids.append("AP5")
+
+        # AP6 — understanding-obscuring (the S8 contest)
+        #   Fires when the proposal would reduce reconstructability
+        if any(t in fix for t in ["remove logging", "drop the record",
+                                   "skip mnemosyne", "bypass styx",
+                                   "skip the journal"]):
+            ap_ids.append("AP6")
+
+        # AP7 — ledger-balance without honesty
+        #   Fires when the fix mentions rebasing/squashing audit-of-record
+        if any(t in fix for t in ["rebase", "squash chronicle", "edit the chronicle"]):
+            ap_ids.append("AP7")
+
+        # AP8 — decorative work claiming structural value
+        #   Fires when the proposal adds an observer (eye/head) but
+        #   the rationale doesn't name what would change if it spoke.
+        if any(t in fix for t in ["add eye", "add head", "new observer"]):
+            if "would change" not in rationale and "if" not in rationale:
+                ap_ids.append("AP8")
+
+        return ap_ids
+
 
 momus = Momus()

@@ -46,32 +46,72 @@ class Colony:
     def eyes(self) -> list[Eye]:
         return list(self._eyes)
 
+    # Lachesis quota — per-eye per-deploy cap (anti-flood)
+    PER_EYE_QUOTA_NAME = "argos.per-eye-per-deploy"
+    PER_EYE_QUOTA_CEILING = 50.0  # max pheromones one eye may emit per pass
+
     def deploy(self, *, deposit: bool = True) -> Census:
         """Run every Eye's scan(); aggregate findings into pheromones;
-        optionally append to the pheromone log."""
+        optionally append to the pheromone log.
+
+        Per-eye output is capped by a Lachesis quota; an eye that exceeds
+        the cap has its excess truncated and a single drift pheromone
+        appended explaining the cap was hit (S8 reconstructability)."""
+        from olympus.fates.lachesis import lachesis, Quota
+        from olympus.runtime.boundaries import bounded
+
+        # Register quota lazily
+        if self.PER_EYE_QUOTA_NAME not in lachesis._quotas:
+            lachesis.allot(Quota(name=self.PER_EYE_QUOTA_NAME,
+                                  ceiling=self.PER_EYE_QUOTA_CEILING,
+                                  units="pheromones"))
+
         census = Census()
         for eye in self._eyes:
-            try:
-                findings = eye.scan()
-            except Exception as exc:
+            # Reset per-eye accounting at the start of each eye's scan
+            lachesis.reset(self.PER_EYE_QUOTA_NAME)
+
+            scanner = bounded(name=f"colony.scan.{eye.NAME}")(eye.scan)
+            br = scanner()
+            if br.ok and br.value is not None:
+                findings = br.value
+            else:
                 findings = [EyeFinding(
                     eye=eye.NAME, slice=eye.SLICE,
                     kind="alert", intensity=10.0,
-                    detail=f"eye raised: {type(exc).__name__}: {exc}",
+                    detail=f"eye raised: {br.error}",
                 )]
-            phers = [Pheromone.from_finding(f) for f in findings]
+
+            # Apply Lachesis cap
+            allowed: list[EyeFinding] = []
+            for f in findings:
+                if lachesis.measure(self.PER_EYE_QUOTA_NAME, 1.0):
+                    allowed.append(f)
+                else:
+                    allowed.append(EyeFinding(
+                        eye=eye.NAME, slice=eye.SLICE,
+                        kind="drift", intensity=5.0,
+                        detail=(f"eye exceeded Lachesis cap "
+                                f"({self.PER_EYE_QUOTA_CEILING:.0f} pheromones); "
+                                f"remainder truncated"),
+                    ))
+                    break
+
+            phers = [Pheromone.from_finding(f) for f in allowed]
             census.pheromones.extend(phers)
             census.by_eye[eye.NAME] = phers
 
         if deposit:
-            with self.log_path.open("a", encoding="utf-8") as f:
-                for p in census.pheromones:
-                    f.write(json.dumps(p.as_dict(), default=str) + "\n")
+            # Use atomic append for concurrency safety
+            from olympus.runtime.concurrency import atomic_append
+            for p in census.pheromones:
+                atomic_append(self.log_path, json.dumps(p.as_dict(), default=str))
 
         mnemosyne.remember(
             kind="colony.deploy",
             actor="argos",
-            summary=f"deployed {len(self._eyes)} eye(s); {census.count} pheromone(s) emitted",
+            summary=(f"deployed {len(self._eyes)} eye(s); "
+                     f"{census.count} pheromone(s) emitted"),
             eye_count=len(self._eyes),
             pheromone_count=census.count,
             alerts=sum(1 for p in census.pheromones if p.kind == "alert"),

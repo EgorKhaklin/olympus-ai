@@ -74,5 +74,72 @@ class Hephaestus:
                 out.append(p)
         return out
 
+    # ─────────────────────────────────────────────────────────
+    # Surface proposals from a brief (the loop's decide phase)
+    # ─────────────────────────────────────────────────────────
+
+    def surface_from(self, brief: Any) -> list[Proposal]:
+        """Given an Athena brief, surface zero or more proposals.
+
+        Hephaestus's rule of thumb:
+          - every ALERT in the brief becomes a proposal (one per unique slice)
+          - cross-tier corroborations in recommendations become proposals
+          - capped at 5 proposals per pass by Lachesis (prevents flooding)
+        """
+        from olympus.fates.lachesis import lachesis, Quota
+
+        if "hephaestus.per-pass" not in lachesis._quotas:
+            lachesis.allot(Quota(name="hephaestus.per-pass",
+                                 ceiling=5.0, units="proposals"))
+
+        surfaced: list[Proposal] = []
+        seen_slices: set[str] = set()
+
+        # Walk the brief's findings; alerts get a proposal
+        for f in brief.findings:
+            severity = f.get("severity") or f.get("kind") or "info"
+            if severity != "alert":
+                continue
+            slice_name = f.get("slice", "<unspecified>")
+            if slice_name in seen_slices:
+                continue
+            seen_slices.add(slice_name)
+
+            if not lachesis.measure("hephaestus.per-pass", 1.0):
+                break  # quota exhausted
+
+            risk = "MEDIUM" if "S" in str(f.get("detail", "")) else "LOW"
+            p = self.propose(
+                drift_observed=(
+                    f"{f.get('source', '?')} reports {severity} on slice "
+                    f"'{slice_name}': {str(f.get('detail', ''))[:120]}"
+                ),
+                proposed_fix=(
+                    f"investigate slice '{slice_name}' and either fix the "
+                    f"underlying cause or update the watcher predicate"
+                ),
+                risk_class=risk,
+                rationale=f"alert surfaced by {f.get('source')} during session synthesis",
+            )
+            surfaced.append(p)
+
+        # Recommendations with investigate/alert hints get proposals too
+        for rec in brief.recommendations:
+            low = rec.lower()
+            if "alert" not in low and "investigate" not in low:
+                continue
+            if not lachesis.measure("hephaestus.per-pass", 1.0):
+                break
+            p = self.propose(
+                drift_observed=f"Athena recommendation: {rec[:140]}",
+                proposed_fix="ratify or contest this recommendation in next session",
+                risk_class="LOW",
+                rationale="brief-level cross-tier corroboration",
+            )
+            surfaced.append(p)
+
+        lachesis.reset("hephaestus.per-pass")
+        return surfaced
+
 
 hephaestus = Hephaestus()
