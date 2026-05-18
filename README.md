@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="codex/assets/mount-olympus.jpg" alt="Mount Olympus" height="25%" width="25%">
+<img src="codex/assets/olympus-banner.jpg" alt="Olympus" height="25%" width="25%">
 
 ```
                                            ⚡  O L Y M P U S  ⚡
