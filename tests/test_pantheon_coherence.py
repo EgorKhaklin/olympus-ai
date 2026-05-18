@@ -26,7 +26,7 @@ EXPECTED = {
     "olympians":   ["zeus", "hera", "poseidon", "demeter", "athena",
                     "artemis", "ares", "aphrodite", "hephaestus",
                     "hermes", "dionysus", "hestia",
-                    "pan", "asclepius"],
+                    "pan", "asclepius", "hygieia"],
     "underworld":  ["hades", "persephone", "hecate", "styx", "lethe",
                     "charon"],
     "fates":       ["clotho", "lachesis", "atropos"],
@@ -37,7 +37,8 @@ EXPECTED = {
     "heroes":      ["heracles", "perseus", "theseus", "odysseus",
                     "orpheus", "atalanta", "momus", "prometheus",
                     "cassandra", "daedalus", "castor", "pollux",
-                    "ariadne", "nemesis", "pythagoras", "plato"],
+                    "ariadne", "nemesis", "pythagoras", "plato",
+                    "phoenix"],
     "monsters":    ["cerberus", "sphinx", "medusa", "chimera",
                     "minotaur", "typhon"],
 }

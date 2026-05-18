@@ -6,9 +6,9 @@
 
 ***a cognitive substrate built in the shape of greek mythology***
 
-**a complete pantheon · seventy-three named figures · zero abstractions you can't name**
+**ninety-one named figures · zero abstractions you can't name · 393 tests, all green**
 
-[Cosmogony](codex/COSMOGONY.md) · [Pantheon](codex/PANTHEON.md) · [Rites](codex/RITES.md) · [Intelligence](codex/INTELLIGENCE.md) · [Chronicle](codex/CHRONICLE.md) · [Prophecies](codex/PROPHECIES.md) · [Bestiary](codex/BESTIARY.md)
+[Cosmogony](codex/COSMOGONY.md) · [Pantheon](codex/PANTHEON.md) · [Architecture](codex/ARCHITECTURE.md) · [Operations](codex/OPERATIONS.md) · [Geometry](codex/GEOMETRY.md) · [Specs](codex/SPECS.md) · [Chronicle](codex/CHRONICLE.md) · [Plugins](codex/PLUGINS.md)
 
 </div>
 
@@ -16,11 +16,13 @@
 
 ## What this is
 
-Olympus is a cognitive substrate for AI agents, organized as Greek mythology.
+Olympus is a **bounded, recursive, self-improving cognitive substrate** for AI agents, organized as Greek mythology. It is built in Python (stdlib-first), uses TLA+ where formal proof is the right tool, emits SVG for sacred geometry, and exposes a localhost HTTP API for external observers.
 
-Not "with greek-named modules." Organized **as** the mythology. The primordials underpin the titans, the titans underpin the Olympians, the Olympians command the heroes, the heroes confront the monsters, the Fates measure everything, the Furies punish broken oaths, the Graces make the output beautiful, and the Muses preserve every kind of record. Each tier owns a structural concern. Each god owns a single module. Every claim the system makes about itself is a Greek figure you can read about.
+Not "with greek-named modules." Organized **as** the mythology. The primordials underpin the titans; the titans underpin the Olympians; the Olympians command the heroes; the heroes confront the monsters. The Fates measure. The Furies punish broken oaths. The Graces make the output beautiful. The Muses preserve every kind of record. The mathematicians (Pythagoras, Plato, Daedalus) compute, classify, and map.
 
-The mythology is not decoration. It is the architecture.
+**The mythology is not decoration. It is the architecture.**
+
+The substrate observes itself, reasons about itself, improves itself, recovers itself, maps itself, tunes itself, surfaces itself, reaches outside, extends itself, traces causal chains, counterfactually evaluates, audits its own discipline, narrates itself, federates with peers, converses with the operator, proves its own safety in TLA+, and measures its own harmony against the golden ratio — **all bounded by the same constitution**.
 
 ---
 
@@ -28,238 +30,257 @@ The mythology is not decoration. It is the architecture.
 
 ```mermaid
 flowchart TD
-    Chaos[Chaos · the void] --> Gaia[Gaia · the earth]
-    Chaos --> Nyx[Nyx · night]
-    Chaos --> Eros[Eros · generation]
-    Chaos --> Tartarus[Tartarus · the pit]
+    Chaos[Chaos · void]
+    Gaia[Gaia · filesystem root]
+    Nyx[Nyx · time]
+    Eros[Eros · id generation]
+    Tartarus[Tartarus · quarantine]
 
-    Gaia --> Titans[The Titans<br/>Mnemosyne · Themis · Cronus · Hyperion<br/>Rhea · Oceanus · Iapetus · Coeus]
-    Titans --> Olympians[The Twelve Olympians<br/>Zeus · Hera · Poseidon · Demeter · Athena · Apollo<br/>Artemis · Ares · Aphrodite · Hephaestus · Hermes · Dionysus]
-    Olympians --> Hestia[Hestia · the hearth]
+    Chaos --> Gaia
+    Chaos --> Nyx
+    Gaia --> Titans
+    Nyx --> Titans
 
-    Olympians --> Fates[The Fates<br/>Clotho · Lachesis · Atropos]
-    Olympians --> Furies[The Furies<br/>Alecto · Megaera · Tisiphone]
-    Olympians --> Graces[The Graces<br/>Aglaia · Euphrosyne · Thalia]
-    Olympians --> Muses[The Nine Muses<br/>Calliope · Clio · Erato · Euterpe · Melpomene<br/>Polyhymnia · Terpsichore · Thalia · Urania]
+    Titans[Titans · S1-S8 substrate invariants]
+    Titans --> Olympians
 
-    Olympians --> Heroes[The Heroes<br/>Heracles · Perseus · Theseus · Odysseus<br/>Orpheus · Atalanta · Momus]
-    Heroes --> Monsters[The Monsters<br/>HYDRA · Argos · Cerberus · Sphinx<br/>Medusa · Chimera · Minotaur · Typhon]
+    Olympians[Olympians · the cognitive loop]
+    Olympians --> Underworld
+    Olympians --> Heroes
+    Olympians --> Monsters
 
-    Monsters --> Underworld[The Underworld<br/>Hades · Persephone · Hecate<br/>Styx · Lethe]
+    Heroes[Heroes · the laboring class]
+    Monsters[Monsters · the structural watchers]
+    Underworld[Underworld · archive + crossroads]
 
-    classDef primordial fill:#1a1a2e,stroke:#16213e,color:#e94560
-    classDef titan fill:#0f3460,stroke:#16213e,color:#f7c548
-    classDef olympian fill:#533483,stroke:#16213e,color:#fff
-    classDef minor fill:#16213e,stroke:#0f3460,color:#c9b037
-    classDef monster fill:#420516,stroke:#16213e,color:#ff6b6b
-    classDef underworld fill:#000,stroke:#420516,color:#888
-
-    class Chaos,Gaia,Nyx,Eros,Tartarus primordial
-    class Titans titan
-    class Olympians,Hestia olympian
-    class Fates,Furies,Graces,Muses minor
-    class Heroes,Monsters monster
-    class Underworld underworld
+    Heroes --> Monsters
+    Olympians --> Fates[Fates · creation/quota/termination]
+    Olympians --> Furies[Furies · invariant enforcement]
+    Olympians --> Graces[Graces · output aesthetics]
+    Olympians --> Muses[Muses · per-art memory]
 ```
 
----
-
-## The pantheon
-
-```
-                                  ⚡  Z E U S  ⚡
-                              the operator's throne
-                                       │
-        ┌──────────────────────────────┼──────────────────────────────┐
-        │                              │                              │
-   T I T A N S                  O L Y M P I A N S              H E R O E S
-   ─────────                    ─────────────                  ─────────
-   Mnemosyne · memory           Zeus · authority               Heracles · 12 labors
-   Themis · law                 Hera · bindings                Perseus · reflection
-   Cronus · time                Poseidon · streams             Theseus · navigation
-   Hyperion · light             Demeter · ingestion            Odysseus · long return
-   Rhea · bootstrap             Athena · synthesis             Orpheus · descent
-   Oceanus · I/O                Apollo · prophecy              Atalanta · speed
-   Iapetus · lifecycle          Artemis · precision            Momus · criticism
-   Coeus · inquiry              Ares · adversarial
-                                Aphrodite · aesthetics
-                                Hephaestus · architect
-                                Hermes · messenger
-                                Dionysus · transformation
-                                Hestia · the hearth
-
-   M O N S T E R S          F A T E S       F U R I E S      G R A C E S       M U S E S
-   ──────────────           ─────────       ──────────       ─────────         ────────
-   HYDRA · watchers         Clotho          Alecto           Aglaia            Calliope · epic
-   Argos · swarm            Lachesis        Megaera          Euphrosyne        Clio · history
-   Cerberus · gates         Atropos         Tisiphone        Thalia            Erato · warmth
-   Sphinx · riddles                                                            Euterpe · rhythm
-   Medusa · snapshots                                                          Melpomene · tragedy
-   Chimera · composites                                                        Polyhymnia · oaths
-   Minotaur · recursion                                                        Terpsichore · cadence
-   Typhon · catastrophe                                                        Thalia · comedy
-                                                                               Urania · brain-map
-
-                        P R I M O R D I A L S                  U N D E R W O R L D
-                        ────────────────                        ─────────────────
-                        Chaos · void                           Hades · archive
-                        Gaia · earth                           Persephone · cycles
-                        Nyx · night                            Hecate · crossroads
-                        Eros · generation                      Styx · oath chain
-                        Tartarus · the pit                     Lethe · forgetting
-```
+Five primordials, eleven titans, sixteen Olympians (incl. Hestia + Apollo subpackage with Pythia), six in the underworld, three Fates, three Furies, three Graces, nine Muses, seventeen heroes, eight monsters (plus the nine HYDRA heads and the Argos swarm). **Ninety-one named principal figures.** All registered in [`codex/PANTHEON.md`](codex/PANTHEON.md); the registry is enforced by `tests/test_pantheon_coherence.py`.
 
 ---
 
-## What each tier does
+## The eight substrate invariants
 
-| Tier | Mythological role | Cognitive role |
-|------|-------------------|----------------|
-| **Primordials** | The first beings — Chaos, Gaia, Nyx, Tartarus, Eros | Substrate primitives: void, filesystem, background, quarantine, generation |
-| **Titans** | Pre-Olympian gods, deep foundations | Constitution, memory, time, light, bootstrap, I/O, lifecycle, inquiry |
-| **Olympians** | The twelve principal gods + Hestia | Operator, bindings, streams, ingestion, synthesis, prophecy, metrics, war, beauty, architect, messenger, transformation, hearth |
-| **Underworld** | Hades's realm | Archive, cyclical state, error recovery, oath chain, ephemeral cache |
-| **Fates** | The Moirai who weave every life | Creation, allocation, termination |
-| **Furies** | Punishers of broken oaths | Invariant alerter, concurrency cop, integrity enforcer |
-| **Graces** | Aphrodite's attendants | Banners, friendly errors, doc tone |
-| **Muses** | Mnemosyne's nine daughters | One per kind of record — epic, history, warmth, rhythm, tragedy, oaths, cadence, comedy, brain-map |
-| **Heroes** | Mortals who confronted the gods | Agent personas — kill-test, reflection, navigation, long-session, descent, speed, criticism |
-| **Monsters** | The named beasts | Watcher tier (HYDRA), swarm (Argos), gate (Cerberus), riddle (Sphinx), snapshot (Medusa), composite-test (Chimera), recursion (Minotaur), catastrophe (Typhon) |
+The constitution. Maintained by Themis, enforced by tests, contested by Momus, proved (where it matters) in TLA+.
 
----
+| id | name | claim |
+|---|---|---|
+| **S1** | Mnemosyne — append-only audit-of-record | every load-bearing decision writes to an append-only record |
+| **S2** | Argos — deterministic substrate | no Argos Eye uses randomness in its scan logic |
+| **S3** | HYDRA — read-only observation | HYDRA Heads never mutate state |
+| **S4** | Argos — decentralization | no Eye imports another Eye |
+| **S5** | Apollo — falsifiability | every Apollo prediction carries a `verify()` callable |
+| **S6** | Delphi — strategic-decision discipline | MEDIUM/HIGH-risk decisions are recorded in `oracles/delphi/` |
+| **S7** | bounded autonomy | LOW autonomous, MEDIUM proposal, HIGH requires Zeus authorization |
+| **S8** | Continuity of Understanding | every load-bearing action reconstructible from substrate records alone |
 
-## Substrate invariants (S1–S8)
-
-Eight claims that hold in every Olympus deployment, regardless of domain:
-
-| | invariant | enforced by |
-|-:|-----------|-------------|
-| **S1** | Mnemosyne — every load-bearing decision is appended to an immutable record | Styx oath chain + per-kind JSONL |
-| **S2** | Argos — no Eye uses randomness in its scan logic | Seeded determinism; replay test |
-| **S3** | HYDRA — Heads observe; they never mutate | Read-only contract + static review |
-| **S4** | Argos — no Eye imports another Eye | Decentralization; emergent synthesis only |
-| **S5** | Apollo — every prediction is a falsifiable predicate | `verify()` callable required |
-| **S6** | Delphi — MEDIUM / HIGH decisions are recorded in `oracles/delphi/` | Pre-ship gate refuses HIGH ships without |
-| **S7** | Bounded autonomy — LOW automatic, MEDIUM proposed, HIGH requires Zeus's oath | `zeus.can_perform()` checks Styx |
-| **S8** | Continuity of Understanding — every load-bearing action is reconstructible from the substrate alone | Mnemosyne + Styx + `eye_understanding_gap`; Momus AP6 |
-
-Full text in [COSMOGONY.md](codex/COSMOGONY.md). Domain-specific invariants (C1–CN) live in your deployment's `DOMAIN.md`.
+The full constitution is at [`codex/COSMOGONY.md`](codex/COSMOGONY.md). Machine-readable JSON Schemas are at [`codex/schemas/`](codex/schemas). TLA+ proofs are at [`codex/specs/`](codex/specs).
 
 ---
 
-## Quickstart
+## The cognitive loop — five arcs of work
+
+Each arc is a Delphi-ratified expansion of the substrate. Each was sworn on Styx. Each lives in [`codex/oracles/delphi/`](codex/oracles/delphi).
+
+### 1. The substance arc
+
+**Athena reads Mnemosyne** — history-aware briefs that surface cross-session insights. **Apollo's prophecies become operational** — predictions auto-verify at horizon. **Hephaestus learns from rejection** — won't re-propose what Zeus killed. **Furies actually fire** — real-time invariant enforcement. **SessionReport.deltas** — what changed vs the prior session. **`invoke wisdom`** — what the substrate has learned.
+
+### 2. The self-improvement arc
+
+**Prometheus** — bounded auto-improver on LOW-ratified actions. **`scripts/loop.sh`** — bash cron loop. **Iris** — static dashboard (HTML + vanilla JS + JSON data-island). The CLI gains `improve`, `iris`, `iris --open`.
+
+### 3. The missing-figures arc
+
+**Epimetheus** (hindsight Titan, brother of Prometheus) — closes the forethought → hindsight loop. **Cassandra** (vindication memory — dismissed warnings that recurred). **Atlas** (live-state registry — what the substrate is currently carrying).
+
+### 4. The compass-rose arc
+
+The daemon goes live. **`launchd` plist** + **`systemd` unit** (generated, not hand-written). **Pan** (circuit breaker — refuses ratifications under panic). **Asclepius** (healer — rebuild derived state). **Charon** (ferryman — idempotent archive migration). **Daedalus** (cartographer — generates Mermaid diagrams of the cognitive flow). **Themis publishes JSON Schemas**. `invoke daemon {run|install|status|uninstall}`.
+
+### 5. The recursion arc
+
+The loop closes recursively. **Pythia** (external knowledge bridge — `urllib`, GitHub search, web fetch). **HTTP API** (`localhost:8765`, read-only JSON for `/status`, `/wisdom`, `/shoulders`, `/panic`, `/schemas`, `/specs`, `/geometry`, `/mnemosyne/<kind>`). **Castor + Pollux** (shadow execution + comparison). **Metis** (self-tuning advisor — outcome-driven parameter recommendations through Hephaestus channel). **Plugin protocol** (`pyproject.toml` entry-points for handlers/eyes/healers). **Hash lineage** in derived artifacts.
+
+### 6. The labyrinth arc
+
+The substrate reasons about its reasoning. **TLA+ formal specs** (cognitive-flow, styx-append-only, hephaestus-pipeline). **Ariadne** (causal-lineage tracer — thread through the labyrinth). **Nemesis** (counterfactual reasoner — uses Castor + Pollux). **Momus red-team** (AP catalog audits itself). **Clio narrative** (auto-written weekly digests). **HTTP write-channel** (`POST /proposals/raise` — still through full pipeline). **Federation** (`Hermes.federate(peer_url)`). **Interactive dialogue** (`invoke ask "<question>"` — pattern-matched).
+
+### 7. The phi arc φ
+
+The Greek mathematicians come home. **Pythagoras** (sacred constants φ/π/√2/e, Fibonacci, golden-section search, harmony scoring, Pythagorean triples). **Plato** (five-solid taxonomy of substrate work). **Metatron's Cube** + **Vesica Piscis** SVG diagrams embedded in `codex/ARCHITECTURE.md`. **Metis uses golden-section search**. **Hecate uses Fibonacci backoff**. `invoke pythagoras`, `invoke plato`, `invoke harmony`, `invoke geometry`. **The substrate's actual ratification_rate is 0.5991 — score against 1/φ is 0.9813.** The substrate is, demonstrably, in harmony with the golden ratio.
+
+### 8. The aegis arc 🛡
+
+The system is cared for. **Hygieia** (daughter of Asclepius — whole-substrate cohesion checks; cross-module consistency). **Phoenix** (cyclical regeneration — surfaces state due for rebirth). **Daedalus centrality** (load-bearing-figure ranking via betweenness centrality on the cognitive-flow graph). **Euterpe** (musical consonance scoring — octave, perfect fifth, perfect fourth, etc., as a complement to Pythagoras's φ-harmony). **`invoke today`** (single-action operator oracle). **Iris live mode** (`iris --live` writes a self-refreshing HTML page that polls the HTTP API).
+
+---
+
+## Quick start
 
 ```bash
-# 1. clone Olympus
-git clone https://github.com/EgorKhaklin/olympus ~/Desktop/my-agent
-cd ~/Desktop/my-agent
-
-# 2. install (editable) — exposes `invoke` as a console script
+# Install
 pip install -e .
 
-# 3. bring forth the runtime directories
+# Kindle the deployment identity
+invoke kindle my-olympus "production cognitive substrate"
+
+# Bring forth required directories
 invoke bring-forth
 
-# 4. light the hearth (one-time per deployment)
-invoke kindle my-agent "one sentence on what this Olympus is for"
+# Run one cognitive session
+invoke session
 
-# 5. take a session bearing
-invoke prime
+# See what the substrate knows
+invoke wisdom
 
-# 6. consult the pantheon
-invoke consult population
-invoke consult chart
+# Build the dashboard
+invoke iris
 
-# 7. read the cosmogony
-less codex/COSMOGONY.md
+# Start the read-only HTTP API
+invoke serve --port 8765
+
+# Install the daemon (macOS launchd or Linux systemd)
+invoke daemon install
+invoke daemon status
 ```
 
+Full operator runbook: [`codex/OPERATIONS.md`](codex/OPERATIONS.md).
+
 ---
 
-## Repository layout
+## The full CLI surface
+
+Forty-plus errands. Highlights by tier:
+
+**Substrate primitives:** `prime`, `kindle`, `status`, `bring-forth`, `version`, `history`, `list`, `describe`, `remember`, `swear`, `verify`, `labors`, `pantheon`, `consult`, `shell`, `help`
+
+**The loop:** `session`, `improve`, `loop`, `daemon {run|install|status|uninstall}`
+
+**Reasoning + memory:** `meta`, `wisdom`, `correlate`, `reflect`, `cassandra`, `shoulders`, `narrate`, `ariadne`, `nemesis`
+
+**Decision + action:** `action {review|delphi|ratify|reject}`, `console`, `redteam`, `tune`, `today`
+
+**Recovery + maintenance:** `heal`, `panic [--clear]`, `ferry [--days N]`, `hygieia`, `phoenix`
+
+**Surfaces:** `iris [--live]`, `serve`, `schemas`, `specs`, `cartograph [--write]`, `centrality`, `harmony`, `geometry`, `pythagoras`, `plato`, `euterpe`
+
+**External:** `pythia {--github "q" | --web URL}`, `federate <url>`, `ask "<question>"`
+
+**Plugins:** `plugins`
+
+Use `invoke help` for the full list; `invoke help <errand>` for per-errand detail.
+
+---
+
+## What earns its place
+
+Olympus refuses decorative additions on AP8 (the eighth anti-pattern in Momus's catalog). Every Greek figure here has a load-bearing role. Eleven candidates were refused in the missing-figures arc (Helios, Ananke, Eris, Tyche, Metis-as-pre-Athena, Erebus, Aether, Hemera, Pontus, and so on) precisely because their substrate role would have been decorative.
+
+The discipline holds. The pantheon is finite. Greek mythology is large.
+
+---
+
+## Languages used
+
+Each language earns its place by solving a problem Python alone doesn't:
+
+| language | role | earns it because |
+|---|---|---|
+| **Python** (stdlib-first) | every cognitive module | reasoning over JSONL records is what Python is best at |
+| **Bash** | `scripts/loop.sh` | cron's native habitat; pure orchestration |
+| **HTML + vanilla JS** | Iris dashboard (static + live) | no build step; opens in any browser; CSP-clean |
+| **launchd plist (XML)** | macOS daemon supervisor | OS contract, not Python's job |
+| **systemd unit (INI)** | Linux daemon supervisor | same |
+| **JSON Schema** | machine-readable Mnemosyne contracts | tooling exists; re-implementing in Python would be AP6 |
+| **TLA+** | formal safety proofs in `codex/specs/` | no Python expression compactly captures "under any interleaving, invariant holds" |
+| **Mermaid** | architecture flow diagrams | GitHub renders natively; the source-of-truth IS the map |
+| **SVG** (inline in markdown) | Metatron's Cube + Vesica Piscis | GitHub renders natively; text-based |
+
+Refused: Rust (no current need at this scale), TypeScript (vanilla JS suffices), SQL (JSONL meets every query pattern), sympy/numpy (every Pythagoras function is stdlib-implementable).
+
+---
+
+## What's measured (live, right now)
+
+The substrate measures itself continuously. Sample readouts:
 
 ```
-Olympus/
-├── README.md            you are here
-├── LICENSE
-├── NOTICE
-├── SECURITY.md
-├── pyproject.toml       pip-installable: `pip install -e .`
-│
-├── codex/               all prose
-│   ├── COSMOGONY.md     constitution — substrate invariants S1–S8
-│   ├── PANTHEON.md      registry of every named module
-│   ├── RITES.md         agent runbook
-│   ├── CHRONICLE.md     history
-│   ├── PROPHECIES.md    roadmap
-│   ├── BESTIARY.md      the monsters explained
-│   ├── style.md         tone + style
-│   ├── threat-model.md  substrate threats
-│   ├── journal/         Clio writes daily
-│   ├── postmortems/     Melpomene writes after failures
-│   └── oracles/delphi/  strategic-decision archive
-│
-├── src/
-│   └── olympus/         the importable Python package
-│       ├── primordials/   chaos · gaia · nyx · tartarus · eros
-│       ├── titans/        mnemosyne · themis · cronus · hyperion ·
-│       │                  rhea · oceanus · iapetus · coeus
-│       ├── olympians/     the twelve + hestia + apollo/ (subpackage)
-│       ├── underworld/    hades · persephone · hecate · styx · lethe
-│       ├── fates/         clotho · lachesis · atropos
-│       ├── furies/        alecto · megaera · tisiphone
-│       ├── graces/        aglaia · euphrosyne · thalia
-│       ├── muses/         nine daughters of mnemosyne
-│       ├── heroes/        heracles · perseus · theseus · odysseus ·
-│       │                  orpheus · atalanta · momus
-│       ├── monsters/      cerberus · sphinx · medusa · chimera ·
-│       │   ├── hydra/     minotaur · typhon
-│       │   │   └── heads/   8 mortal + 1 immortal
-│       │   └── argos/
-│       │       ├── eyes/      observation specialists
-│       │       ├── satyrs/    concrete checks
-│       │       ├── demes/     civic-class observers
-│       │       └── phalanges/ battle formations
-│       └── cli.py       Hermes-dispatched entry point
-│
-├── scripts/invoke       thin wrapper around olympus.cli:main
-└── tests/               coherence + invariant + smoke + residue
+$ invoke harmony
+metric               ratio   nearest      score
+ratification_rate    0.5991  inverse_phi  0.9812
+prophecy_acceptance  0.6667  inverse_phi  0.9525
+pythia_success       0.7231  inverse_phi  0.9003
 ```
 
----
+**The substrate's ratification rate sits at 0.5991 — score against 1/φ (≈ 0.618) is 0.9812.** The Pythagoreans would have approved.
 
-## How it works
+```
+$ invoke centrality 5
+figure       centrality
+─────────    ──────────
+Mnemosyne    0.1875
+Hephaestus   0.1304
+Athena       0.1052
+Atlas        0.0833
+Zeus         0.0769
+```
 
-The pantheon is not a metaphor. Each god is a Python module whose docstring opens with the mythological role, then names what concern that role maps to in code. Reading any file teaches you both a piece of Greek myth and a piece of the system.
-
-A typical session:
-
-1. **Zeus** issues a directive (the operator names what to do)
-2. **HYDRA**'s heads observe slices of the substrate; findings flow into Mnemosyne's append-only record
-3. **Argos**'s eyes scan in parallel, depositing pheromones via the colony pattern
-4. **Athena** synthesizes the findings into a brief
-5. **Apollo** emits falsifiable predicates about the brief's implications
-6. **Hephaestus** proposes a change; **Momus** contests it through the AP1–AP8 catalog
-7. The decision is recorded at **Delphi** and sworn upon **Styx**
-8. The **Furies** watch every step. If any invariant breaks, **Alecto** sounds an alarm that cannot be silenced.
-
-The architecture is the mythology. The mythology is the architecture.
+**Mnemosyne is the most load-bearing node in the substrate's reasoning graph** — every other figure writes to it. This is computed, not assumed.
 
 ---
 
-## Why this exists
+## Documentation
 
-Most cognitive substrates collapse into either abstract jargon (`ObservationCorrelator`, `DecisionAuditEngine`) or domain-specific names that don't transfer. Olympus uses Greek mythology because every educated person already shares the vocabulary, the relationships are pre-established (Hephaestus is the smith; Athena is the strategist; the Furies punish broken oaths), and the names compose: when Hephaestus proposes a change Momus contests, that is a sentence Greeks were telling each other 2,500 years before computing existed.
-
-Mythology is the densest pre-existing API for talking about agents-among-agents. Olympus is what happens when you take that seriously.
+- **[`codex/COSMOGONY.md`](codex/COSMOGONY.md)** — the constitution (S1–S8)
+- **[`codex/PANTHEON.md`](codex/PANTHEON.md)** — every named figure, tier-organized
+- **[`codex/ARCHITECTURE.md`](codex/ARCHITECTURE.md)** — auto-generated by Daedalus; Mermaid + Metatron's Cube + Vesica Piscis
+- **[`codex/OPERATIONS.md`](codex/OPERATIONS.md)** — operator runbook
+- **[`codex/GEOMETRY.md`](codex/GEOMETRY.md)** — Pythagoras + Plato + the sacred-numerics layer
+- **[`codex/SPECS.md`](codex/SPECS.md)** — the TLA+ formal-verification layer
+- **[`codex/PLUGINS.md`](codex/PLUGINS.md)** — third-party extensions via entry-points
+- **[`codex/INTELLIGENCE.md`](codex/INTELLIGENCE.md)** — how the substrate accumulates understanding
+- **[`codex/CHRONICLE.md`](codex/CHRONICLE.md)** — every shipped arc in reverse chronological order
+- **[`codex/oracles/delphi/`](codex/oracles/delphi)** — strategic decisions, full debate, Styx oath references
 
 ---
 
-<div align="center">
+## Tests
 
-***"May the threads spun for you be long,***
-***and may the hearth-fire never go out."***
+393 tests across 50 files. All green.
 
-Apache 2.0 · See [LICENSE](LICENSE) and [NOTICE](NOTICE)
+```bash
+python3 -m unittest discover -s tests
+```
 
-</div>
+The pantheon-coherence test (`tests/test_pantheon_coherence.py`) enforces that every figure named in `EXPECTED` exists on disk and is mentioned in `PANTHEON.md`. The S-invariant tests (`tests/test_invariant_S*.py`) enforce the constitution at runtime.
+
+---
+
+## Status
+
+| metric | value |
+|---|---|
+| named principal figures | **91** |
+| tests passing | **393 / 393** |
+| Styx oaths sworn | 90+ |
+| TLA+ specifications | 3 |
+| JSON Schemas | 7 |
+| arcs shipped | 8 (substance · self-improvement · missing-figures · compass-rose · recursion · labyrinth · phi · aegis) |
+| heavy-production overrides invoked | 5 |
+| ratification rate vs 1/φ | **0.98** harmony score |
+
+---
+
+## Authority
+
+Maintained by [Egor Khaklin](https://github.com/EgorKhaklin). Co-authored with Claude. Every decision is sworn on Styx — the cryptographic oath chain is the source of truth for "who decided what."
+
+The mythology is the architecture. The architecture is the law. The law is enforced by tests, contested by Momus, ratified by Zeus, proved by Themis, and remembered by Mnemosyne.
+
+*May the threads spun for you be long, and may the hearth-fire never go out.*

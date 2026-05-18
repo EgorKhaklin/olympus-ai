@@ -75,6 +75,7 @@ If you add a new module, register it here. If a module exists on disk but is mis
 | **Hestia** | `src/olympus/olympians/hestia.py` | the hearth, sacred boundary | deployment identity-seal |
 | **Pan** | `src/olympus/olympians/pan.py` | god of the wild and panic (the etymology) | circuit breaker — refuses ratifications when Furies fire above threshold |
 | **Asclepius** | `src/olympus/olympians/asclepius.py` | god of medicine, healer of mortals | healer — rebuild derived state from canonical sources (Iris, Pan, Atlas, dirs) |
+| **Hygieia** | `src/olympus/olympians/hygieia.py` | daughter of Asclepius, goddess of health | whole-substrate cohesion checks (Pan↔invariants, Atlas↔sessions, Daedalus↔modules, Themis↔records, Plato↔figures, Charon backlog) |
 
 ---
 
@@ -157,6 +158,7 @@ If you add a new module, register it here. If a module exists on disk but is mis
 | **Nemesis** | `src/olympus/heroes/nemesis.py` | goddess of retribution and divine balance | counterfactual reasoner — measures gap between what was done and what could have been |
 | **Pythagoras** | `src/olympus/heroes/pythagoras.py` | mathematician of Samos, father of sacred numerics | constants (φ, π, √2, e), Fibonacci, golden-section search, harmony scoring, Pythagorean triples |
 | **Plato** | `src/olympus/heroes/plato.py` | philosopher of the five regular solids | five-solid taxonomy of substrate work (tetrahedron/cube/octahedron/dodecahedron/icosahedron → fire/earth/air/cosmos/water → observation/state/reasoning/authority/execution) |
+| **Phoenix** | `src/olympus/heroes/phoenix.py` | firebird of cyclical death and rebirth | regeneration primitive — surfaces state due for rebirth (retired prophecies, hung burdens, stale graduations) |
 
 ---
 
@@ -248,16 +250,16 @@ When a mortal head is cut (rewritten), its replacement may take a different form
 |------|------:|
 | Primordials | 5 |
 | Titans | 11 |
-| Olympians (incl. Hestia + Apollo subpackage with Pythia) | 15 |
+| Olympians (incl. Hestia + Apollo subpackage with Pythia) | 16 |
 | Underworld | 6 |
 | Fates | 3 |
 | Furies | 3 |
 | Graces | 3 |
 | Muses | 9 |
-| Heroes | 16 |
+| Heroes | 17 |
 | Monsters (top-level) | 8 |
 | HYDRA heads | 9 (8 mortal + 1 immortal) |
-| **Total named principal figures** | **89** |
+| **Total named principal figures** | **91** |
 
 Plus the presentation-layer module **Iris** (`src/olympus/iris/`) — the rainbow-messenger between Olympus and mortals; static dashboard. Iris is an Olympian by myth but lives outside the `olympians/` directory because she is structurally a renderer, not a god participating in the cognitive loop.
 

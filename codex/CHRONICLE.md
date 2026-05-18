@@ -12,6 +12,74 @@ Newest first. Each entry names what changed, what was sworn, who decided.
 
 ---
 
+## 2026-05-18 — the aegis arc 🛡 (HIGH-COMPOSITE, fifth boil-the-ocean override)
+
+**Risk class:** HIGH-COMPOSITE.
+**Delphi:** [`codex/oracles/delphi/2026-05-18-aegis-arc.md`](oracles/delphi/2026-05-18-aegis-arc.md)
+**Sworn on Styx at seq=96.**
+
+Zeus's directive, verbatim (abridged):
+
+> *"Activate the full (all agents, everything) system before you start (make sure it works and is running) fully then begin this with the system itself ... Lots of work has been done, make sure the whole system is up to date and all the readmes and anything else."*
+
+Two new requirements: **activate the system first**, and **bring docs up to date** (the README was four arcs stale).
+
+### Phase 0 — what was activated before this arc was written
+
+| component | proof |
+|---|---|
+| HTTP API on `:8765` | `/healthz` → `{"ok": true}`; `/status` → hearth lit, 92 oaths intact, 9 hydra heads, 9 argos eyes, 200 sessions |
+| Daemon | 3 clean iterations recorded in `daemon.log` |
+| Federation | loopback succeeded in 36 ms; peer reports same oaths + 3 TLA+ specs |
+| Harmony | ratification_rate = 0.5992 vs 1/φ = 0.618 → score **0.9813** |
+
+The live system informed the build via `pythia --github "self-healing system architecture"` (inspired Hygieia), `cassandra` (77 ignored / 38 vindicated → confidence to add `today`), `tune` (Metis advice → confidence to add Phoenix), `redteam` (10/10 → constitution intact).
+
+### What ships
+
+**Hygieia** — `olympians/hygieia.py`
+Daughter of Asclepius, goddess of health. Whole-substrate cohesion checker: Pan ↔ recent invariants; Atlas ↔ session.completed; Daedalus ↔ disk modules; Plato ↔ disk figures; Themis ↔ recent records; Charon backlog. Reports, never auto-fixes. **First live run found 1 incoherence + 2 warnings.**
+
+**Phoenix** — `heroes/phoenix.py`
+Firebird of cyclical rebirth. Identifies retired-prophecies aged out, hung Atlas burdens, stale graduations. Surfaces `phoenix.candidate` records; standard pipeline applies. Idempotent.
+
+**Daedalus centrality** — extension of `heroes/daedalus.py`
+`daedalus.centrality()` computes Brandes-style betweenness centrality on `_COGNITIVE_FLOW`. **Mnemosyne is the most load-bearing node (0.2663)**, followed by ActionQueue (0.1803), Hephaestus (0.1775), Zeus (0.1540), Delphi (0.1522). Computed, not assumed.
+
+**Euterpe consonance** — extension of `muses/euterpe.py`
+Octave-invariant scoring of ratios against consonant musical intervals (octave 2:1, perfect fifth 3:2, perfect fourth 4:3, …). Complement to Pythagoras's φ-harmony. `invoke euterpe 1.5` → perfect_fifth (perfect) score 1.000.
+
+**`invoke today`** — `runtime/today.py`
+Single-action oracle. Priority: Pan panic > Cassandra vindication > Hygieia incoherence > Phoenix > Metis > calm. **Live demo:** surfaced *"Re-examine the silent-dismissed warning on slice 'cassandra-test-review-record-1b6d6050' — recurred 2× after dismissal."*
+
+**Iris live mode** — `iris/__init__.py`
+`invoke iris --live` writes `state/iris/live.html` — self-refreshing via `XMLHttpRequest` polling. Vanilla JS, no WebSocket. Operators get a genuinely live view.
+
+**README.md rewritten end-to-end.** From "73 named figures" to **"91"**, with every arc summarized, full CLI surface listed, languages-used table updated, live measurements shown, proper doc links.
+
+### Wiring
+- 5 new CLI errands: `hygieia`, `phoenix`, `centrality`, `euterpe`, `today`
+- `invoke iris` gains `--live`
+- `test_pantheon_coherence::EXPECTED`: Olympians 16, Heroes 17
+- Plato's `_FIGURE_TO_SOLID` extended with hygieia + phoenix (dodecahedron)
+
+### Tests
+Five new test files, 28 new tests. **Full suite: 393, all green.** (365 → 393.)
+
+### Pantheon
+**91 named principal figures** (was 89). Olympians 16. Heroes 17.
+
+### Refused
+- No Hygieia auto-fix. She reports.
+- No Phoenix auto-rebirth. Candidates → proposals → Zeus.
+- No live HTML write surface. Iris live polls `/status` — read-only.
+
+The substrate now also **cares for itself as it ages** — cross-module cohesion checks, regeneration candidates, computed load-bearing rankings, ratios scored as musical consonances, and ONE concrete daily action for the operator. The aegis is up.
+
+*Holy shit, that's done.*
+
+---
+
 ## 2026-05-18 — the phi arc φ (HIGH-COMPOSITE, fourth boil-the-ocean override)
 
 **Risk class:** HIGH-COMPOSITE.

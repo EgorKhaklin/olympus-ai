@@ -559,8 +559,29 @@ def _improve(argv: list[str]) -> int:
     return 0 if report.handlers_succeeded == report.handlers_invoked else 1
 
 
-@hermes.register("iris", "build the static dashboard — iris [--open]")
+@hermes.register("iris", "build the dashboard — iris [--open] [--live [--api URL] [--interval N]]")
 def _iris(argv: list[str]) -> int:
+    if "--live" in argv:
+        from olympus.iris import build_live
+        api = "http://127.0.0.1:8765"
+        interval = 5.0
+        i = 0
+        while i < len(argv):
+            if argv[i] == "--api" and i + 1 < len(argv):
+                api = argv[i + 1]; i += 2; continue
+            if argv[i] == "--interval" and i + 1 < len(argv):
+                interval = float(argv[i + 1]); i += 2; continue
+            i += 1
+        open_it = "--open" in argv
+        out = build_live(open_in_browser=open_it, api_base=api,
+                          interval_seconds=interval)
+        print(aphrodite.laurel(f"iris live built — {out}"))
+        print(aglaia.murmur(f"  polls {api} every {interval:.1f}s"))
+        print(aglaia.murmur(f"  ensure `invoke serve --port "
+                            f"{api.rsplit(':', 1)[-1]}` is running"))
+        if not open_it:
+            print(aglaia.murmur(f"  open with: open {out}"))
+        return 0
     from olympus.iris import build
     open_it = "--open" in argv
     out = build(open_in_browser=open_it)
@@ -1450,6 +1471,133 @@ def _geometry(_argv: list[str]) -> int:
             print(f"  {name:25s} ratio={info['ratio']:.4f} "
                   f"→ {info['nearest_anchor']:13s} "
                   f"score={info['score']:.4f}")
+    return 0
+
+
+@hermes.register("hygieia", "Hygieia — whole-substrate wellness checks")
+def _hygieia(_argv: list[str]) -> int:
+    from olympus.olympians.hygieia import hygieia
+    report = hygieia.check()
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(report), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        "Hygieia — substrate wellness",
+        f"{report.well_count} well · {report.warning_count} warning · "
+        f"{report.incoherent_count} incoherent"))
+    rows = [
+        (f.check,
+         {"well": "✓", "warning": "!", "incoherent": "✗"}.get(
+             f.status, "?"),
+         f.detail[:90])
+        for f in report.findings
+    ]
+    print(aphrodite.table(("check", "?", "detail"), rows))
+    return 0 if report.incoherent_count == 0 else 1
+
+
+@hermes.register("phoenix", "Phoenix — find state due for rebirth")
+def _phoenix(argv: list[str]) -> int:
+    from olympus.heroes.phoenix import phoenix
+    staleness = 30.0
+    hung_hours = 48.0
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--prophecy-staleness" and i + 1 < len(argv):
+            staleness = float(argv[i + 1]); i += 2; continue
+        if argv[i] == "--hung-hours" and i + 1 < len(argv):
+            hung_hours = float(argv[i + 1]); i += 2; continue
+        i += 1
+    report = phoenix.consider(prophecy_staleness_days=staleness,
+                                hung_burden_hours=hung_hours)
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(report), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        "Phoenix — rebirth scan",
+        f"{report.total} new candidate(s) · "
+        f"{report.already_known} already known"))
+    if not report.candidates:
+        print(aglaia.murmur("  no new rebirth candidates"))
+        return 0
+    rows = [
+        (c.kind, c.subject[:30], f"{c.confidence:.2f}",
+         c.reason[:60])
+        for c in report.candidates
+    ]
+    print(aphrodite.table(("kind", "subject", "conf", "reason"), rows))
+    return 0
+
+
+@hermes.register("centrality", "Daedalus — load-bearing figures by graph centrality")
+def _centrality(argv: list[str]) -> int:
+    from olympus.heroes.daedalus import daedalus
+    top = int(argv[0]) if argv else 12
+    rankings = daedalus.load_bearing_figures(top=top)
+    if _GLOBAL_FLAGS["json"]:
+        print(_json.dumps([{"figure": k, "centrality": v}
+                            for k, v in rankings], indent=2))
+        return 0
+    print(aphrodite.banner(
+        "Daedalus — load-bearing figures",
+        f"top {top} by betweenness centrality"))
+    rows = [(figure, f"{score:.4f}") for figure, score in rankings]
+    print(aphrodite.table(("figure", "centrality"), rows))
+    return 0
+
+
+@hermes.register("euterpe", "Euterpe — musical consonance scoring — euterpe <ratio>")
+def _euterpe(argv: list[str]) -> int:
+    from olympus.muses.euterpe import euterpe
+    if not argv:
+        # Show the interval table
+        if _GLOBAL_FLAGS["json"]:
+            print(_json.dumps(dict(euterpe.intervals())))
+            return 0
+        print(aphrodite.banner(
+            "Euterpe — consonant intervals",
+            "octave-invariant; perceptual ordering"))
+        rows = [(name, f"{ratio:.6f}") for name, ratio in euterpe.intervals()]
+        print(aphrodite.table(("interval", "ratio"), rows))
+        return 0
+    ratio = float(argv[0])
+    c = euterpe.consonance(ratio)
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(c), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        f"consonance({ratio})",
+        f"{c.nearest_interval} ({c.consonance_class})"))
+    print(f"  nearest interval: {c.nearest_interval} (= {c.nearest_ratio:.6f})")
+    print(f"  distance:         {c.distance:.6f}")
+    print(f"  score:            {c.score:.6f}")
+    print(f"  class:            {c.consonance_class}")
+    return 0
+
+
+@hermes.register("today", "the single-action oracle — one concrete thing to do")
+def _today(_argv: list[str]) -> int:
+    from olympus.runtime.today import today, record
+    action = today()
+    record(action)
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(action), default=str, indent=2))
+        return 0
+    color = {
+        "urgent":     aphrodite.wine_dark,
+        "noteworthy": aphrodite.lightning,
+        "gentle":     aphrodite.laurel,
+        "calm":       aphrodite.laurel,
+    }.get(action.priority, aphrodite.laurel)
+    print(color(f"  [{action.priority}] {action.headline}"))
+    if action.detail:
+        print(aglaia.murmur(f"  {action.detail}"))
+    if action.drawn_from:
+        print(aglaia.murmur(f"  sources: {', '.join(action.drawn_from)}"))
     return 0
 
 

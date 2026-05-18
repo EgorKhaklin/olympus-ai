@@ -472,6 +472,91 @@ ratifiable drift signal.
 greatest work; the cognitive architecture map is its substrate twin.*
 """
 
+    # ─────────────────────────────────────────────────────────
+    # Graph analysis (aegis arc) — Daedalus's labyrinth becomes
+    # queryable as a graph, not just renderable as a picture.
+    # ─────────────────────────────────────────────────────────
+
+    def graph(self) -> tuple[set[str], dict[str, list[str]],
+                              dict[str, list[str]]]:
+        """Return (nodes, out_edges, in_edges) over _COGNITIVE_FLOW."""
+        nodes: set[str] = set()
+        out_edges: dict[str, list[str]] = {}
+        in_edges: dict[str, list[str]] = {}
+        for src, dst, _label in self._COGNITIVE_FLOW:
+            nodes.add(src); nodes.add(dst)
+            out_edges.setdefault(src, []).append(dst)
+            in_edges.setdefault(dst, []).append(src)
+        return nodes, out_edges, in_edges
+
+    def degree(self) -> dict[str, dict[str, int]]:
+        """Per-node {in, out, total} degree."""
+        nodes, out_e, in_e = self.graph()
+        return {
+            n: {
+                "in": len(in_e.get(n, [])),
+                "out": len(out_e.get(n, [])),
+                "total": len(in_e.get(n, [])) + len(out_e.get(n, [])),
+            }
+            for n in sorted(nodes)
+        }
+
+    def centrality(self) -> dict[str, float]:
+        """Betweenness centrality: for each node n, the fraction of
+        shortest paths between every pair (s, t) that pass through n.
+
+        Implemented via Brandes-style accumulation, but with the small
+        graph (~25 nodes) we just use single-source BFS from each
+        source and count. Pure Python, no numpy.
+        """
+        nodes, out_e, _in_e = self.graph()
+        nodes_list = sorted(nodes)
+        # Initialize accumulator
+        accum: dict[str, float] = {n: 0.0 for n in nodes_list}
+
+        for s in nodes_list:
+            # Single-source BFS — find shortest-path counts and
+            # predecessors
+            predecessors: dict[str, list[str]] = {n: [] for n in nodes_list}
+            sigma: dict[str, float] = {n: 0.0 for n in nodes_list}
+            sigma[s] = 1.0
+            distance: dict[str, int] = {n: -1 for n in nodes_list}
+            distance[s] = 0
+            queue: list[str] = [s]
+            stack: list[str] = []
+            while queue:
+                v = queue.pop(0)
+                stack.append(v)
+                for w in out_e.get(v, []):
+                    if distance[w] < 0:
+                        distance[w] = distance[v] + 1
+                        queue.append(w)
+                    if distance[w] == distance[v] + 1:
+                        sigma[w] += sigma[v]
+                        predecessors[w].append(v)
+            # Back-accumulate
+            delta: dict[str, float] = {n: 0.0 for n in nodes_list}
+            while stack:
+                w = stack.pop()
+                for v in predecessors[w]:
+                    if sigma[w] > 0:
+                        delta[v] += (sigma[v] / sigma[w]) * (1.0 + delta[w])
+                if w != s:
+                    accum[w] += delta[w]
+
+        # Normalize: divide by (n-1)(n-2) for directed graphs
+        n = len(nodes_list)
+        if n >= 3:
+            norm = (n - 1) * (n - 2)
+            for k in accum:
+                accum[k] /= norm
+        return accum
+
+    def load_bearing_figures(self, top: int = 10) -> list[tuple[str, float]]:
+        """Top N figures by betweenness centrality."""
+        c = self.centrality()
+        return sorted(c.items(), key=lambda kv: kv[1], reverse=True)[:top]
+
     def cartograph(self, *, write: bool = False) -> CartographyResult:
         """Render the architecture document. If write=True, persists
         to codex/ARCHITECTURE.md."""

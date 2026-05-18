@@ -124,6 +124,8 @@ _FIGURE_TO_SOLID: dict[str, str] = {
     "rhea":       "dodecahedron",   # bootstrap — bringing-forth authority
     "pythagoras": "dodecahedron",   # numerical authority
     "plato":      "dodecahedron",   # this very taxonomy
+    "hygieia":    "dodecahedron",   # wellness authority (cohesion)
+    "phoenix":    "dodecahedron",   # cyclical-renewal authority
 
     # ─── Icosahedron — execution + presentation ───────────
     "prometheus": "icosahedron",    # bounded auto-improver

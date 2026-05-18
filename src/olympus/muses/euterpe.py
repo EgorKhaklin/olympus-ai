@@ -58,5 +58,92 @@ class Euterpe:
     def all_rhythms(self) -> list[Rhythm]:
         return list(self._rhythms.values())
 
+    # ─────────────────────────────────────────────────────────
+    # Musical consonance (aegis arc) — Pythagoras discovered that
+    # consonant intervals correspond to simple integer ratios.
+    # Where Pythagoras's harmony() scores against φ, 1/φ, 1, 2,
+    # Euterpe scores against the musical intervals.
+    # ─────────────────────────────────────────────────────────
+
+    @staticmethod
+    def intervals() -> list[tuple[str, float]]:
+        """The canonical consonant intervals (name, ratio)."""
+        return [
+            ("unison",         1.0),
+            ("octave",         2.0),
+            ("perfect_fifth",  3.0 / 2.0),
+            ("perfect_fourth", 4.0 / 3.0),
+            ("major_third",    5.0 / 4.0),
+            ("minor_third",    6.0 / 5.0),
+            ("major_sixth",    5.0 / 3.0),
+            ("minor_sixth",    8.0 / 5.0),
+            ("major_second",   9.0 / 8.0),
+        ]
+
+    def consonance(self, ratio: float) -> "Consonance":
+        """Score a ratio against the consonant musical intervals.
+        Octave-invariant — folds the ratio into [1, 2) before
+        comparing, since musical consonance is perceptually
+        octave-equivalent."""
+        import math as _math
+        if not isinstance(ratio, (int, float)) or \
+           _math.isnan(ratio) or _math.isinf(ratio):
+            return Consonance(ratio=float("nan"),
+                              nearest_interval="undefined",
+                              nearest_ratio=float("nan"),
+                              distance=float("inf"),
+                              score=0.0,
+                              consonance_class="dissonant")
+        r = abs(float(ratio))
+        if r <= 0:
+            return Consonance(ratio=ratio,
+                              nearest_interval="undefined",
+                              nearest_ratio=float("nan"),
+                              distance=float("inf"),
+                              score=0.0,
+                              consonance_class="dissonant")
+        # Fold into [1, 2) — octave-equivalence
+        while r >= 2.0:
+            r /= 2.0
+        while r < 1.0:
+            r *= 2.0
+        best_name = ""
+        best_value = 0.0
+        best_distance = float("inf")
+        for name, value in self.intervals():
+            normed = value
+            while normed >= 2.0:
+                normed /= 2.0
+            while normed < 1.0:
+                normed *= 2.0
+            d = abs(r - normed)
+            if d < best_distance:
+                best_name = name
+                best_value = normed
+                best_distance = d
+        score = _math.exp(-12.0 * best_distance)
+        cls = ("perfect" if score > 0.9 else
+               "consonant" if score > 0.5 else
+               "dissonant")
+        return Consonance(
+            ratio=float(ratio),
+            nearest_interval=best_name,
+            nearest_ratio=best_value,
+            distance=best_distance,
+            score=score,
+            consonance_class=cls,
+        )
+
+
+@dataclass
+class Consonance:
+    """One musical-interval evaluation."""
+    ratio: float
+    nearest_interval: str
+    nearest_ratio: float
+    distance: float
+    score: float                  # 0..1; 1.0 = on the interval exactly
+    consonance_class: str         # 'perfect' | 'consonant' | 'dissonant'
+
 
 euterpe = Euterpe()
