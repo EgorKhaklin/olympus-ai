@@ -1,211 +1,22 @@
 #!/usr/bin/env python3
-"""invoke — the single entry point to Olympus.
+"""invoke — thin wrapper around olympus.cli:main.
 
-Hermes dispatches every named errand. To run a god, ask Hermes:
-
-    ./scripts/invoke prime                  # session prime via Odysseus
-    ./scripts/invoke consult chart          # ask Urania for the brain-map
-    ./scripts/invoke consult population     # ask Coeus for tier counts
-    ./scripts/invoke consult hymn           # ask Polyhymnia for the Styx hymn
-    ./scripts/invoke bring-forth            # Rhea ensures directories
-    ./scripts/invoke kindle <name> <vocation>  # Hestia lights the hearth
-    ./scripts/invoke remember <kind> <actor> <summary>   # Mnemosyne
-    ./scripts/invoke swear <by> <statement>              # Styx
-    ./scripts/invoke verify                 # Tisiphone audits Styx
-    ./scripts/invoke labors                 # Heracles runs the canonical 12
-    ./scripts/invoke pantheon               # full pantheon listing
+This file lets you call `./scripts/invoke <errand>` without installing the
+package. For a pip-installed Olympus, the `invoke` console script defined
+in pyproject.toml does the same thing.
 """
 from __future__ import annotations
 
-import json
 import pathlib
 import sys
 
-
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parent
-sys.path.insert(0, str(ROOT))
+SRC = ROOT / "src"
+if str(SRC) not in sys.path:
+    sys.path.insert(0, str(SRC))
 
-
-from olympians.hermes import hermes  # noqa: E402
-from olympians.aphrodite import aphrodite  # noqa: E402
-from graces.aglaia import aglaia  # noqa: E402
-
-
-# ─────────────────────────────────────────────────────────────────────
-# Errands — every public capability is registered here
-# ─────────────────────────────────────────────────────────────────────
-
-
-@hermes.register("prime", "session prime — Odysseus takes bearing")
-def _prime(_argv: list[str]) -> int:
-    from titans.rhea import rhea
-    from olympians.hestia import hestia
-    from heroes.odysseus import odysseus
-    rhea.bring_forth()
-    print(aglaia.section("Olympus — session prime"))
-    if not hestia.is_lit():
-        print(aphrodite.wine_dark("hearth is unlit — run `invoke kindle <name> <vocation>` first"))
-        return 1
-    h = hestia.hearth()
-    print(aphrodite.laurel(f"hearth lit as '{h.name}' (kindled {h.kindled_at})"))
-    print(aglaia.murmur(f"  vocation: {h.vocation}"))
-    bearing = odysseus.take_bearing()
-    if bearing.last_summary:
-        print(aphrodite.lightning(
-            f"last memory: {bearing.last_kind} — {bearing.last_summary}"
-        ))
-    else:
-        print(aglaia.murmur("  no prior memories"))
-    print(aglaia.murmur(f"  total memories: {bearing.total_memories}"))
-    return 0
-
-
-@hermes.register("bring-forth", "Rhea ensures all required directories exist")
-def _bring_forth(_argv: list[str]) -> int:
-    from titans.rhea import rhea
-    statuses = rhea.bring_forth()
-    rows = [(rel, status) for rel, status in statuses.items()]
-    print(aphrodite.table(("directory", "status"), rows))
-    return 0
-
-
-@hermes.register("kindle", "Hestia lights the hearth — kindle <name> <vocation>")
-def _kindle(argv: list[str]) -> int:
-    from olympians.hestia import hestia
-    if len(argv) < 2:
-        print("usage: invoke kindle <name> <vocation>")
-        return 2
-    name, vocation = argv[0], " ".join(argv[1:])
-    try:
-        h = hestia.kindle(name=name, vocation=vocation)
-    except RuntimeError as exc:
-        print(aphrodite.wine_dark(str(exc)))
-        return 1
-    print(aphrodite.laurel(f"kindled '{h.name}' at {h.kindled_at}"))
-    print(aglaia.murmur(f"  seal: {h.seal}"))
-    return 0
-
-
-@hermes.register("remember", "Mnemosyne — remember <kind> <actor> <summary>")
-def _remember(argv: list[str]) -> int:
-    from titans.mnemosyne import mnemosyne
-    if len(argv) < 3:
-        print("usage: invoke remember <kind> <actor> <summary>")
-        return 2
-    kind, actor = argv[0], argv[1]
-    summary = " ".join(argv[2:])
-    m = mnemosyne.remember(kind=kind, actor=actor, summary=summary)
-    print(aphrodite.laurel(f"remembered: {m.kind} / {m.actor} / {m.summary}"))
-    return 0
-
-
-@hermes.register("swear", "Styx — swear <by> <statement>")
-def _swear(argv: list[str]) -> int:
-    from underworld.styx import swear
-    if len(argv) < 2:
-        print("usage: invoke swear <by> <statement>")
-        return 2
-    by = argv[0]
-    statement = " ".join(argv[1:])
-    o = swear(sworn_by=by, statement=statement)
-    print(aphrodite.laurel(f"sworn — seq={o.seq} hash={o.self_hash[:12]}"))
-    return 0
-
-
-@hermes.register("verify", "Tisiphone — verify Styx chain integrity")
-def _verify(_argv: list[str]) -> int:
-    from furies.tisiphone import tisiphone
-    v = tisiphone.verify_styx()
-    if v.intact:
-        print(aphrodite.laurel(v.detail))
-        return 0
-    print(aphrodite.wine_dark(v.detail))
-    return 1
-
-
-@hermes.register("labors", "Heracles performs the assigned labors")
-def _labors(_argv: list[str]) -> int:
-    from heroes.heracles import heracles, CANONICAL_LABORS
-    for labor in CANONICAL_LABORS:
-        heracles.assign(labor)
-    verdicts = heracles.perform()
-    rows = [(str(v.labor.number), v.labor.name, v.labor.target,
-             "✓" if v.survived else "✗", v.detail) for v in verdicts]
-    print(aphrodite.table(("#", "labor", "target", "result", "detail"), rows))
-    failed = sum(1 for v in verdicts if not v.survived)
-    if failed:
-        print(aphrodite.wine_dark(f"{failed} labor(s) failed"))
-        return 1
-    print(aphrodite.laurel("all twelve labors survived"))
-    return 0
-
-
-@hermes.register("consult", "consult an oracle — consult <chart|population|hymn|brief>")
-def _consult(argv: list[str]) -> int:
-    if not argv:
-        print("usage: invoke consult <chart|population|hymn|brief>")
-        return 2
-    what = argv[0]
-    if what == "chart":
-        from muses.urania import urania
-        print(urania.as_text())
-        return 0
-    if what == "population":
-        from titans.coeus import coeus
-        result = coeus.ask("pantheon-population")
-        rows = [(k, str(v)) for k, v in result.items()]
-        print(aphrodite.table(("tier", "modules"), rows))
-        return 0
-    if what == "hymn":
-        from muses.polyhymnia import polyhymnia
-        h = polyhymnia.hymn()
-        print(aphrodite.banner("Polyhymnia's hymn"))
-        print(f"  {h.summary}")
-        if h.last_oath_ts:
-            print(aglaia.murmur(f"  last oath: {h.last_oath_ts}"))
-        return 0
-    if what == "brief":
-        from olympians.athena import athena
-        b = athena.latest()
-        if b is None:
-            print(aglaia.murmur("  no briefs composed yet"))
-            return 0
-        print(aphrodite.banner(f"Athena's brief — {b.label}",
-                               f"confidence: {b.confidence:.2f}"))
-        print("\nFindings:")
-        for f in b.findings:
-            print(f"  · {f}")
-        print("\nRecommendations:")
-        for r in b.recommendations:
-            print(f"  · {r}")
-        return 0
-    print(aphrodite.wine_dark(f"unknown oracle: {what!r}"))
-    return 2
-
-
-@hermes.register("pantheon", "show the complete pantheon")
-def _pantheon(_argv: list[str]) -> int:
-    pantheon_md = ROOT / "codex" / "PANTHEON.md"
-    if not pantheon_md.exists():
-        print(aphrodite.wine_dark("codex/PANTHEON.md missing"))
-        return 1
-    sys.stdout.write(pantheon_md.read_text(encoding="utf-8"))
-    return 0
-
-
-@hermes.register("blessing", "Thalia bestows a closing blessing")
-def _blessing(_argv: list[str]) -> int:
-    from muses.thalia_muse import thalia_muse
-    from muses.erato import erato
-    import os
-    print(erato.farewell())
-    print(aphrodite.laurel(thalia_muse.blessing()))
-    return 0
-
-
-# ─────────────────────────────────────────────────────────────────────
-
+from olympus.cli import main  # noqa: E402
 
 if __name__ == "__main__":
-    sys.exit(hermes.dispatch(sys.argv[1:]))
+    sys.exit(main())

@@ -152,22 +152,26 @@ Full text in [COSMOGONY.md](codex/COSMOGONY.md). Domain-specific invariants (C1�
 
 ```bash
 # 1. clone Olympus
-cp -r ~/Desktop/Olympus ~/Desktop/my-agent
+git clone https://github.com/EgorKhaklin/olympus ~/Desktop/my-agent
 cd ~/Desktop/my-agent
 
-# 2. light the hearth (one-time)
-python3 -c "from olympians.hestia import hestia; hestia.kindle(
-    name='my-agent',
-    vocation='one sentence on what this Olympus is for',
-)"
+# 2. install (editable) — exposes `invoke` as a console script
+pip install -e .
 
-# 3. bring forth the directories
-python3 -c "from titans.rhea import rhea; rhea.bring_forth()"
+# 3. bring forth the runtime directories
+invoke bring-forth
 
-# 4. consult the pantheon
-python3 -c "from titans.coeus import coeus; print(coeus.ask('pantheon-population'))"
+# 4. light the hearth (one-time per deployment)
+invoke kindle my-agent "one sentence on what this Olympus is for"
 
-# 5. read the cosmogony
+# 5. take a session bearing
+invoke prime
+
+# 6. consult the pantheon
+invoke consult population
+invoke consult chart
+
+# 7. read the cosmogony
 less codex/COSMOGONY.md
 ```
 
@@ -181,46 +185,45 @@ Olympus/
 ├── LICENSE
 ├── NOTICE
 ├── SECURITY.md
+├── pyproject.toml       pip-installable: `pip install -e .`
 │
-├── codex/               all prose documentation
-│   ├── COSMOGONY.md     the constitution — substrate invariants S1–S8
-│   ├── PANTHEON.md      full registry of every named module
-│   ├── RITES.md         the agent runbook
+├── codex/               all prose
+│   ├── COSMOGONY.md     constitution — substrate invariants S1–S8
+│   ├── PANTHEON.md      registry of every named module
+│   ├── RITES.md         agent runbook
 │   ├── CHRONICLE.md     history
 │   ├── PROPHECIES.md    roadmap
 │   ├── BESTIARY.md      the monsters explained
-│   ├── style.md         tone and style
+│   ├── style.md         tone + style
 │   ├── threat-model.md  substrate threats
 │   ├── journal/         Clio writes daily
-│   └── postmortems/     Melpomene writes after failures
+│   ├── postmortems/     Melpomene writes after failures
+│   └── oracles/delphi/  strategic-decision archive
 │
-├── primordials/         chaos · gaia · nyx · tartarus · eros
-├── titans/              mnemosyne · themis · cronus · hyperion ·
-│                        rhea · oceanus · iapetus · coeus
-├── olympians/           the twelve + hestia + apollo/ (subpackage)
-├── underworld/          hades · persephone · hecate · styx · lethe
-├── fates/               clotho · lachesis · atropos
-├── furies/              alecto · megaera · tisiphone
-├── graces/              aglaia · euphrosyne · thalia
-├── muses/               nine daughters of mnemosyne
-├── heroes/              heracles · perseus · theseus · odysseus ·
-│                        orpheus · atalanta · momus
+├── src/
+│   └── olympus/         the importable Python package
+│       ├── primordials/   chaos · gaia · nyx · tartarus · eros
+│       ├── titans/        mnemosyne · themis · cronus · hyperion ·
+│       │                  rhea · oceanus · iapetus · coeus
+│       ├── olympians/     the twelve + hestia + apollo/ (subpackage)
+│       ├── underworld/    hades · persephone · hecate · styx · lethe
+│       ├── fates/         clotho · lachesis · atropos
+│       ├── furies/        alecto · megaera · tisiphone
+│       ├── graces/        aglaia · euphrosyne · thalia
+│       ├── muses/         nine daughters of mnemosyne
+│       ├── heroes/        heracles · perseus · theseus · odysseus ·
+│       │                  orpheus · atalanta · momus
+│       ├── monsters/      cerberus · sphinx · medusa · chimera ·
+│       │   ├── hydra/     minotaur · typhon
+│       │   │   └── heads/   8 mortal + 1 immortal
+│       │   └── argos/
+│       │       ├── eyes/      observation specialists
+│       │       ├── satyrs/    concrete checks
+│       │       ├── demes/     civic-class observers
+│       │       └── phalanges/ battle formations
+│       └── cli.py       Hermes-dispatched entry point
 │
-├── monsters/
-│   ├── cerberus · sphinx · medusa · chimera · minotaur · typhon
-│   ├── hydra/           8 mortal heads + 1 immortal
-│   └── argos/           the many-eyed swarm
-│       ├── eyes/        observation specialists
-│       ├── satyrs/      concrete checks
-│       ├── demes/       civic-class observers
-│       └── phalanges/   battle formations grouping eyes
-│
-├── oracles/
-│   └── delphi/          decision archive
-│
-├── scripts/
-│   └── invoke           the Hermes-dispatched CLI
-│
+├── scripts/invoke       thin wrapper around olympus.cli:main
 └── tests/               coherence + invariant + smoke + residue
 ```
 

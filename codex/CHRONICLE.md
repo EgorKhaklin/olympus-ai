@@ -12,7 +12,40 @@ Newest first. Each entry names what changed, what was sworn, who decided.
 
 ---
 
-## 2026-05-18 — S8 amended: Continuity of Understanding
+## 2026-05-18 — restructure to namespaced `src/olympus/`
+
+**Risk class:** HIGH (filesystem restructure — every import touched).
+**Delphi:** [`codex/oracles/delphi/2026-05-18-namespaced-src-layout.md`](oracles/delphi/2026-05-18-namespaced-src-layout.md)
+**Sworn on Styx at seq=16.**
+
+GitHub landing showed 14+ top-level directories — visually scattered for a project this thin in actual file count. Reached through the architecture: Hephaestus surfaced three candidates (Flat `src/`, Namespaced `src/olympus/`, Namespaced + codex→docs); Momus contested via AP1–AP8; **Namespaced `src/olympus/`** was the only candidate with zero AP-violations.
+
+**Layout changes shipped:**
+
+- All ten tier directories moved to `src/olympus/<tier>/` — `primordials`, `titans`, `olympians`, `underworld`, `fates`, `furies`, `graces`, `muses`, `heroes`, `monsters`.
+- `src/olympus/__init__.py` added (package marker, declares `__version__`).
+- `oracles/` folded into `codex/oracles/` (decision records are prose).
+- Runtime state moved from inside-package paths to root `state/` (gitignored):
+  - `underworld/styx.jsonl` → `state/styx.jsonl`
+  - `underworld/hades/` → `state/hades/`
+  - `titans/mnemosyne/` → `state/mnemosyne/`
+  - `olympians/{athena_briefs, hephaestus_proposals, hera_bindings, dionysus_transitions, hestia_hearth}` → `state/{athena, hephaestus, hera_bindings, dionysus_transitions, hestia_hearth}`
+  - `monsters/argos/pheromones.jsonl` → `state/argos_pheromones.jsonl`
+- `pyproject.toml` added — `pip install -e .` works; `[project.scripts] invoke = olympus.cli:main` exposes the CLI.
+- `src/olympus/cli.py` created (Hermes-dispatch entry point).
+- `scripts/invoke` reduced to a thin wrapper around `olympus.cli:main`.
+- Every Python import rewritten: `from titans.X import Y` → `from olympus.titans.X import Y` (and the same for nine other tiers, top-level + indented).
+- `tests/conftest.py` added to put `src/` on `sys.path` for direct test runs.
+- Rhea's `REQUIRED_DIRS` rewritten — source tiers live in the package by construction; Rhea now creates only the runtime state tree (`state/...`) and the prose directories (`codex/journal/`, `codex/postmortems/`, `codex/oracles/delphi/`).
+- README + PANTHEON layout sections rewritten.
+
+**State preserved**: the Styx oath chain carried over (`state/styx.jsonl` now holds all 16+ prior oaths). The S8 amendment from earlier today remains the canonical decision; this move is structural, not constitutional.
+
+**GitHub landing now shows:** 5 files (README, LICENSE, NOTICE, SECURITY, pyproject.toml) + 4 directories (codex, src, scripts, tests). 9 visible items. Down from 18.
+
+44/44 tests pass.
+
+---
 
 **Risk class:** HIGH (constitutional amendment).
 **Delphi:** [`oracles/delphi/2026-05-18-replace-S8-with-continuity-of-understanding.md`](../oracles/delphi/2026-05-18-replace-S8-with-continuity-of-understanding.md)

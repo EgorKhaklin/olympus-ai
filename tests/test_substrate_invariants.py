@@ -10,15 +10,15 @@ import sys
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+if str(ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(ROOT / "src"))
 
 
 class TestSubstrateInvariants(unittest.TestCase):
 
     # S1 — Mnemosyne — append-only audit-of-record discipline exists
     def test_S1_mnemosyne_exists(self):
-        from titans.mnemosyne import mnemosyne
+        from olympus.titans.mnemosyne import mnemosyne
         # Should be able to remember + recall; recall returns a list
         m = mnemosyne.remember("test_kind", "test_actor", "test_summary", body_field="x")
         self.assertEqual(m.summary, "test_summary")
@@ -27,7 +27,7 @@ class TestSubstrateInvariants(unittest.TestCase):
 
     # S2 — Argos — deterministic substrate (Eros gives same id for same seed)
     def test_S2_argos_deterministic(self):
-        from primordials.eros import Eros
+        from olympus.primordials.eros import Eros
         a = Eros.begotten_id("test", "seed-A")
         b = Eros.begotten_id("test", "seed-A")
         c = Eros.begotten_id("test", "seed-B")
@@ -36,7 +36,7 @@ class TestSubstrateInvariants(unittest.TestCase):
 
     # S3 — HYDRA — Heads file structure has no obvious mutation imports
     def test_S3_hydra_heads_read_only(self):
-        heads_dir = ROOT / "monsters" / "hydra" / "heads"
+        heads_dir = ROOT / "src" / "olympus" / "monsters" / "hydra" / "heads"
         forbidden = ["INSERT INTO", "DELETE FROM", "UPDATE "]
         violators: list[tuple[str, str]] = []
         for head in heads_dir.glob("head_*.py"):
@@ -49,7 +49,7 @@ class TestSubstrateInvariants(unittest.TestCase):
 
     # S4 — Argos decentralization — no Eye imports another Eye
     def test_S4_argos_decentralization(self):
-        eyes_dir = ROOT / "monsters" / "argos" / "eyes"
+        eyes_dir = ROOT / "src" / "olympus" / "monsters" / "argos" / "eyes"
         if not eyes_dir.exists():
             self.skipTest("no eyes/ directory yet")
         violators: list[tuple[str, str]] = []
@@ -71,19 +71,19 @@ class TestSubstrateInvariants(unittest.TestCase):
     # S5 — Apollo predicates must declare verify() — we just check the
     # subpackage exists and the README mentions falsifiability.
     def test_S5_apollo_falsifiability_principle(self):
-        apollo = ROOT / "olympians" / "apollo"
+        apollo = ROOT / "src" / "olympus" / "olympians" / "apollo"
         self.assertTrue(apollo.exists())
 
     # S6 — Delphi directory exists; protocol document exists
     def test_S6_delphi_protocol_exists(self):
-        delphi = ROOT / "oracles" / "delphi"
-        protocol = ROOT / "oracles" / "delphi-protocol.md"
+        delphi = ROOT / "codex" / "oracles" / "delphi"
+        protocol = ROOT / "codex" / "oracles" / "delphi-protocol.md"
         self.assertTrue(delphi.exists() and delphi.is_dir())
         self.assertTrue(protocol.exists())
 
     # S7 — Bounded autonomy — Zeus can_perform refuses HIGH without an oath
     def test_S7_zeus_refuses_high_without_oath(self):
-        from olympians.zeus import Zeus
+        from olympus.olympians.zeus import Zeus
         # Fresh Zeus instance; before any authorize() it should refuse HIGH.
         z = Zeus()
         # We can't fully assert refusal without a clean Styx; we assert
@@ -95,7 +95,7 @@ class TestSubstrateInvariants(unittest.TestCase):
     # S8 — Continuity of Understanding — Momus AP6 exists and contests
     # proposals that make the agent's decision-making harder to reconstruct.
     def test_S8_continuity_AP6_exists(self):
-        from heroes.momus import momus
+        from olympus.heroes.momus import momus
         ap6 = momus.by_id("AP6")
         self.assertIsNotNone(ap6, "Momus must catalog AP6 (understanding-obscuring)")
         body = (ap6.name + " " + ap6.description + " " + ap6.refusal).lower()
@@ -106,14 +106,14 @@ class TestSubstrateInvariants(unittest.TestCase):
 
     # S8 also requires a structural enforcement eye in Argos.
     def test_S8_has_understanding_gap_eye(self):
-        from monsters.argos.colony import colony
+        from olympus.monsters.argos.colony import colony
         eye_names = [e.NAME for e in colony.eyes()]
         self.assertIn("eye_understanding_gap", eye_names,
             "S8 requires an Argos eye enforcing structural reconstructability")
 
     # All eight invariants must be referenced by id in COSMOGONY.md
     def test_cosmogony_names_every_invariant(self):
-        from titans.themis import themis
+        from olympus.titans.themis import themis
         for inv in themis.all():
             self.assertTrue(themis.cosmogony_mentions(inv.id),
                 f"COSMOGONY.md must name invariant {inv.id}")

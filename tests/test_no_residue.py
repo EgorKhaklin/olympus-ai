@@ -12,8 +12,8 @@ import sys
 import unittest
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+if str(ROOT / "src") not in sys.path:
+    sys.path.insert(0, str(ROOT / "src"))
 
 
 # Forbidden in any active file (not in archive or this test itself).
@@ -29,7 +29,9 @@ FORBIDDEN_PATTERNS = (
 
 EXEMPT = {"tests/test_no_residue.py"}
 
-SKIP_DIRS = {".git", "__pycache__", "node_modules", ".venv", "venv"}
+SKIP_DIRS = {".git", "__pycache__", "node_modules", ".venv", "venv",
+             "state",  # runtime-state — gitignored, contains historical oaths
+             "assets"}  # binary assets
 
 SCANNABLE_SUFFIXES = (".py", ".sh", ".md", ".json", ".yml", ".yaml",
                       ".toml", ".txt", ".cfg", ".ini")
