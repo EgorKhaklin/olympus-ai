@@ -1,0 +1,18 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://olympus.local/schemas/action-rejected.schema.json",
+    "title": "action.rejected body",
+    "description": "Body shape for `kind: action.rejected` records. Written by ActionQueue.reject().",
+    "type": "object",
+    "required": ["action_id"],
+    "additionalProperties": true,
+    "properties": {
+        "action_id": {
+            "type": "string",
+            "minLength": 1
+        },
+        "reason": {
+            "type": "string"
+        }
+    }
+}

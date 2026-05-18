@@ -1,0 +1,32 @@
+[Unit]
+Description=Olympus self-improvement daemon
+Documentation=https://github.com/EgorKhaklin/olympus-ai
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory={OLYMPUS_HOME}
+Environment=OLYMPUS_HOME={OLYMPUS_HOME}
+Environment=OLYMPUS_INTERVAL={INTERVAL_SECONDS}
+ExecStart={INVOKE_PATH} --quiet daemon run --interval {INTERVAL_SECONDS}
+
+# Restart on crash, with backoff
+Restart=on-failure
+RestartSec=30
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# Logging — journald captures stdout/stderr
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=olympus-daemon
+
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths={OLYMPUS_HOME}/state {OLYMPUS_HOME}/codex
+ProtectHome=read-only
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target

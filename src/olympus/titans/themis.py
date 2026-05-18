@@ -78,8 +78,13 @@ SUBSTRATE_INVARIANTS: tuple[Invariant, ...] = (
 )
 
 
+SCHEMAS_DIR = "codex/schemas"
+
+
 class Themis:
-    """Custodian of the substrate constitution."""
+    """Custodian of the substrate constitution. Owns the S1–S8 invariants
+    and (per compass-rose arc) the machine-readable JSON Schemas for
+    load-bearing Mnemosyne record kinds."""
 
     def all(self) -> tuple[Invariant, ...]:
         return SUBSTRATE_INVARIANTS
@@ -100,6 +105,137 @@ class Themis:
             return False
         text = path.read_text(encoding="utf-8")
         return bool(re.search(rf"\b{re.escape(invariant_id)}\b", text))
+
+    # ─────────────────────────────────────────────────────────
+    # JSON Schema publication (compass-rose arc)
+    # ─────────────────────────────────────────────────────────
+
+    def schemas_dir(self) -> pathlib.Path:
+        return root.child(*SCHEMAS_DIR.split("/"))
+
+    def schemas(self) -> dict[str, dict]:
+        """Return all registered JSON Schemas, keyed by kind (with the
+        '.schema.json' suffix stripped). Result includes the base
+        Mnemosyne envelope under key 'mnemosyne-record'."""
+        import json as _json
+        out: dict[str, dict] = {}
+        for path in sorted(self.schemas_dir().glob("*.schema.json")):
+            name = path.stem.replace(".schema", "")
+            try:
+                out[name] = _json.loads(path.read_text(encoding="utf-8"))
+            except _json.JSONDecodeError:
+                continue
+        return out
+
+    def kinds_with_schemas(self) -> list[str]:
+        """The Mnemosyne kinds that have a per-kind body schema. The
+        kind 'prophecy.verified' maps to schema name 'prophecy-verified'."""
+        return [k for k in self.schemas().keys() if k != "mnemosyne-record"]
+
+    def validate_record(self, kind: str, body: dict) -> list[str]:
+        """Validate a Mnemosyne body against the per-kind schema, if
+        one is registered. Returns a list of error messages (empty =
+        valid). If no schema is registered for the kind, returns
+        empty (unknown kinds are not contractually constrained)."""
+        schema_name = kind.replace(".", "-")
+        schema = self.schemas().get(schema_name)
+        if schema is None:
+            return []
+        return _validate(body, schema, "$")
+
+
+# ─────────────────────────────────────────────────────────
+# Minimal JSON-Schema validator — focused subset used by our schemas.
+# stdlib only (no jsonschema dep). Supports:
+#   type, required, properties, additionalProperties, oneOf,
+#   pattern, minLength, maxLength, minimum, format=date-time
+# ─────────────────────────────────────────────────────────
+
+
+_TYPE_OK: dict[str, Callable[[object], bool]] = {
+    "object":  lambda v: isinstance(v, dict),
+    "array":   lambda v: isinstance(v, list),
+    "string":  lambda v: isinstance(v, str),
+    "integer": lambda v: isinstance(v, int) and not isinstance(v, bool),
+    "number":  lambda v: isinstance(v, (int, float)) and not isinstance(v, bool),
+    "boolean": lambda v: isinstance(v, bool),
+    "null":    lambda v: v is None,
+}
+
+
+def _format_ok(value: object, fmt: str) -> bool:
+    if fmt == "date-time":
+        if not isinstance(value, str):
+            return False
+        try:
+            # tolerate trailing 'Z' or +HH:MM offset
+            value2 = value.replace("Z", "+00:00")
+            import datetime as _dt
+            _dt.datetime.fromisoformat(value2)
+            return True
+        except Exception:  # noqa: BLE001
+            return False
+    return True  # unknown formats are permissive
+
+
+def _validate(value: object, schema: dict, path: str) -> list[str]:
+    errors: list[str] = []
+
+    if "oneOf" in schema:
+        matches = []
+        for i, sub in enumerate(schema["oneOf"]):
+            sub_errors = _validate(value, sub, path)
+            if not sub_errors:
+                matches.append(i)
+        if len(matches) != 1:
+            errors.append(f"{path}: oneOf matched {len(matches)} schemas "
+                          f"(expected 1)")
+        return errors
+
+    if "type" in schema:
+        type_value = schema["type"]
+        if isinstance(type_value, str):
+            type_value = [type_value]
+        if not any(_TYPE_OK.get(t, lambda _: False)(value) for t in type_value):
+            errors.append(f"{path}: expected type {type_value}, got "
+                          f"{type(value).__name__}")
+            return errors  # if type is wrong, deeper checks won't help
+
+    if "format" in schema and not _format_ok(value, schema["format"]):
+        errors.append(f"{path}: invalid format {schema['format']!r}")
+
+    if "pattern" in schema and isinstance(value, str):
+        if not re.search(schema["pattern"], value):
+            errors.append(f"{path}: does not match pattern "
+                          f"{schema['pattern']!r}")
+
+    if "minLength" in schema and isinstance(value, (str, list, dict)):
+        if len(value) < schema["minLength"]:
+            errors.append(f"{path}: length {len(value)} < minLength "
+                          f"{schema['minLength']}")
+
+    if "maxLength" in schema and isinstance(value, (str, list, dict)):
+        if len(value) > schema["maxLength"]:
+            errors.append(f"{path}: length {len(value)} > maxLength "
+                          f"{schema['maxLength']}")
+
+    if "minimum" in schema and isinstance(value, (int, float)):
+        if value < schema["minimum"]:
+            errors.append(f"{path}: {value} < minimum {schema['minimum']}")
+
+    if isinstance(value, dict):
+        for req in schema.get("required", []):
+            if req not in value:
+                errors.append(f"{path}: required property {req!r} missing")
+        props = schema.get("properties", {})
+        add_props = schema.get("additionalProperties", True)
+        for k, v in value.items():
+            if k in props:
+                errors.extend(_validate(v, props[k], f"{path}.{k}"))
+            elif add_props is False:
+                errors.append(f"{path}: additional property {k!r} not allowed")
+
+    return errors
 
 
 themis = Themis()

@@ -1,0 +1,24 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://olympus.local/schemas/session-completed.schema.json",
+    "title": "session.completed body",
+    "description": "Body shape for `kind: session.completed` records. Written by Session.run() in the finally clause.",
+    "type": "object",
+    "required": ["session_id"],
+    "additionalProperties": true,
+    "properties": {
+        "session_id": {
+            "type": "string",
+            "minLength": 1
+        },
+        "directive": {
+            "oneOf": [
+                {"type": "string"},
+                {"type": "null"}
+            ]
+        },
+        "hydra_findings": {"type": "integer", "minimum": 0},
+        "argos_pheromones": {"type": "integer", "minimum": 0},
+        "proposals_count": {"type": "integer", "minimum": 0}
+    }
+}

@@ -25,6 +25,12 @@ LOAD_BEARING_KINDS = (
 
 class TestS8_ContinuityOfUnderstanding(unittest.TestCase):
 
+    def setUp(self) -> None:
+        # Clear Pan so ratification tests aren't blocked by
+        # cross-test invariant-violation accumulation.
+        from olympus.olympians.pan import pan
+        pan.clear(by="test", reason="test_invariant_S8 setUp")
+
     def test_S8a_themis_names_S8(self):
         from olympus.titans.themis import themis
         inv = themis.by_id("S8")

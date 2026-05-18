@@ -1,0 +1,20 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://olympus.local/schemas/action-ratified.schema.json",
+    "title": "action.ratified body",
+    "description": "Body shape for `kind: action.ratified` records. Written by ActionQueue.ratify().",
+    "type": "object",
+    "required": ["action_id"],
+    "additionalProperties": true,
+    "properties": {
+        "action_id": {
+            "type": "string",
+            "description": "Action id, conventionally 'act-<proposal_id>'.",
+            "minLength": 1
+        },
+        "quote": {
+            "type": "string",
+            "description": "Zeus's quote authorizing this ratification."
+        }
+    }
+}

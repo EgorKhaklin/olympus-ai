@@ -1,0 +1,19 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://olympus.local/schemas/invariant-violated.schema.json",
+    "title": "invariant.violated body",
+    "description": "Body shape for `kind: invariant.violated` records. Written by Furies when an S-invariant fires.",
+    "type": "object",
+    "required": ["invariant_id"],
+    "additionalProperties": true,
+    "properties": {
+        "invariant_id": {
+            "type": "string",
+            "pattern": "^[SC][0-9]+$",
+            "description": "Invariant id — S1..S8 for substrate, C1..CN for domain."
+        },
+        "evidence": {
+            "description": "Optional structured evidence; may be null."
+        }
+    }
+}

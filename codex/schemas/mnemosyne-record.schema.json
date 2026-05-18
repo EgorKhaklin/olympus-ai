@@ -1,0 +1,36 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://olympus.local/schemas/mnemosyne-record.schema.json",
+    "title": "Mnemosyne record (base envelope)",
+    "description": "Every record written to state/mnemosyne/<kind>.jsonl has this envelope shape. Per-kind bodies are validated against their own schema (see themis.schemas()).",
+    "type": "object",
+    "required": ["kind", "actor", "summary", "remembered_at"],
+    "additionalProperties": false,
+    "properties": {
+        "kind": {
+            "type": "string",
+            "description": "The kind of record (dotted, e.g. 'prophecy.verified'). Filename is sanitized via Mnemosyne._file_for().",
+            "minLength": 1,
+            "maxLength": 64
+        },
+        "actor": {
+            "type": "string",
+            "description": "Who or what wrote this record. By convention 'tier:name' or just the figure's name.",
+            "minLength": 1
+        },
+        "summary": {
+            "type": "string",
+            "description": "One-line human-readable description.",
+            "minLength": 1
+        },
+        "body": {
+            "type": "object",
+            "description": "Per-kind structured payload. Validated against per-kind schema if one is registered."
+        },
+        "remembered_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO-8601 timestamp set by Mnemosyne at write time."
+        }
+    }
+}

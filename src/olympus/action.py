@@ -157,7 +157,14 @@ class ActionQueue:
                by: str = "zeus:operator") -> Action:
         """Move an action from 'queued' or 'delphi-pending' to 'ratified'.
         Zeus is the only authority that can promote out of delphi-pending.
-        """
+
+        Pan guards this path: if Pan is in panic state (Furies firing
+        above threshold), ratification is refused with PanicError. The
+        operator must `invoke panic --clear` first."""
+        # Pan circuit breaker — checked BEFORE any state change.
+        from olympus.olympians.pan import pan
+        pan.guard_ratification(action_id=action_id)
+
         action = self.by_id(action_id)
         if action is None:
             raise KeyError(f"no action {action_id!r}")

@@ -23,6 +23,13 @@ class _FakeProposal:
 
 class TestActionQueue(unittest.TestCase):
 
+    def setUp(self) -> None:
+        # Tests in this suite ratify actions; clear Pan first so a
+        # panic state seeded by other tests (test_pan, test_furies,
+        # etc.) doesn't block legitimate test ratifications.
+        from olympus.olympians.pan import pan
+        pan.clear(by="test", reason="test_action_queue setUp")
+
     def test_low_proposal_auto_ratifies(self):
         p = _FakeProposal(id="auto-test-1", risk_class="LOW")
         a = action_queue.promote(p, contests=[])

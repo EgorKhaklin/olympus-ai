@@ -1,0 +1,22 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://olympus.local/schemas/atlas-bear.schema.json",
+    "title": "atlas.bear body",
+    "description": "Body shape for `kind: atlas.bear` records. Written when an operation registers itself with Atlas.",
+    "type": "object",
+    "required": ["id", "op", "owner", "started_at"],
+    "additionalProperties": true,
+    "properties": {
+        "id": {
+            "type": "string",
+            "description": "Unique burden id (hex uuid)."
+        },
+        "op": {"type": "string", "minLength": 1},
+        "owner": {"type": "string"},
+        "started_at": {
+            "type": "string",
+            "format": "date-time"
+        },
+        "payload": {"type": "object"}
+    }
+}

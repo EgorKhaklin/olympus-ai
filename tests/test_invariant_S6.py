@@ -16,6 +16,12 @@ import unittest
 
 class TestS6_DelphiProtocol(unittest.TestCase):
 
+    def setUp(self) -> None:
+        # Clear Pan so ratification tests aren't blocked by
+        # cross-test invariant-violation accumulation.
+        from olympus.olympians.pan import pan
+        pan.clear(by="test", reason="test_invariant_S6 setUp")
+
     def test_S6a_delphi_directory_exists(self):
         from olympus.primordials.gaia import root
         delphi = root.child("codex", "oracles", "delphi")

@@ -68,6 +68,8 @@ If you add a new module, register it here. If a module exists on disk but is mis
 | **Hermes** | `src/olympus/olympians/hermes.py` | messenger | CLI dispatch surface |
 | **Dionysus** | `src/olympus/olympians/dionysus.py` | wine, transformation | state-transition recording |
 | **Hestia** | `src/olympus/olympians/hestia.py` | the hearth, sacred boundary | deployment identity-seal |
+| **Pan** | `src/olympus/olympians/pan.py` | god of the wild and panic (the etymology) | circuit breaker — refuses ratifications when Furies fire above threshold |
+| **Asclepius** | `src/olympus/olympians/asclepius.py` | god of medicine, healer of mortals | healer — rebuild derived state from canonical sources (Iris, Pan, Atlas, dirs) |
 
 ---
 
@@ -80,6 +82,7 @@ If you add a new module, register it here. If a module exists on disk but is mis
 | **Hecate** | `src/olympus/underworld/hecate.py` | crossroads, in-between | error recovery |
 | **Styx** | `src/olympus/underworld/styx.py` | river of unbreakable oaths | cryptographic immutable ledger |
 | **Lethe** | `src/olympus/underworld/lethe.py` | river of forgetting | ephemeral cache (TTL'd) |
+| **Charon** | `src/olympus/underworld/charon.py` | ferryman of the dead across Styx and Acheron | safe migration of released burdens from Atlas → Hades archive |
 
 ---
 
@@ -142,6 +145,7 @@ If you add a new module, register it here. If a module exists on disk but is mis
 | **Momus** | `src/olympus/heroes/momus.py` | mockery (banished from Olympus) | the Anti-Architect (AP1–AP8) |
 | **Prometheus** | `src/olympus/heroes/prometheus.py` | titan of forethought, fire-bringer | bounded auto-improver (handler registry on ratified-LOW actions) |
 | **Cassandra** | `src/olympus/heroes/cassandra.py` | prophetess of Troy, cursed never to be believed | vindication memory — dismissed warnings that later recurred |
+| **Daedalus** | `src/olympus/heroes/daedalus.py` | master craftsman, builder of the Labyrinth | cartographer — generates the Mermaid architecture map (`codex/ARCHITECTURE.md`) |
 
 ---
 
@@ -233,17 +237,19 @@ When a mortal head is cut (rewritten), its replacement may take a different form
 |------|------:|
 | Primordials | 5 |
 | Titans | 10 |
-| Olympians (incl. Hestia + Apollo subpackage) | 13 |
-| Underworld | 5 |
+| Olympians (incl. Hestia + Apollo subpackage) | 15 |
+| Underworld | 6 |
 | Fates | 3 |
 | Furies | 3 |
 | Graces | 3 |
 | Muses | 9 |
-| Heroes | 9 |
+| Heroes | 10 |
 | Monsters (top-level) | 8 |
 | HYDRA heads | 9 (8 mortal + 1 immortal) |
-| **Total named principal figures** | **77** |
+| **Total named principal figures** | **81** |
 
 Plus the presentation-layer module **Iris** (`src/olympus/iris/`) — the rainbow-messenger between Olympus and mortals; static dashboard. Iris is an Olympian by myth but lives outside the `olympians/` directory because she is structurally a renderer, not a god participating in the cognitive loop.
+
+Plus the operational module **Daemon** (`src/olympus/runtime/daemon.py`) and template files at `scripts/daemon/` — generates launchd / systemd units so the self-improvement loop runs continuously. Not a god; pure operational scaffolding.
 
 Plus the Argos swarm: **9 Eyes**, **4 Satyrs**, **6 Demes**, **4 Phalanges**.

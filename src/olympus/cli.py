@@ -660,6 +660,208 @@ def _shoulders(_argv: list[str]) -> int:
     return 0
 
 
+@hermes.register("panic", "Pan circuit breaker — panic [--clear] [--evaluate]")
+def _panic(argv: list[str]) -> int:
+    from olympus.olympians.pan import pan
+    if "--clear" in argv:
+        s = pan.clear(by="zeus:operator", reason="cleared via CLI")
+        print(aphrodite.laurel(f"panic cleared at {s.last_transition_at[:19]}"))
+        return 0
+    state = pan.evaluate() if ("--evaluate" in argv or True) else pan.state()
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(state), default=str, indent=2))
+        return 0
+    if state.panicked:
+        print(aphrodite.banner("Pan — PANIC STATE", state.detail))
+        print(aglaia.murmur(f"  entered: {state.entered_at[:19]}"))
+        print(aglaia.murmur(f"  triggering: {state.triggering_violations} "
+                            f"violation(s) in {state.window_seconds:.0f}s"))
+        print(aphrodite.wine_dark(
+            "  ratifications are BLOCKED. Run `invoke panic --clear` "
+            "to resume."))
+        return 1
+    print(aphrodite.banner("Pan — calm", "no panic; ratifications allowed"))
+    return 0
+
+
+@hermes.register("heal", "Asclepius — rebuild derived state")
+def _heal(_argv: list[str]) -> int:
+    from olympus.olympians.asclepius import asclepius
+    report = asclepius.heal()
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(report), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        "Asclepius — healing pass",
+        f"{report.healers_succeeded}/{report.healers_invoked} ok · "
+        f"{report.healers_changed} changed",
+    ))
+    rows = [
+        (r.healer,
+         "ok" if r.succeeded else "FAIL",
+         "changed" if r.changed else "no-op",
+         r.detail[:60])
+        for r in report.results
+    ]
+    print(aphrodite.table(("healer", "result", "delta", "detail"), rows))
+    return 0 if report.healers_succeeded == report.healers_invoked else 1
+
+
+@hermes.register("ferry", "Charon — archive released burdens — ferry [--days N]")
+def _ferry(argv: list[str]) -> int:
+    from olympus.underworld.charon import charon
+    days = None
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--days" and i + 1 < len(argv):
+            days = float(argv[i + 1]); i += 2; continue
+        i += 1
+    report = charon.ferry(retention_days=days)
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(report), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        "Charon — ferry pass",
+        f"{report.total_ferried} crossing(s) · "
+        f"retention {report.retention_days}d",
+    ))
+    if report.crossings:
+        rows = [
+            (c.op, c.burden_id[:12], f"{c.age_days:.1f}d",
+             pathlib.Path(c.archived_to).name)
+            for c in report.crossings
+        ]
+        print(aphrodite.table(("op", "burden", "age", "archived-as"), rows))
+    else:
+        print(aglaia.murmur(f"  no burdens older than "
+                            f"{report.retention_days}d to ferry"))
+    if report.skipped_already_ferried:
+        print(aglaia.murmur(f"  skipped {report.skipped_already_ferried} "
+                            f"already-ferried"))
+    return 0
+
+
+@hermes.register("cartograph", "Daedalus — render architecture map — cartograph [--write]")
+def _cartograph(argv: list[str]) -> int:
+    from olympus.heroes.daedalus import daedalus
+    write = "--write" in argv
+    result = daedalus.cartograph(write=write)
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(result), default=str, indent=2))
+        return 0
+    if write:
+        print(aphrodite.laurel(
+            f"architecture map written — {result.output_path} "
+            f"({result.bytes_written} bytes, {result.diagrams_rendered} "
+            f"diagrams)"))
+    else:
+        doc = daedalus.render_full_document()
+        sys.stdout.write(doc)
+    return 0
+
+
+@hermes.register("daemon", "self-improvement daemon — daemon <run|install|status|uninstall>")
+def _daemon(argv: list[str]) -> int:
+    from olympus.runtime import daemon as _daemon_mod
+    if not argv:
+        print("usage: invoke daemon <run|install|status|uninstall> [options]")
+        return 2
+    verb = argv[0]
+    rest = argv[1:]
+
+    if verb == "run":
+        interval = 600.0
+        max_iter = -1
+        i = 0
+        while i < len(rest):
+            if rest[i] == "--interval" and i + 1 < len(rest):
+                interval = float(rest[i + 1]); i += 2; continue
+            if rest[i] == "--count" and i + 1 < len(rest):
+                max_iter = int(rest[i + 1]); i += 2; continue
+            i += 1
+        print(aglaia.section(
+            f"daemon — interval={interval}s "
+            + (f"× {max_iter}" if max_iter > 0 else "(forever)")))
+        _daemon_mod.run(interval_seconds=interval, max_iterations=max_iter)
+        return 0
+
+    if verb == "install":
+        interval = 600
+        dry = "--dry-run" in rest
+        i = 0
+        while i < len(rest):
+            if rest[i] == "--interval" and i + 1 < len(rest):
+                interval = int(rest[i + 1]); i += 2; continue
+            i += 1
+        result = _daemon_mod.install(interval_seconds=interval, dry_run=dry)
+        if _GLOBAL_FLAGS["json"]:
+            print(_json.dumps(result, default=str, indent=2)); return 0
+        print(aphrodite.banner("daemon install",
+                               f"platform: {result.get('platform')}"))
+        for k, v in result.items():
+            print(f"  {k}: {str(v)[:120]}")
+        return 0
+
+    if verb == "uninstall":
+        dry = "--dry-run" in rest
+        result = _daemon_mod.uninstall(dry_run=dry)
+        if _GLOBAL_FLAGS["json"]:
+            print(_json.dumps(result, default=str, indent=2)); return 0
+        print(aphrodite.banner("daemon uninstall",
+                               f"platform: {result.get('platform')}"))
+        for k, v in result.items():
+            print(f"  {k}: {str(v)[:120]}")
+        return 0
+
+    if verb == "status":
+        s = _daemon_mod.status()
+        if _GLOBAL_FLAGS["json"]:
+            import dataclasses as _dc
+            print(_json.dumps(_dc.asdict(s), default=str, indent=2))
+            return 0
+        print(aphrodite.banner(
+            f"daemon status — {s.platform}",
+            f"installed={s.installed} running={s.running}"
+            + (f" pid={s.pid}" if s.pid else "")))
+        if s.unit_path:
+            print(aglaia.murmur(f"  unit: {s.unit_path}"))
+        if s.detail:
+            print(aglaia.murmur(f"  detail: {s.detail}"))
+        return 0 if (s.installed or not s.installed) else 1
+
+    print(aphrodite.wine_dark(f"unknown daemon subcommand: {verb!r}"))
+    return 2
+
+
+@hermes.register("schemas", "Themis — list/show JSON Schemas — schemas [kind]")
+def _schemas(argv: list[str]) -> int:
+    from olympus.titans.themis import themis
+    schemas = themis.schemas()
+    if argv:
+        key = argv[0].replace(".", "-")
+        if key not in schemas:
+            print(aphrodite.wine_dark(
+                f"no schema for {argv[0]!r} (try one of: "
+                f"{', '.join(sorted(schemas))})"))
+            return 1
+        sys.stdout.write(_json.dumps(schemas[key], indent=2) + "\n")
+        return 0
+    if _GLOBAL_FLAGS["json"]:
+        print(_json.dumps(sorted(schemas.keys()), indent=2)); return 0
+    rows = [
+        (name,
+         schemas[name].get("title", ""),
+         f"{len(schemas[name].get('required', []))} required")
+        for name in sorted(schemas.keys())
+    ]
+    print(aphrodite.table(("schema", "title", "rules"), rows))
+    return 0
+
+
 @hermes.register("blessing", "Thalia bestows a closing blessing")
 def _blessing(_argv: list[str]) -> int:
     from olympus.muses.thalia_muse import thalia_muse

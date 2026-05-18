@@ -12,6 +12,92 @@ Newest first. Each entry names what changed, what was sworn, who decided.
 
 ---
 
+## 2026-05-18 — the compass-rose arc (HIGH-COMPOSITE, boil-the-ocean override)
+
+**Risk class:** HIGH-COMPOSITE (heavy-production override).
+**Delphi:** [`codex/oracles/delphi/2026-05-18-compass-rose-arc.md`](oracles/delphi/2026-05-18-compass-rose-arc.md)
+**Sworn on Styx at seq=64.**
+
+Zeus's directive (verbatim, abridged):
+
+> *"test and using the system put it on a self improvement loop, and make sure it follows the greek mythology architecture perfectly … you are allowed to create anything new, use any new language, and work outside the box … create anything it needs long term and branch out in any direction you wish and do not stop, do the impossible … The marginal cost of completeness is near zero with AI. Do the whole thing. Do it right. Do it with tests. Do it with documentation. … Boil the ocean."*
+
+This is the heavy-production override clause from MISSION.md §Post-v2. The substrate's normal steady-state contract is suspended for this arc. The architecture branches in four cardinal directions; each one closes a real gap.
+
+### North — operationalize the loop (the daemon is live)
+
+`scripts/loop.sh` from the self-improvement arc shipped but was never installed. The compass-rose arc lands daemon infrastructure:
+
+- `src/olympus/runtime/daemon.py` — `run()` is the foreground loop body; `install()` / `uninstall()` / `status()` are the OS-supervisor lifecycle.
+- `scripts/daemon/com.olympus.daemon.plist.tmpl` — launchd template (macOS), `KeepAlive=true`, restart throttle 30s, logs to `state/daemon.log`.
+- `scripts/daemon/olympus-daemon.service.tmpl` — systemd template (Linux), `Restart=on-failure`, sandboxed via `ProtectSystem=strict` + `ReadWritePaths=...state ...codex`.
+- `invoke daemon {run|install|uninstall|status}` — the operator surface.
+
+Proof it runs: `invoke daemon run --interval 1 --count 3` executed 3 clean iterations end-to-end, each `session_ok + improve_ok = true`, ~466ms per pass, 5/5 Prometheus handlers succeeding. Logs in `state/daemon.log` show start → iteration ×3 → stop events.
+
+### South — four new figures (heal, ferry, panic, cartograph)
+
+**Pan** (Olympian) — *etymology of "panic."* Circuit breaker. When the Furies fire ≥ 3 invariant violations in 5 minutes (defaults overridable), Pan enters panic state and `ActionQueue.ratify()` raises `PanicError`. The daemon's loop pauses (`daemon.skipped` events). Recovery: `invoke panic --clear` (records `acknowledged_through` timestamp; violations up to that moment no longer count). Auto-clear after a quiet window.
+
+**Asclepius** (Olympian) — *son of Apollo, healer who raised the dead.* Rebuilds derived state from canonical sources. Distinct from Hecate (single-op error recovery). Healer registry — built-in: `iris-dashboard`, `pan-state-validity`, `atlas-burden-consistency`, `rhea-directory-structure`. Tolerates and isolates handler failures. The Atlas healer flags burdens hung > 24h but never auto-releases (auto-release would lie about state).
+
+**Charon** (Underworld) — *ferryman of the dead.* Safe migration: Atlas burdens released > retention-window days ago get ferried to `state/hades/` as JSON shades. Idempotent — each crossing recorded under `charon.crossing`; re-runs skip already-ferried ids. `invoke ferry [--days N]`.
+
+**Daedalus** (Hero) — *master craftsman, builder of the Labyrinth.* Cartographer. Generates Mermaid diagrams (cognitive flow + tier map) and writes them to `codex/ARCHITECTURE.md` — GitHub renders Mermaid natively. The edge list `_COGNITIVE_FLOW` is the load-bearing source of truth; changing the architecture without re-running `invoke cartograph --write` is a Hephaestus drift signal. Re-arguing the prior refusal: the missing-figures arc refused Daedalus on AP8 for the vague role "tool-builder"; the new role is concrete (auto-maintained architecture documentation) and earns ratification.
+
+### East — Themis publishes machine-readable contracts (JSON Schema)
+
+`codex/schemas/*.schema.json` — JSON Schema (draft 2020-12) for the Mnemosyne envelope and seven load-bearing per-kind bodies: `prophecy-verified`, `action-ratified`, `action-rejected`, `session-completed`, `invariant-violated`, `atlas-bear`, `mnemosyne-record`.
+
+`themis.schemas()` returns the registered set. `themis.validate_record(kind, body)` returns a list of error strings (empty = valid). A focused stdlib JSON-Schema validator handles `type`, `required`, `properties`, `additionalProperties`, `oneOf`, `pattern`, `minLength`, `maxLength`, `minimum`, `format=date-time`. No third-party dependency.
+
+Tests assert recent production records pass their own schemas (drift detection at the contract layer, not just runtime).
+
+### West — multi-language palette where each one earns its place
+
+| language | role | earns its place because |
+|---|---|---|
+| **Mermaid** | architecture diagrams in `codex/ARCHITECTURE.md` | renders natively in GitHub; text-based; the map IS the source of truth |
+| **launchd plist (XML)** | macOS daemon supervisor | OS contract, not Python's job |
+| **systemd unit (INI)** | Linux daemon supervisor | same |
+| **JSON Schema** | machine-readable Mnemosyne contracts | tooling exists; re-implementing in Python would be AP6 |
+
+Refused languages from the prior Delphi remain refused (Rust, TypeScript, SQL — same arguments). The discipline of refusing has not weakened — the bar simply admits more candidates because more honest gaps were named.
+
+### Wiring
+
+- `action.py::ActionQueue.ratify()` consults `pan.guard_ratification()` before any state change.
+- `runtime/daemon.py::run()` consults `pan.evaluate()` at the top of each iteration; routes through `daemon.skipped` when panicked.
+- `test_pantheon_coherence.py::EXPECTED` updated: Titans 10, Olympians 15, Underworld 6, Heroes 10.
+
+### CLI
+
+`invoke panic [--clear]`, `invoke heal`, `invoke ferry [--days N]`, `invoke cartograph [--write]`, `invoke daemon {run|install|status|uninstall}`, `invoke schemas [kind]`.
+
+### Documentation
+
+- `codex/OPERATIONS.md` — operator runbook (first-time setup, daily operation, panic recovery, healing, archiving, troubleshooting).
+- `codex/ARCHITECTURE.md` — auto-generated; embedded Mermaid for cognitive flow + tier map.
+- `codex/oracles/delphi/2026-05-18-compass-rose-arc.md` — this arc's full debate.
+
+### Tests
+
+Six new test files, 41 new tests:
+- `test_pan.py` (6) — calm by default, panic above threshold, guard raises, clear restores, auto-clear, ratification integration.
+- `test_asclepius.py` (6) — register/list, run all, failure isolation, iris rebuild proof, pass recording, hung-burden flagging.
+- `test_charon.py` (6) — ferries old burdens, respects retention, idempotent, records crossings, pass summary, in-flight skipped.
+- `test_daedalus.py` (6) — Mermaid validity, every edge appears, tier map, write-flag, dry-run, full doc.
+- `test_daemon.py` (6) — template rendering, plist valid XML, systemd unit has required sections, install/uninstall/status dry-runs, run with max_iterations terminates and logs.
+- `test_themis_schemas.py` (9) — load all, $id+title, validate well-formed, catch missing-required, type mismatch, oneOf nullable, pattern, unknown kind permissive, date-time format, real production records validate.
+
+Pre-existing test fix: `test_action_queue`, `test_invariant_S6`, `test_invariant_S8` now `setUp()` clears Pan first (cross-test invariant accumulation would otherwise trigger Pan's circuit breaker on legitimate ratifications). The fix exposed a real Pan semantics issue and led to the `acknowledged_through` field — clearing Pan now records a cutoff timestamp so violations up to that moment no longer count, but new ones still do.
+
+Full suite: 234 tests, all green.
+
+Pantheon: 81 named principal figures (was 77). Tier counts updated in PANTHEON.md.
+
+---
+
 ## 2026-05-18 — the missing-figures arc (COMPOSITE)
 
 **Risk class:** COMPOSITE.

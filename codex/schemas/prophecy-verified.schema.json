@@ -1,0 +1,41 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://olympus.local/schemas/prophecy-verified.schema.json",
+    "title": "prophecy.verified body",
+    "description": "Body shape for `kind: prophecy.verified` records. Written by Apollo.consult_due() when a prediction's verify() callable runs at or past horizon.",
+    "type": "object",
+    "required": ["prediction", "accepted"],
+    "additionalProperties": true,
+    "properties": {
+        "prediction": {
+            "type": "string",
+            "description": "The unique name of the prediction.",
+            "minLength": 1
+        },
+        "statement": {
+            "type": "string",
+            "description": "Human-readable claim being predicted."
+        },
+        "horizon": {
+            "description": "ISO date or null — when the prediction was due.",
+            "oneOf": [
+                {"type": "string"},
+                {"type": "null"}
+            ]
+        },
+        "accepted": {
+            "description": "Outcome — true if verify() returned True, false if False, null if verification raised.",
+            "oneOf": [
+                {"type": "boolean"},
+                {"type": "null"}
+            ]
+        },
+        "error": {
+            "description": "Error detail if verify() raised, else null.",
+            "oneOf": [
+                {"type": "string"},
+                {"type": "null"}
+            ]
+        }
+    }
+}
