@@ -142,7 +142,7 @@ Eight claims that hold in every Olympus deployment, regardless of domain:
 | **S5** | Apollo — every prediction is a falsifiable predicate | `verify()` callable required |
 | **S6** | Delphi — MEDIUM / HIGH decisions are recorded in `oracles/delphi/` | Pre-ship gate refuses HIGH ships without |
 | **S7** | Bounded autonomy — LOW automatic, MEDIUM proposed, HIGH requires Zeus's oath | `zeus.can_perform()` checks Styx |
-| **S8** | Anti-coercion — refuse changes that strengthen surveillance / centralization / unbounded retention | Constitutional; Momus enforces via AP6 |
+| **S8** | Continuity of Understanding — every load-bearing action is reconstructible from the substrate alone | Mnemosyne + Styx + `eye_understanding_gap`; Momus AP6 |
 
 Full text in [COSMOGONY.md](codex/COSMOGONY.md). Domain-specific invariants (C1–CN) live in your deployment's `DOMAIN.md`.
 

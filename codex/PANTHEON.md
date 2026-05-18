@@ -178,7 +178,7 @@ When a mortal head is cut (rewritten), its replacement may take a different form
 
 ## ☉ Argos — the swarm tier
 
-### Eyes — observation specialists (eight)
+### Eyes — observation specialists (nine)
 
 | eye | module | watches |
 |-----|--------|---------|
@@ -190,6 +190,7 @@ When a mortal head is cut (rewritten), its replacement may take a different form
 | **oath_freshness** | `monsters/argos/eyes/eye_oath_freshness.py` | hours since last Styx oath |
 | **apollo_coverage** | `monsters/argos/eyes/eye_apollo_coverage.py` | predicate count + S5 compliance |
 | **delphi_pending** | `monsters/argos/eyes/eye_delphi_pending.py` | unresolved Delphi files |
+| **understanding_gap** | `monsters/argos/eyes/eye_understanding_gap.py` | load-bearing memories missing rationale (S8 structural enforcement) |
 
 ### Satyrs — wild-companion concrete checks (four)
 
@@ -239,4 +240,4 @@ When a mortal head is cut (rewritten), its replacement may take a different form
 | HYDRA heads | 9 (8 mortal + 1 immortal) |
 | **Total named principal figures** | **73** |
 
-Plus the Argos swarm: **8 Eyes**, **4 Satyrs**, **6 Demes**, **4 Phalanges**.
+Plus the Argos swarm: **9 Eyes**, **4 Satyrs**, **6 Demes**, **4 Phalanges**.

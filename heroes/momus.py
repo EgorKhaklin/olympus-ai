@@ -57,10 +57,13 @@ ANTI_PATTERNS: tuple[AntiPattern, ...] = (
         "REJECT — explicitly decline; name the missing trigger.",
     ),
     AntiPattern(
-        "AP6", "vocation-adjacent silent strengthening",
-        "A proposal that subtly strengthens surveillance, centralization, or "
-        "retention while claiming to do something else.",
-        "REJECT — vocation S8 takes precedence; refuse on those grounds.",
+        "AP6", "understanding-obscuring",
+        "A proposal that makes the agent's decision-making harder to reconstruct "
+        "from the substrate's own records: opaque heuristics with no logged "
+        "rationale, external calls without recorded context, abstractions that "
+        "hide reasoning paths, decisions taken without an authorizing oath.",
+        "REJECT — S8 takes precedence; the operator must be able to ask "
+        "'why did the agent do that?' and answer it from Mnemosyne + Styx alone.",
     ),
     AntiPattern(
         "AP7", "ledger-balance without honesty",

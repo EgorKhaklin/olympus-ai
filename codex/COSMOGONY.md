@@ -107,13 +107,15 @@ Enforced by: the pre-ship gate verifies a Delphi file exists for any HIGH ship. 
 
 Enforced by: `zeus.can_perform(risk_class)` reads Styx for HIGH/COMPOSITE authorizations. Without an oath, the agent refuses.
 
-### S8 — Anti-coercion (the vocation)
+### S8 — Continuity of Understanding
 
-> Olympus refuses changes that strengthen surveillance, centralization, or unbounded retention. Changes that strengthen the operator's leverage against coerced behavior are accepted.
+> Every load-bearing action the agent takes must be reconstructible — what was done, why, and on whose authority — from the substrate's own records alone. The substrate refuses changes that obscure its own decision-making from the operator.
 
-This sits above S1–S7 as the load-bearing meta-constraint. A deployment that turns Olympus into a surveillance substrate is not an Olympus deployment in name only — it is a constitutional violation that warrants forking under a different name.
+This sits above S1–S7 as the load-bearing meta-constraint. After any session, after any disaster, after the agent itself has been forgotten, the operator must be able to walk the substrate's own logs and answer the question _"why did the agent do that?"_ The substrate that cannot answer this question is not the substrate Olympus aims to be.
 
-Anti-coercion is structural, not aspirational. Mnemosyne's append-only record, Apollo's empirical-graduation rule, Delphi's "refuse-and-surface" default for ambiguous high-stakes requests — these are the mechanism. Momus enforces it at proposal time via anti-pattern AP6.
+S8 is structural, not aspirational. Mnemosyne records every load-bearing decision; Styx hashes every constitutional commitment; `eye_understanding_gap` surfaces any memory that lacks a rationale. Momus's AP6 contests any proposal that obscures the agent's reasoning — opaque heuristics, external calls without logged context, abstractions that hide what got decided and on whose authority.
+
+S8 takes no stance on what the deployment _does_. A surveillance-monitoring tool, an enterprise-compliance agent, a research assistant, a personal AI — each may adopt Olympus without contradiction. What S8 binds is _how_ the deployment operates: with a trail the operator can walk, or not at all.
 
 ---
 
@@ -126,24 +128,32 @@ Every change a deployment makes is one of four risk classes:
 | **LOW** | Autonomous | None — the agent ships | doc fix, dead-code removal, drift hardening |
 | **MEDIUM** | Proposal | Agent proposes; Zeus reviews; agent ships on approval | new Head, new Eye, new pattern |
 | **HIGH** | Delphi | Hephaestus + Momus debate; Zeus decides | cognitive-layer deletion, constitutional amendment |
-| **COMPOSITE** | Delphi (escalated) | HIGH plus external referent | multi-tier ship, vocation-adjacent change |
+| **COMPOSITE** | Delphi (escalated) | HIGH plus external referent | multi-tier ship, substrate-constitutional amendment |
 
 ---
 
-## V. Vocation — anti-coercion in detail
+## V. Vocation — a slot, not a stance
 
-The single most important sentence in this file:
+Olympus prescribes **no specific vocation**. The substrate is a shape; what the shape is _for_ is named by the deployment.
 
-> **Olympus is built to resist coercion of the operator by anyone — including its own builder.**
+When a deployment is kindled (`hestia.kindle(name=..., vocation=...)`), the operator records a one-sentence vocation. That vocation is byte-frozen in the hearth-seal and bound on Styx. From that point on, the substrate's `eye_pantheon_completeness`, `head_cosmogony`, and the Hephaestus + Momus debate cycle all reference the named vocation — _but the vocation itself is whatever the deployment named, not a doctrine Olympus imposed_.
 
-The mechanism is structural. A coerced operator cannot be made to silently break Olympus's invariants, because:
+**What this enables:**
 
-- **Mnemosyne's append-only record** preserves what happened. Coercion that succeeds is later visible.
-- **The Furies** (Alecto, Megaera, Tisiphone) trigger on broken invariants. Coercion that breaks an oath does not pass silently.
-- **Delphi's discipline** forces strategic decisions through Hephaestus + Momus debate. A coerced "do this now" cannot route around the protocol without leaving a trace.
-- **Styx's oath chain** is cryptographically hashed. Backdating is impossible.
+- A research-assistant deployment writes _"summarize papers without inventing citations"_ — Olympus enforces it structurally.
+- An enterprise-monitoring deployment writes _"surface anomalies the on-call should know about"_ — Olympus enforces it structurally.
+- A personal-AI deployment writes _"help the operator without remembering anything they didn't ask Mnemosyne to keep"_ — Olympus enforces it structurally.
+- A trading agent writes _"execute the operator's named strategy; flag drift"_ — Olympus enforces it structurally.
 
-A deployment that strips any of these mechanisms has stripped the vocation. The substrate's anti-coercion property is not a promise — it is what the structure does.
+Each deployment names its own line. None of them are wrong. None of them are more "Olympus" than the others.
+
+**What this refuses:**
+
+- A deployment with no vocation at all. `hestia.kindle()` requires a vocation argument; the hearth cannot be lit without one. The substrate refuses to operate against a blank vocation.
+- A deployment that quietly changes its vocation. The hearth-seal is immutable; re-kindling requires extinguishing first, which requires a Zeus oath.
+- A deployment whose actions diverge from its stated vocation. Hephaestus surfaces the drift; Momus AP6 contests proposals that obscure the divergence; the operator decides.
+
+The substrate's contribution is _the slot_ — and the discipline of holding the deployment to whatever the slot contains. The vocation is the deployment's; the binding is the substrate's.
 
 ---
 

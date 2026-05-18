@@ -105,10 +105,12 @@ def _register_defaults() -> None:
     from monsters.argos.eyes.eye_oath_freshness import EyeOathFreshness
     from monsters.argos.eyes.eye_apollo_coverage import EyeApolloCoverage
     from monsters.argos.eyes.eye_delphi_pending import EyeDelphiPending
+    from monsters.argos.eyes.eye_understanding_gap import EyeUnderstandingGap
 
     for cls in (EyeCosmogonyDrift, EyePantheonCompleteness,
                 EyeStyxChainIntact, EyeJournalSilence, EyeChronicleGap,
-                EyeOathFreshness, EyeApolloCoverage, EyeDelphiPending):
+                EyeOathFreshness, EyeApolloCoverage, EyeDelphiPending,
+                EyeUnderstandingGap):
         colony.register(cls)
 
 

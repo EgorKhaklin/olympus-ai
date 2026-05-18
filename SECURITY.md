@@ -21,7 +21,7 @@ These cannot be amended without a HIGH-risk Delphi:
 
 - The pantheon hierarchy
 - Substrate invariants S1–S8
-- The anti-coercion vocation (S8)
+- Substrate invariant S8 (Continuity of Understanding)
 - The risk-class definitions (LOW / MEDIUM / HIGH / COMPOSITE)
 
 A pull request that tries to amend any of these without an

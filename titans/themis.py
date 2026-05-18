@@ -67,10 +67,13 @@ SUBSTRATE_INVARIANTS: tuple[Invariant, ...] = (
         enforcement="Zeus.can_perform(risk_class) reads Styx oaths for HIGH/COMPOSITE",
     ),
     Invariant(
-        id="S8", name="Anti-coercion vocation",
-        statement="Olympus refuses changes that strengthen surveillance / centralization / "
-                  "unbounded retention. Changes that weaken operator leverage are accepted.",
-        enforcement="Constitutional — checked at proposal time by Hephaestus + Momus debate",
+        id="S8", name="Continuity of Understanding",
+        statement="Every load-bearing action is reconstructible — what was done, why, "
+                  "and on whose authority — from the substrate's own records alone. "
+                  "The substrate refuses changes that obscure its decision-making.",
+        enforcement="Mnemosyne discipline + Styx oath chain + eye_understanding_gap "
+                    "surfaces decisions without recorded rationale; Momus AP6 contests "
+                    "proposals that reduce reconstructability",
     ),
 )
 

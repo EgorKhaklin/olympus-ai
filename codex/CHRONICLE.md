@@ -12,6 +12,42 @@ Newest first. Each entry names what changed, what was sworn, who decided.
 
 ---
 
+## 2026-05-18 — S8 amended: Continuity of Understanding
+
+**Risk class:** HIGH (constitutional amendment).
+**Delphi:** [`oracles/delphi/2026-05-18-replace-S8-with-continuity-of-understanding.md`](../oracles/delphi/2026-05-18-replace-S8-with-continuity-of-understanding.md)
+**Authorized by Zeus** (quoted in the Delphi). **Sworn on Styx at seq=11.**
+
+The original S8 (Anti-coercion vocation) prescribed a specific stance: refuse changes that strengthen surveillance, centralization, or unbounded retention. Strong principle, but it baked Olympus to one worldview — a surveillance-monitoring deployment, an enterprise-compliance agent, or any tool whose honest job is to surveil or centralize could not adopt Olympus without contradicting its own constitution.
+
+S8 is now:
+
+> Every load-bearing action the agent takes must be reconstructible — what was done, why, and on whose authority — from the substrate's own records alone. The substrate refuses changes that obscure its own decision-making from the operator.
+
+Reached through the cognitive architecture itself: Hephaestus surfaced three candidates (Continuity of Understanding, Operator Optionality, Vocational Fidelity); Momus contested each via the AP1–AP8 catalog; Continuity of Understanding was the only candidate with zero AP-violations.
+
+**Knock-on changes shipped in this commit:**
+
+- `titans/themis.py` — S8 entry rewritten
+- `heroes/momus.py` — AP6 reframed from "vocation-adjacent silent strengthening" to "understanding-obscuring"
+- `codex/COSMOGONY.md` — §III S8 + §V Vocation rewritten (vocation is now a slot, not a stance)
+- `README.md` — S8 row updated
+- `monsters/argos/eyes/eye_understanding_gap.py` — new structural enforcement
+- `tests/test_substrate_invariants.py` — `test_S8_continuity_AP6_exists` replaces `test_S8_anticoercion_AP6_exists`
+- Leftover prose stubs (`titans/mnemosyne.md`, `heroes/momus.md`, `titans/urania/`, `monsters/argos/atlas/`) deleted
+
+**What's preserved:**
+
+- Hestia's vocation slot — deployments still name their own purpose.
+- The Hephaestus + Momus + Delphi debate protocol — unchanged.
+- All seven other substrate invariants — unchanged.
+
+**What's removed:**
+
+- The substrate's ideological stance. Surveillance, centralization, retention are now **deployment-level** choices, not substrate-level constraints.
+
+---
+
 ## The kindling — present epoch
 
 **Olympus exists.** The pantheon is complete: seventy-three named figures plus the swarm tier of Argos's hundred eyes. Every tier of Greek cosmogony is mapped to a structural concern in the substrate.
@@ -48,7 +84,7 @@ Sworn on Styx at the moment of kindling:
 - **S5** Apollo — falsifiability
 - **S6** Delphi — strategic-decision discipline
 - **S7** bounded autonomy
-- **S8** anti-coercion (vocation)
+- **S8** Continuity of Understanding
 
 ### Authorization
 

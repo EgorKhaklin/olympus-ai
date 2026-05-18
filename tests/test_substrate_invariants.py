@@ -92,12 +92,24 @@ class TestSubstrateInvariants(unittest.TestCase):
         self.assertTrue(z.can_perform("LOW"))
         self.assertIsInstance(z.can_perform("HIGH"), bool)
 
-    # S8 — Anti-coercion — Momus AP6 exists and refuses
-    def test_S8_anticoercion_AP6_exists(self):
+    # S8 — Continuity of Understanding — Momus AP6 exists and contests
+    # proposals that make the agent's decision-making harder to reconstruct.
+    def test_S8_continuity_AP6_exists(self):
         from heroes.momus import momus
         ap6 = momus.by_id("AP6")
-        self.assertIsNotNone(ap6, "Momus must catalog AP6 (anti-coercion)")
-        self.assertIn("surveillance", ap6.description.lower() + ap6.refusal.lower())
+        self.assertIsNotNone(ap6, "Momus must catalog AP6 (understanding-obscuring)")
+        body = (ap6.name + " " + ap6.description + " " + ap6.refusal).lower()
+        self.assertTrue(
+            any(k in body for k in ("reconstruct", "understand", "obscur", "rationale")),
+            f"AP6 must mention reconstructability / understanding-obscuring; got: {ap6.name!r}",
+        )
+
+    # S8 also requires a structural enforcement eye in Argos.
+    def test_S8_has_understanding_gap_eye(self):
+        from monsters.argos.colony import colony
+        eye_names = [e.NAME for e in colony.eyes()]
+        self.assertIn("eye_understanding_gap", eye_names,
+            "S8 requires an Argos eye enforcing structural reconstructability")
 
     # All eight invariants must be referenced by id in COSMOGONY.md
     def test_cosmogony_names_every_invariant(self):
