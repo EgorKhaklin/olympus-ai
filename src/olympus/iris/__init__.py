@@ -227,7 +227,11 @@ def render(snapshot: IrisSnapshot,
 
     The template, CSS, and JS are inlined into the output so that the
     operator can open `index.html` directly without a server — file://
-    works, no CORS, no fetch."""
+    works, no CORS, no fetch.
+
+    A lineage hash (SHA-256 of the snapshot JSON) is embedded as an
+    HTML comment near the top — Asclepius can verify that the rendered
+    HTML still matches its source snapshot."""
     if out_path is None:
         out_dir = root.child("state", "iris")
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -239,9 +243,11 @@ def render(snapshot: IrisSnapshot,
     data_json = json.dumps(
         dataclasses.asdict(snapshot), default=str, ensure_ascii=False,
     )
+    # Compute lineage hash BEFORE the </script> defusion (the hash is
+    # of the JSON payload, not the escaped version).
+    import hashlib
+    lineage = hashlib.sha256(data_json.encode("utf-8")).hexdigest()
     # Defuse any "</script>" that might appear in user-supplied summaries.
-    # Inside a JSON-text <script>, the only sequence that ends the block is
-    # "</"; splitting it neutralizes the breakout without altering the data.
     data_json = data_json.replace("</", "<\\/")
 
     html = (template
@@ -249,7 +255,8 @@ def render(snapshot: IrisSnapshot,
             .replace("/*__IRIS_JS__*/", js)
             .replace("__IRIS_DATA__", data_json)
             .replace("__BUILT_AT__", snapshot.built_at)
-            .replace("__OLYMPUS_VERSION__", snapshot.olympus_version))
+            .replace("__OLYMPUS_VERSION__", snapshot.olympus_version)
+            .replace("__LINEAGE_HASH__", lineage))
 
     out_path.write_text(html, encoding="utf-8")
     return out_path

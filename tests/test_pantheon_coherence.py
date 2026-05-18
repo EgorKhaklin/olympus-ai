@@ -22,7 +22,7 @@ EXPECTED = {
     "primordials": ["chaos", "gaia", "nyx", "eros", "tartarus"],
     "titans":      ["mnemosyne", "themis", "cronus", "hyperion",
                     "rhea", "oceanus", "iapetus", "coeus",
-                    "atlas", "epimetheus"],
+                    "atlas", "epimetheus", "metis"],
     "olympians":   ["zeus", "hera", "poseidon", "demeter", "athena",
                     "artemis", "ares", "aphrodite", "hephaestus",
                     "hermes", "dionysus", "hestia",
@@ -36,7 +36,7 @@ EXPECTED = {
                     "polyhymnia", "terpsichore", "thalia_muse", "urania"],
     "heroes":      ["heracles", "perseus", "theseus", "odysseus",
                     "orpheus", "atalanta", "momus", "prometheus",
-                    "cassandra", "daedalus"],
+                    "cassandra", "daedalus", "castor", "pollux"],
     "monsters":    ["cerberus", "sphinx", "medusa", "chimera",
                     "minotaur", "typhon"],
 }

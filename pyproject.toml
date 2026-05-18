@@ -27,6 +27,20 @@ Documentation = "https://github.com/EgorKhaklin/olympus/tree/main/codex"
 [project.scripts]
 invoke = "olympus.cli:main"
 
+# Plugin protocol (recursion arc). Third-party packages register
+# additional handlers / eyes / healers / predictions via these
+# entry-point groups. See codex/PLUGINS.md.
+#
+# Example consumer pyproject.toml:
+#   [project.entry-points."olympus.prometheus_handlers"]
+#   my_handler = "my_package.module:my_handler_fn"
+#
+#   [project.entry-points."olympus.asclepius_healers"]
+#   my_healer = "my_package.module:my_healer_fn"
+#
+#   [project.entry-points."olympus.argos_eyes"]
+#   my_eye = "my_package.module:MyEye"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src/olympus"]
 

@@ -99,6 +99,84 @@ invoke iris              # rebuild dashboard → state/iris/index.html
 invoke cartograph        # show architecture diagram (Mermaid)
 invoke schemas           # list all JSON Schemas Themis publishes
 invoke schemas prophecy.verified   # show one specific schema
+invoke pythia            # show recent external consultations
+```
+
+## Reaching outside Olympus
+
+Pythia bridges to the world via `urllib`. She is not an LLM — she
+fetches raw HTTP and records every consultation.
+
+```bash
+invoke pythia --github "cognitive substrate event sourcing"
+invoke pythia --web https://example.com/document.json
+invoke pythia            # list recent consultations
+```
+
+Each consultation produces a `pythia.consultation` Mnemosyne record
+with the query, response code, byte count, and head bytes (capped
+at 256 KB). Use this to record external knowledge with the same
+audit-of-record discipline as internal events.
+
+## Querying from outside Python
+
+The HTTP API exposes a localhost JSON surface (read-only):
+
+```bash
+invoke serve                       # foreground, http://127.0.0.1:8765
+invoke serve --port 9000           # custom port
+invoke serve --host 0.0.0.0        # bind broadly (review CORS/firewall first)
+
+# In another shell:
+curl http://127.0.0.1:8765/status
+curl http://127.0.0.1:8765/wisdom | jq
+curl http://127.0.0.1:8765/mnemosyne/session.completed?limit=5 | jq
+```
+
+The API is **read-only by design** — `POST`, `PUT`, `DELETE` all
+return 405. Mutations go through `invoke`.
+
+## Shadow execution (canary for substrate self-modification)
+
+Castor + Pollux let you test a proposed substrate change without
+touching production state:
+
+```bash
+invoke shadow                                  # one shadow session
+invoke shadow --mod OLYMPUS_INTERVAL=60        # with env override
+invoke shadow --directive "test directive"
+```
+
+Castor materializes a tempdir with symlinks to `codex/`, `src/`,
+`scripts/`, copies the hearth seal, then spawns `invoke session` with
+`OLYMPUS_ROOT` pointing at the tempdir. The shadow run writes only
+to the tempdir's `state/`. Production is untouched. The report comes
+back as JSON; `Pollux.compare(prod_report, shadow_report)` surfaces
+structural diffs.
+
+## Self-tuning advice
+
+Metis observes outcomes (Epimetheus hindsights, Cassandra
+vindications, daemon iteration stats) and proposes parameter changes:
+
+```bash
+invoke tune                # default lookback: 168h (one week)
+invoke tune --hours 24     # last 24 hours of evidence
+invoke tune --no-raise     # just show; don't write proposals
+```
+
+Metis never directly tunes. Her recommendations land in
+`state/hephaestus/proposals/metis-*.json` and go through the standard
+Momus → Delphi → Zeus pipeline. The meta-loop is bounded by the same
+constitutional discipline as everything else.
+
+## Plugins
+
+Third-party extensions register via `pyproject.toml` entry-points.
+See `codex/PLUGINS.md` for the author guide.
+
+```bash
+invoke plugins             # show what's loaded + what failed
 ```
 
 ---

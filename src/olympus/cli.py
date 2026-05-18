@@ -862,6 +862,193 @@ def _schemas(argv: list[str]) -> int:
     return 0
 
 
+@hermes.register("pythia", "Pythia — consult outside knowledge — pythia [--web URL | --github QUERY]")
+def _pythia(argv: list[str]) -> int:
+    from olympus.olympians.apollo.pythia import pythia
+    if "--web" in argv:
+        i = argv.index("--web")
+        if i + 1 >= len(argv):
+            print("usage: invoke pythia --web <url>")
+            return 2
+        url = argv[i + 1]
+        c = pythia.ask_web(url)
+        if _GLOBAL_FLAGS["json"]:
+            import dataclasses as _dc
+            print(_json.dumps(_dc.asdict(c), default=str, indent=2))
+            return 0
+        print(aphrodite.banner(
+            "Pythia — web consultation",
+            f"{c.status} · {c.bytes_received}B · {c.elapsed_ms:.0f}ms"))
+        print(aglaia.murmur(f"  url: {c.url}"))
+        if c.error:
+            print(aphrodite.wine_dark(f"  error: {c.error}"))
+        if c.head:
+            print(aglaia.subhead("head"))
+            print(c.head[:600])
+        return 0 if c.status and 200 <= c.status < 400 else 1
+    if "--github" in argv:
+        i = argv.index("--github")
+        if i + 1 >= len(argv):
+            print("usage: invoke pythia --github <query>")
+            return 2
+        query = " ".join(argv[i + 1:])
+        report = pythia.ask_github(query)
+        if _GLOBAL_FLAGS["json"]:
+            import dataclasses as _dc
+            print(_json.dumps(_dc.asdict(report), default=str, indent=2))
+            return 0
+        print(aphrodite.banner(
+            "Pythia — GitHub consultation",
+            f"{report.total_count} total · {len(report.findings)} returned"))
+        rows = [
+            (f.repo[:40], f"{int(f.score)}", f.description[:80])
+            for f in report.findings
+        ]
+        if rows:
+            print(aphrodite.table(("repo", "stars", "description"), rows))
+        else:
+            print(aglaia.murmur("  no results"))
+        return 0
+    # No subflag — show recent consultations
+    cs = pythia.consultations(limit=20)
+    if not cs:
+        print(aglaia.murmur(
+            "  no consultations yet — try:\n"
+            "    invoke pythia --github 'agent self-improvement loop'\n"
+            "    invoke pythia --web https://example.com"))
+        return 0
+    print(aphrodite.banner(
+        "Pythia — recent consultations",
+        f"{len(cs)} most-recent"))
+    rows = [
+        (c.consulted_at[:19], c.channel,
+         str(c.status), c.query[:60])
+        for c in cs[:15]
+    ]
+    print(aphrodite.table(("when", "channel", "code", "query"), rows))
+    return 0
+
+
+@hermes.register("serve", "start the read-only HTTP API — serve [--port N] [--host H]")
+def _serve(argv: list[str]) -> int:
+    from olympus.runtime.http_api import serve, DEFAULT_HOST, DEFAULT_PORT
+    host = DEFAULT_HOST
+    port = DEFAULT_PORT
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--port" and i + 1 < len(argv):
+            port = int(argv[i + 1]); i += 2; continue
+        if argv[i] == "--host" and i + 1 < len(argv):
+            host = argv[i + 1]; i += 2; continue
+        i += 1
+    print(aglaia.section(f"olympus HTTP API — http://{host}:{port}"))
+    print(aglaia.murmur("  routes: /  /status  /wisdom  /shoulders  "
+                        "/panic  /schemas  /mnemosyne/<kind>"))
+    print(aglaia.murmur("  (read-only; Ctrl-C to stop)"))
+    serve(host=host, port=port)
+    return 0
+
+
+@hermes.register("shadow", "Castor — run a session in a shadow substrate")
+def _shadow(argv: list[str]) -> int:
+    from olympus.heroes.castor import castor
+    mods: dict[str, str] = {}
+    directive = None
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--mod" and i + 1 < len(argv):
+            key, _, val = argv[i + 1].partition("=")
+            if key:
+                mods[key] = val
+            i += 2; continue
+        if argv[i] == "--directive" and i + 1 < len(argv):
+            directive = argv[i + 1]; i += 2; continue
+        i += 1
+    report = castor.shadow_session(modifications=mods, directive=directive)
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(report), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        "Castor — shadow session",
+        f"rc={report.return_code} succeeded={report.succeeded} "
+        f"({report.duration_ms:.0f}ms)"))
+    print(aglaia.murmur(f"  shadow root: {report.shadow_root}"))
+    if report.error:
+        print(aphrodite.wine_dark(f"  error: {report.error}"))
+    if report.session_report:
+        sr = report.session_report
+        print(aglaia.subhead("session report (shadow)"))
+        print(f"  session_id: {sr.get('session_id', '')[:24]}")
+        print(f"  hydra={sr.get('hydra_findings')} "
+              f"argos={sr.get('argos_pheromones')} "
+              f"proposals={sr.get('proposals_count')}")
+    return 0 if report.succeeded else 1
+
+
+@hermes.register("tune", "Metis — outcome-driven parameter recommendations")
+def _tune(argv: list[str]) -> int:
+    from olympus.titans.metis import metis
+    hours = 168.0
+    raise_proposals = "--no-raise" not in argv
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--hours" and i + 1 < len(argv):
+            hours = float(argv[i + 1]); i += 2; continue
+        i += 1
+    report = metis.advise(lookback_hours=hours,
+                          raise_proposals=raise_proposals)
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(report), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        "Metis — self-tuning advice",
+        f"{report.total} recommendation(s) · "
+        f"{report.proposals_raised} raised as proposals"))
+    if not report.recommendations:
+        print(aglaia.murmur(
+            f"  no advice from {hours:.0f}h of evidence"))
+        return 0
+    rows = [
+        (r.parameter[:32], str(r.current)[:18],
+         str(r.proposed)[:18], f"{r.confidence:.2f}", r.risk_class)
+        for r in report.recommendations
+    ]
+    print(aphrodite.table(
+        ("parameter", "current", "proposed", "conf", "risk"), rows))
+    return 0
+
+
+@hermes.register("plugins", "list discovered plugins via entry_points")
+def _plugins(_argv: list[str]) -> int:
+    from olympus.runtime.plugins import load_all
+    manifest = load_all(record_to_mnemosyne=False)
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(manifest), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        "plugins — entry-point discovery",
+        f"{manifest.total_loaded} loaded · {manifest.total_failed} failed"))
+    if not (manifest.loaded or manifest.failed):
+        print(aglaia.murmur(
+            "  no plugins discovered. To author one, see "
+            "codex/PLUGINS.md."))
+        return 0
+    if manifest.loaded:
+        rows = [(p.group.split(".")[-1], p.name, p.target[:50])
+                for p in manifest.loaded]
+        print(aglaia.subhead("loaded"))
+        print(aphrodite.table(("group", "name", "target"), rows))
+    if manifest.failed:
+        rows = [(p.group.split(".")[-1], p.name, p.detail[:60])
+                for p in manifest.failed]
+        print(aglaia.subhead("failed"))
+        print(aphrodite.table(("group", "name", "detail"), rows))
+    return 0
+
+
 @hermes.register("blessing", "Thalia bestows a closing blessing")
 def _blessing(_argv: list[str]) -> int:
     from olympus.muses.thalia_muse import thalia_muse
@@ -917,11 +1104,32 @@ def _help(argv: list[str]) -> int:
 # ─────────────────────────────────────────────────────────────────────
 
 
+_PLUGINS_LOADED = False
+
+
+def _load_plugins_once() -> None:
+    """Load registered plugins once per process. Silent on failure —
+    plugin errors are recorded in Mnemosyne but never abort the CLI."""
+    global _PLUGINS_LOADED
+    if _PLUGINS_LOADED:
+        return
+    _PLUGINS_LOADED = True
+    if _os.environ.get("OLYMPUS_DISABLE_PLUGINS") == "1":
+        return
+    try:
+        from olympus.runtime.plugins import load_all
+        load_all(record_to_mnemosyne=False)
+    except Exception:  # noqa: BLE001
+        # Plugin loader itself never raises, but be defensive
+        pass
+
+
 def main(argv: list[str] | None = None) -> int:
     """Entry point. `invoke ...` (pip-installed) and `./scripts/invoke ...`
     both land here."""
     if argv is None:
         argv = sys.argv[1:]
+    _load_plugins_once()
     return hermes.dispatch(argv)
 
 

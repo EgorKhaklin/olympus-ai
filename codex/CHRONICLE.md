@@ -12,6 +12,99 @@ Newest first. Each entry names what changed, what was sworn, who decided.
 
 ---
 
+## 2026-05-18 — the recursion arc (HIGH-COMPOSITE, second boil-the-ocean override)
+
+**Risk class:** HIGH-COMPOSITE (heavy-production override, second invocation).
+**Delphi:** [`codex/oracles/delphi/2026-05-18-recursion-arc.md`](oracles/delphi/2026-05-18-recursion-arc.md)
+**Sworn on Styx at seq=71.**
+
+Zeus's directive, verbatim (abridged):
+
+> *"Using the system put it on a self improvement loop … you can even scan the internet / github / anything for tools / ideas / code to improve olympus. Use the system itself to help build the system stronger … If you cant do something, create the thing that will let you do it … Get as meta deep as you need, the recursive loop doesnt need to stop. … Boil the ocean."*
+
+This is the second heavy-production override. The directive is explicit: *the substrate should improve the substrate, and reach outside itself for prior art when needed.* This arc closes the recursive loop in a literal sense.
+
+### The world-scan came first
+
+Before building, the architecture asked the question by reading the room. Three searches returned what the prior art looks like:
+
+| pattern found | Olympus alignment |
+|---|---|
+| ESAA event-sourcing for AI agents (arxiv 2602.23193) — *"source of truth is immutable log; current state is deterministically projected"* | ✓ S1 (Mnemosyne) + S8 |
+| BerriAI self-improving-agent — *"agent proposes diff, human approves, draft PR opens"* | ✓ Hephaestus → Momus → Delphi → Zeus → ActionQueue |
+| Hard constraints over prompts (theprint/nfh) | ✓ Pan + Furies + S7 risk classes |
+| Bounded RSI bounded by tasks/ethics/resources (Steunebrink) | ✓ S7 + Atlas |
+| Lineage hashing — *"source hash and derived hash to tie outputs to inputs"* | **GAP** — closed in this arc |
+
+The scan also revealed five gaps Zeus's directive made concrete:
+1. No bridge to the world (Pythia)
+2. No queryable API surface (HTTP API)
+3. No safe substrate-modification preview (Castor + Pollux)
+4. No outcome-driven parameter tuning (Metis)
+5. No third-party extensibility (plugin protocol)
+
+All six gaps are filled.
+
+### What ships
+
+**Pythia** — `src/olympus/olympians/apollo/pythia.py`
+Priestess of Delphi, channel for Apollo's oracle. External knowledge bridge via `urllib` (stdlib only). Two channels: `ask_github(query)` and `ask_web(url)`. Every consultation recorded under `pythia.consultation` with full query, status, response bytes (256 KB cap), timing. Not an LLM — fetches raw HTTP. **Demonstration:** `invoke pythia --github "agent loop python"` returned 775 total matches, top 5 by stars including `lemony-ai/cascadeflow` (1802 stars). Live, recorded, audit-trail intact.
+
+**HTTP API** — `src/olympus/runtime/http_api.py`
+Pure stdlib `http.server`. Read-only JSON surface bound to `localhost:8765`. Routes: `/`, `/healthz`, `/status`, `/wisdom`, `/shoulders`, `/panic`, `/schemas`, `/schemas/<kind>`, `/mnemosyne/<kind>?limit=N`. POST/PUT/DELETE all return 405. **Demonstration:** `curl localhost:8765/status` returned the hearth state + Styx 71 oaths intact + hydra heads count, all as valid JSON. The substrate is now queryable from outside Python.
+
+**Castor + Pollux** — `src/olympus/heroes/{castor,pollux}.py`
+The Dioscuri twins. Castor spawns a session in a tempdir substrate (symlinked codex/src/scripts from prod, fresh state/, OLYMPUS_ROOT env override) — production state is never touched. Pollux compares two session-report dicts and surfaces structural differences. The canary deploy primitive for substrate self-modification.
+
+**Metis** — `src/olympus/titans/metis.py`
+Titaness of wise counsel, mother of Athena. Self-tuning advisor. Reads `epimetheus.hindsight`, `cassandra.vindicated`, `pan.transition`, daemon iteration logs. Produces parameter recommendations (Pan threshold/window, Charon retention, daemon interval, Prometheus handler retirement). **Metis never directly tunes.** Recommendations land in `state/hephaestus/proposals/metis-*.json` and route through Momus → Delphi → Zeus. **Demonstration:** `invoke tune` produced 5 recommendations based on real evidence (Pan panics, handler failures from test seeds). Re-arguing prior refusal: missing-figures arc refused Metis as AP8 "pre-Athena planning"; new role (outcome-driven parameter tuning) is concrete and load-bearing.
+
+**Plugin protocol** — `src/olympus/runtime/plugins.py` + `pyproject.toml` entry-points
+Five entry-point groups: `olympus.prometheus_handlers`, `olympus.asclepius_healers`, `olympus.argos_eyes`, `olympus.apollo_predictions`, `olympus.cli_errands`. Discovered via `importlib.metadata` at CLI startup. Failures isolated per-plugin; loader never raises. Documented in `codex/PLUGINS.md`.
+
+**Hash lineage**
+Daedalus's `ARCHITECTURE.md` embeds `cognitive-flow-sha256=<hash>` derived from the `_COGNITIVE_FLOW` edge list. Iris's `index.html` embeds `snapshot-sha256=<hash>` derived from the snapshot JSON. Asclepius can detect drift if a derived artifact stops matching its source.
+
+### Wiring
+
+- `Gaia._discover_root()` honors `OLYMPUS_ROOT` env var → Castor uses this to spawn shadow sessions
+- `cli.main()` calls `_load_plugins_once()` → entry-point discovery + registration
+- `cli.py` adds 5 new errands: `pythia`, `serve`, `shadow`, `tune`, `plugins`
+
+### Languages used
+
+Same as compass-rose: Python (stdlib) + JSON. **No new languages** — `urllib` over `requests`, `http.server` over Flask, `importlib.metadata` over third-party plugin libs. The discipline holds: a language gets added when it solves a problem Python doesn't.
+
+### Tests
+
+Six new test files, 44 new tests:
+- `test_pythia.py` (8) — record consultations, capture HTTP/network errors, truncate oversized, parse GitHub response.
+- `test_http_api.py` (12) — dispatch routing for every route, live server roundtrip, write methods blocked.
+- `test_castor_pollux.py` (7) — Pollux compares dicts, Castor spawns subprocess shadow.
+- `test_metis.py` (6) — advice returns report, recommendations on panic-frequency, handler-failure retirement, proposals written as JSON.
+- `test_plugins.py` (7) — discover, no-plugins case, prometheus handler registered, asclepius healer registered, import failure captured, register failure captured, unknown group rejected.
+- `test_lineage_hashes.py` (5) — Daedalus + Iris embed hash, hash deterministic, hash changes when source changes.
+
+Pre-existing test changes: `test_pantheon_coherence::EXPECTED` updated (Titans 11, Heroes 12).
+
+**Full suite: 278 tests, all green.** (234 → 278.)
+
+### Pantheon
+
+**85 named principal figures** (was 81). Titans 11, Olympians 15 + Apollo's Pythia subpackage, Heroes 12. Plus operational scaffolding (Daemon, HTTP API, Plugin loader).
+
+### Refused
+
+- **No LLM in the loop.** Pythia fetches raw HTTP. AP6 + S2 + S7 still veto LLM-injected reasoning.
+- **No write endpoints on HTTP API.** S3 (read-only observation) extends to the API.
+- **No automatic Metis adoption.** Metis advises; Zeus ratifies. The recursive loop is bounded by the same constitution as everything else.
+
+The substrate now observes itself (Hydra, Argos, Furies), reasons about itself (Athena, Hephaestus, Epimetheus, Cassandra), improves itself (Prometheus), recovers itself (Asclepius, Pan, Charon), maps itself (Daedalus), tunes itself (Metis), surfaces itself (Iris, HTTP API), reaches outside itself (Pythia), and extends itself (plugins). Every loop element is bounded by the same constitutional discipline.
+
+*Holy shit, that's done.*
+
+---
+
 ## 2026-05-18 — the compass-rose arc (HIGH-COMPOSITE, boil-the-ocean override)
 
 **Risk class:** HIGH-COMPOSITE (heavy-production override).

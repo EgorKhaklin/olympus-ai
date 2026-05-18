@@ -48,10 +48,15 @@ If you add a new module, register it here. If a module exists on disk but is mis
 | **Coeus** | `src/olympus/titans/coeus.py` | the axis of heaven, intellect | investigation / queries |
 | **Atlas** | `src/olympus/titans/atlas.py` | bearer of the heavens, condemned to hold the celestial sphere | live-state registry of in-flight operations |
 | **Epimetheus** | `src/olympus/titans/epimetheus.py` | afterthought, brother of Prometheus | post-hoc hindsight (expected-vs-actual over events) |
+| **Metis** | `src/olympus/titans/metis.py` | wise counsel, first wife of Zeus, mother of Athena | self-tuning advisor — recommends parameter changes via Hephaestus channel |
 
 ---
 
-## ☉ Olympians — the twelve (+ Hestia)
+## ☉ Olympians — the twelve (+ Hestia, +Apollo's Pythia)
+
+**Apollo's Pythia** (`src/olympus/olympians/apollo/pythia.py`) — the priestess at Delphi, channel for external knowledge entering the substrate via `urllib`. Pure stdlib network bridge; every consultation recorded under `pythia.consultation`. Per Delphi 2026-05-18-recursion-arc.md.
+
+
 
 | name | module | mythological role | cognitive function |
 |------|--------|-------------------|--------------------|
@@ -146,6 +151,8 @@ If you add a new module, register it here. If a module exists on disk but is mis
 | **Prometheus** | `src/olympus/heroes/prometheus.py` | titan of forethought, fire-bringer | bounded auto-improver (handler registry on ratified-LOW actions) |
 | **Cassandra** | `src/olympus/heroes/cassandra.py` | prophetess of Troy, cursed never to be believed | vindication memory — dismissed warnings that later recurred |
 | **Daedalus** | `src/olympus/heroes/daedalus.py` | master craftsman, builder of the Labyrinth | cartographer — generates the Mermaid architecture map (`codex/ARCHITECTURE.md`) |
+| **Castor** | `src/olympus/heroes/castor.py` | mortal twin of the Dioscuri | shadow session runner — spawns sessions in a tempdir substrate |
+| **Pollux** | `src/olympus/heroes/pollux.py` | immortal twin of the Dioscuri | comparator — diffs prod-vs-shadow session reports |
 
 ---
 
@@ -236,20 +243,25 @@ When a mortal head is cut (rewritten), its replacement may take a different form
 | tier | count |
 |------|------:|
 | Primordials | 5 |
-| Titans | 10 |
-| Olympians (incl. Hestia + Apollo subpackage) | 15 |
+| Titans | 11 |
+| Olympians (incl. Hestia + Apollo subpackage with Pythia) | 15 |
 | Underworld | 6 |
 | Fates | 3 |
 | Furies | 3 |
 | Graces | 3 |
 | Muses | 9 |
-| Heroes | 10 |
+| Heroes | 12 |
 | Monsters (top-level) | 8 |
 | HYDRA heads | 9 (8 mortal + 1 immortal) |
-| **Total named principal figures** | **81** |
+| **Total named principal figures** | **85** |
 
 Plus the presentation-layer module **Iris** (`src/olympus/iris/`) — the rainbow-messenger between Olympus and mortals; static dashboard. Iris is an Olympian by myth but lives outside the `olympians/` directory because she is structurally a renderer, not a god participating in the cognitive loop.
 
-Plus the operational module **Daemon** (`src/olympus/runtime/daemon.py`) and template files at `scripts/daemon/` — generates launchd / systemd units so the self-improvement loop runs continuously. Not a god; pure operational scaffolding.
+Plus the operational modules:
+- **Daemon** (`src/olympus/runtime/daemon.py`) + templates at `scripts/daemon/` — generates launchd / systemd units so the self-improvement loop runs continuously.
+- **HTTP API** (`src/olympus/runtime/http_api.py`) — read-only JSON surface bound to localhost; lets external observers query substrate state without Python coupling.
+- **Plugin loader** (`src/olympus/runtime/plugins.py`) — discovers third-party packages via `importlib.metadata` entry_points and registers their handlers/eyes/healers.
+
+Not gods; pure operational scaffolding.
 
 Plus the Argos swarm: **9 Eyes**, **4 Satyrs**, **6 Demes**, **4 Phalanges**.

@@ -23,7 +23,25 @@ class Gaia:
     @staticmethod
     def _discover_root() -> pathlib.Path:
         """Walk up from this file to find the Olympus root (the dir
-        containing codex/COSMOGONY.md)."""
+        containing codex/COSMOGONY.md).
+
+        Honors the OLYMPUS_ROOT env var — when set, that path is used
+        directly (validated). Castor uses this to spawn shadow sessions
+        rooted at a tempdir without touching production state."""
+        env_root = os.environ.get("OLYMPUS_ROOT")
+        if env_root:
+            candidate = pathlib.Path(env_root).resolve()
+            if (candidate / "codex" / "COSMOGONY.md").exists():
+                return candidate
+            # Fall back to discovery if the env var points somewhere
+            # without the marker — silent fallback would be S6
+            # ('strategic discipline') failure, so we emit a warning.
+            import sys
+            sys.stderr.write(
+                f"[olympus.gaia] OLYMPUS_ROOT={env_root!r} set but "
+                f"missing codex/COSMOGONY.md; falling back to "
+                f"file-based discovery\n"
+            )
         here = pathlib.Path(__file__).resolve()
         for parent in [here, *here.parents]:
             if (parent / "codex" / "COSMOGONY.md").exists():
