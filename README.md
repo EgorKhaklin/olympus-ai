@@ -123,6 +123,10 @@ The system is cared for. **Hygieia** (daughter of Asclepius — whole-substrate 
 
 The substrate is inhabited by LLM agents. **`runtime/llm_bridge.py`** — pluggable interface; `EchoBridge` (safe default) and `AnthropicBridge` (claude-opus-4-7 + adaptive thinking). **`runtime/agents.py`** — five canonical roles: `hephaestus`, `momus`, `cassandra`, `athena`, `figure_proposer`. Each role renders a system prompt that includes the figure's docstring + the constitution + the AP catalog; the model thinks **in** the mythology, the substrate **enforces** the constitution on the output. **`invoke propose-figure`** — agents can extend the pantheon through the standard pipeline (Momus → Delphi → Zeus); LLM-generated code is **never** executed without operator review. **`codex/AGENTS.md`** documents the seam between prompt-grounding and external governance, and answers the recursion question directly.
 
+### 10. The akropolis arc 🏛
+
+Rigor over architecture. **Ananke** (Primordial — deterministic seed source; SHA-256(name) → fixed seed). **Tiresias** (Hero — ground-truth tracker; Brier-score calibration). **Heracles benchmark harness** (deterministic seeds, golden outputs, regression detection). **Typhon fault injector** (real break-then-verify-then-revert; e.g. `invoke fault-inject break-styx-chain --confirm` actually corrupts the chain and Tisiphone detects it). **Atalanta scalability harness** (p50/p95/p99 + memory delta across state sizes — measured O(n) on real I/O). **`invoke doctor`** — OpenClaw-inspired single-screen diagnostic that *honestly surfaces* warnings rather than printing theatrical green-light. **`codex/RIGOR.md`** answers each of Zeus's six rigor concerns with the substrate's actual instrumentation + live measurements.
+
 ---
 
 ## Quick start
@@ -250,6 +254,7 @@ Zeus         0.0769
 - **[`codex/PLUGINS.md`](codex/PLUGINS.md)** — third-party extensions via entry-points
 - **[`codex/INTELLIGENCE.md`](codex/INTELLIGENCE.md)** — how the substrate accumulates understanding
 - **[`codex/AGENTS.md`](codex/AGENTS.md)** — **how LLM agents inhabit the substrate** (prompt grounding + external governance + recursion gating)
+- **[`codex/RIGOR.md`](codex/RIGOR.md)** — **how Olympus answers "is this theatrical?"** (per-concern instrumentation + live measurements)
 - **[`codex/CHRONICLE.md`](codex/CHRONICLE.md)** — every shipped arc in reverse chronological order
 - **[`codex/oracles/delphi/`](codex/oracles/delphi)** — strategic decisions, full debate, Styx oath references
 
@@ -271,13 +276,13 @@ The pantheon-coherence test (`tests/test_pantheon_coherence.py`) enforces that e
 
 | metric | value |
 |---|---|
-| named principal figures | **91** |
-| tests passing | **420 / 420** |
-| Styx oaths sworn | 96+ |
+| named principal figures | **93** |
+| tests passing | **460 / 460** |
+| Styx oaths sworn | 105+ |
 | TLA+ specifications | 3 |
 | JSON Schemas | 7 |
-| arcs shipped | 9 (substance · self-improvement · missing-figures · compass-rose · recursion · labyrinth · phi · aegis · **oikoumene**) |
-| heavy-production overrides invoked | 6 |
+| arcs shipped | **10** (substance · self-improvement · missing-figures · compass-rose · recursion · labyrinth · phi · aegis · oikoumene · **akropolis**) |
+| heavy-production overrides invoked | 7 |
 | ratification rate vs 1/φ | **0.98** harmony score |
 
 ---

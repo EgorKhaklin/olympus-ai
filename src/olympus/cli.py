@@ -1693,6 +1693,141 @@ def _calibration(argv: list[str]) -> int:
     return 0
 
 
+@hermes.register("doctor", "single-screen health diagnostic (akropolis arc)")
+def _doctor(_argv: list[str]) -> int:
+    from olympus.runtime.doctor import diagnose
+    report = diagnose()
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(report), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        f"doctor — olympus {report.olympus_version}",
+        f"{report.ok_count} ok · {report.warn_count} warn · "
+        f"{report.fail_count} fail"))
+    print(aglaia.murmur(f"  {report.platform} · py{report.python_version}"))
+    rows = [
+        (f.name,
+         {"ok": "✓", "warn": "!", "fail": "✗"}.get(f.status, "?"),
+         f.detail[:80])
+        for f in report.findings
+    ]
+    print(aphrodite.table(("check", "?", "detail"), rows))
+    return 0 if report.fail_count == 0 else 1
+
+
+@hermes.register("bench", "Heracles benchmark — bench [--runner heuristic]")
+def _bench(argv: list[str]) -> int:
+    from olympus.heroes.heracles import run_canonical_benchmark
+    runner = "heuristic"
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--runner" and i + 1 < len(argv):
+            runner = argv[i + 1]; i += 2; continue
+        i += 1
+    report = run_canonical_benchmark(runner=runner)
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(report), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        f"Heracles — benchmark ({runner})",
+        f"{report.passed}/{report.total} pass · "
+        f"{report.regressed} regression(s)"))
+    rows = [
+        (r.task,
+         "✓" if r.correct else ("REG" if r.regressed else "✗"),
+         f"{r.latency_ms:.2f}ms",
+         (r.error or str(r.output))[:50])
+        for r in report.results
+    ]
+    print(aphrodite.table(
+        ("task", "?", "latency", "output / error"), rows))
+    return 0 if report.passed == report.total else 1
+
+
+@hermes.register("scale", "Atalanta scalability — scale [--sizes 10,100,1000]")
+def _scale(argv: list[str]) -> int:
+    from olympus.heroes.atalanta import atalanta
+    sizes = [10, 100, 1000]
+    op_name = "mnemosyne-recall"
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--sizes" and i + 1 < len(argv):
+            sizes = [int(s) for s in argv[i + 1].split(",")]
+            i += 2; continue
+        if argv[i] == "--op" and i + 1 < len(argv):
+            op_name = argv[i + 1]; i += 2; continue
+        i += 1
+    from olympus.titans.mnemosyne import mnemosyne
+
+    def build_state(n: int) -> str:
+        kind = f"scale_test_{n}"
+        for j in range(n):
+            mnemosyne.remember(
+                kind=kind, actor="atalanta:scale-bench",
+                summary=f"scale row {j}", row=j,
+            )
+        return kind
+
+    def run_op(kind: str) -> None:
+        _ = mnemosyne.recall(kind)
+
+    report = atalanta.scale(
+        op_name, build_state, run_op,
+        sizes=sizes, iterations_per_size=10,
+    )
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(report), default=str, indent=2))
+        return 0
+    print(aphrodite.banner(
+        f"Atalanta — scalability ({op_name})",
+        f"{len(report.points)} sizes"))
+    rows = [
+        (str(p.size), f"{p.iterations}",
+         f"{p.p50_ms:.2f}", f"{p.p95_ms:.2f}",
+         f"{p.p99_ms:.2f}", f"{p.memory_delta_kb:.0f}KB")
+        for p in report.points
+    ]
+    print(aphrodite.table(
+        ("size", "iters", "p50ms", "p95ms", "p99ms", "Δmem"), rows))
+    return 0
+
+
+@hermes.register("fault-inject", "Typhon fault — fault-inject <scenario> --confirm [--no-revert]")
+def _fault_inject(argv: list[str]) -> int:
+    from olympus.monsters.typhon import typhon
+    if not argv:
+        print(f"usage: invoke fault-inject <scenario> --confirm")
+        print(f"  injectable: {', '.join(typhon.injectable())}")
+        return 2
+    scenario = argv[0]
+    confirm = "--confirm" in argv
+    no_revert = "--no-revert" in argv
+    if not confirm:
+        print(aphrodite.wine_dark(
+            f"  refusing to inject {scenario!r} without --confirm — "
+            "this actually breaks state"))
+        return 1
+    try:
+        injection = typhon.inject(scenario, confirm=True)
+    except Exception as exc:  # noqa: BLE001
+        print(aphrodite.wine_dark(f"  injection failed: {exc}"))
+        return 1
+    print(aphrodite.banner(
+        f"Typhon — injected {scenario}",
+        f"at {injection.injected_at[:19]}"))
+    print(aglaia.murmur(f"  detail: {injection.detail}"))
+    if no_revert:
+        print(aphrodite.wine_dark(
+            "  --no-revert: state remains disturbed; revert manually"))
+    else:
+        injection.revert()
+        print(aphrodite.laurel(f"  reverted (state restored)"))
+    return 0
+
+
 @hermes.register("blessing", "Thalia bestows a closing blessing")
 def _blessing(_argv: list[str]) -> int:
     from olympus.muses.thalia_muse import thalia_muse

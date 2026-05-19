@@ -19,7 +19,8 @@ if str(ROOT / "src") not in sys.path:
 # Names that PANTHEON.md asserts exist as Python modules in the tier.
 # Drawn from PANTHEON.md tables; if you add a god, update both.
 EXPECTED = {
-    "primordials": ["chaos", "gaia", "nyx", "eros", "tartarus"],
+    "primordials": ["chaos", "gaia", "nyx", "eros", "tartarus",
+                    "ananke"],
     "titans":      ["mnemosyne", "themis", "cronus", "hyperion",
                     "rhea", "oceanus", "iapetus", "coeus",
                     "atlas", "epimetheus", "metis"],
@@ -38,7 +39,7 @@ EXPECTED = {
                     "orpheus", "atalanta", "momus", "prometheus",
                     "cassandra", "daedalus", "castor", "pollux",
                     "ariadne", "nemesis", "pythagoras", "plato",
-                    "phoenix"],
+                    "phoenix", "tiresias"],
     "monsters":    ["cerberus", "sphinx", "medusa", "chimera",
                     "minotaur", "typhon"],
 }

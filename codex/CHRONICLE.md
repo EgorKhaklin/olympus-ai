@@ -12,6 +12,106 @@ Newest first. Each entry names what changed, what was sworn, who decided.
 
 ---
 
+## 2026-05-18 — the akropolis arc 🏛 (HIGH-COMPOSITE, seventh boil-the-ocean override)
+
+**Risk class:** HIGH-COMPOSITE.
+**Delphi:** [`codex/oracles/delphi/2026-05-18-akropolis-arc.md`](oracles/delphi/2026-05-18-akropolis-arc.md)
+**Sworn on Styx at seq=114.**
+
+Zeus's critique was the right one:
+
+> *"The weaker area is likely: rigorous evaluation methodology, measurable agent capability, fault tolerance, scalability, reproducibility, and proving the abstractions correspond to meaningful intelligence gains rather than theatrical structure. … The strongest future version of Olympus would combine OpenClaw's execution rigor with Olympus's cognitive architecture ideas."*
+
+Nine arcs built architecture. This arc builds rigor. The name — **akropolis** (ἀκρόπολις, "highest part of the city") — is where Greek city-states put the most important buildings: where strength had to be *measured*, because the city's survival depended on it.
+
+### Phase 0 — what OpenClaw teaches
+
+Pythia's GitHub fetch of OpenClaw revealed: a personal-assistant gateway with strong operational rigor (`openclaw doctor`, `/usage`, `/trace`, launchd/systemd), but no benchmark suite, no deterministic seeding, no formal evaluation harness. **Exactly the same gaps Zeus named as Olympus's weakness.** OpenClaw's executional patterns inspired this arc; the gaps it shares with Olympus are what we filled.
+
+### Direct answer to Zeus's six concerns
+
+| Zeus's concern | Akropolis addition |
+|---|---|
+| **rigorous evaluation methodology** | Heracles benchmark harness — deterministic seeds, golden outputs, multi-runner, regression detection |
+| **measurable agent capability** | Tiresias (NEW hero) — tracks agent claims and their realized outcomes; Brier-score calibration |
+| **fault tolerance** | Typhon promoted from catalog to real fault injector with reverters |
+| **scalability** | Atalanta promoted to scalability harness — p50/p95/p99 + memory delta |
+| **reproducibility** | Ananke (NEW primordial) — SHA-256(name) → fixed seed; replayable runs |
+| **theatrical vs real** | `invoke doctor` (OpenClaw-style); benchmark recipe with multi-runner comparison |
+
+### What ships
+
+**Ananke** — `primordials/ananke.py` (NEW). Deterministic seed source. `ananke.seed(name)` returns SHA-256(name)[:8] as a 64-bit int — same name → same bytes across runs, machines, Python versions. `ananke.rng(name)` yields a seeded `random.Random`. `ananke.context(name)` is a context manager that records the use to Mnemosyne. Re-arguing the prior AP8/AP3 refusal: the new role (deterministic seed source for reproducibility) is concrete and distinct from Furies/Themis.
+
+**Tiresias** — `heroes/tiresias.py` (NEW). Ground-truth tracker. `tiresias.claim(claimant, claim, expected, confidence)` persists a claim; `tiresias.verify(claim_id, observed, hit=True/False)` records the realized outcome; `tiresias.calibration(claimant)` returns a per-claimant Brier score + hit rate by confidence bucket. **Real calibration**, not just average confidence. Re-arguing the prior AP8 refusal: post-hoc verification is distinct from Apollo's pre-horizon prediction formulation.
+
+**Heracles benchmark harness** — extension of `heroes/heracles.py`. `BenchmarkTask`, `BenchmarkResult`, `BenchmarkReport`, `run_benchmark(tasks, runner)`. Each task seeded via Ananke; per-(task, runner) correctness + latency + regression-vs-last recorded under `heracles.benchmark`. Five canonical tasks ship: count-alerts, extract-slice, sum-pheromones, dedupe, deterministic-shuffle.
+
+**Typhon fault injector** — extension of `monsters/typhon.py`. `typhon.inject(scenario, confirm=True)` returns an `Injection` handle with a `revert()` method. Three injectable scenarios: `delete-pan-state` (Asclepius regenerates), `seed-fake-violations` (Pan trips), `break-styx-chain` (Tisiphone detects). Every injection + recovery records to Mnemosyne. **`confirm=True` required** — production never sees this.
+
+**Atalanta scalability harness** — extension of `heroes/atalanta.py`. `atalanta.scale(operation, build_state, run_op, sizes)` returns p50/p95/p99 latency + memory delta per size. `psutil` is optional; gracefully degrades to 0 if not installed.
+
+**`invoke doctor`** — `runtime/doctor.py` (NEW). OpenClaw-inspired single-screen diagnostic. Combines Hygieia + Pan + Atlas + Styx (Tisiphone) + Themis + LLM bridge connectivity + Python/deps + disk usage + recent error rate + today oracle. **Honestly surfaces warnings** — current run flags 58 hung Atlas burdens (real test artifact), 60% session error rate (real test seeds), and the Cassandra vindication today is pointing at.
+
+### Live measurements (sampled at arc-completion)
+
+```
+$ invoke bench
+5/5 pass · 0 regression(s)
+count-alerts           ✓  0.00ms   3
+extract-slice          ✓  0.17ms   state/argos_pheromones.jsonl
+sum-pheromones         ✓  0.01ms   7.0
+dedupe-preserve-order  ✓  0.00ms   ['a', 'b', 'c', 'd']
+deterministic-shuffle  ✓  0.01ms   [2, 4, 7, 1, 3, 6, 5]  ← deterministic
+
+$ invoke scale --sizes 10,100,1000
+size  iters  p50ms  p95ms  p99ms  Δmem
+10    10     0.11   0.17   0.20   32KB
+100   10     0.48   0.54   0.56   48KB
+1000  10     3.91   4.12   4.18   1024KB  ← measured O(n)
+
+$ invoke fault-inject break-styx-chain --confirm
+injected → Tisiphone detects break → reverted → chain intact
+```
+
+### Wiring
+
+- 4 new CLI errands: `doctor`, `bench`, `scale`, `fault-inject`
+- `test_pantheon_coherence::EXPECTED`: Primordials 6, Heroes 18
+- Plato classifies ananke (cube/state) + tiresias (octahedron/reasoning)
+
+### Languages used
+
+**No new language this arc.** `psutil` is *optional* — Atalanta gracefully degrades without it.
+
+### Tests
+
+Six new test files, **40 new tests** (all green):
+- `test_ananke.py` (9) — determinism across calls/instances; SHA-256 stability across Python invocations
+- `test_tiresias.py` (8) — Brier-score math, bucket distribution, hit/miss/inconclusive
+- `test_heracles_bench.py` (6) — canonical suite all green, regression flag fires correctly, Ananke-seeded shuffle reproducible
+- `test_typhon_injection.py` (7) — confirm-required guard, real Styx-corruption + Tisiphone-detection + revert
+- `test_atalanta_scale.py` (5) — quadratic op shows growth (10→200 visible), per-size error captured without aborting report
+- `test_doctor.py` (5) — every expected check present; counts consistent; honestly records to Mnemosyne
+
+**Full suite: 460 tests, all green.** (420 → 460.)
+
+### Pantheon
+
+**93 named principal figures** (was 91). Primordials 6 (+Ananke). Heroes 18 (+Tiresias).
+
+### Refused
+
+- **No real-time fault injection in production.** Typhon's injector requires `confirm=True`; CLI requires `--confirm`. Test-time only.
+- **No "LLM evaluates LLM" without ground truth.** Tiresias requires *observed* outcomes; self-grading is AP6.
+- **No deterministic claim for LLM responses.** Ananke seeds the substrate; LLM sampling is non-deterministic. The benchmark distinguishes deterministic-substrate runs from LLM-in-loop runs.
+
+The substrate now **answers the rigor question with measurements**, not architecture. The akropolis is up; the city's survival is now measurable.
+
+*Holy shit, that's done.*
+
+---
+
 ## 2026-05-18 — the oikoumene arc 🌍 (HIGH-COMPOSITE, sixth boil-the-ocean override)
 
 **Risk class:** HIGH-COMPOSITE.

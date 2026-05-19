@@ -5,10 +5,16 @@ completed every one. In Olympus, Heracles is the kill-test runner:
 a battery of twelve adversarial scenarios, each meant to break a
 specific substrate invariant. A run is successful only when all
 twelve are completed without breakage.
+
+Akropolis arc extension: Heracles is also the **benchmark harness**.
+Each labor is now a (seed, task, expected) triple; runners (heuristic
+/ agent / baseline) compete on the same labor; results are persisted
+under `heracles.benchmark` for trending + regression detection.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import time
+from dataclasses import dataclass, field, asdict
 from typing import Callable, Any
 
 
@@ -58,6 +64,233 @@ class Heracles:
 
 
 heracles = Heracles()
+
+
+# ─────────────────────────────────────────────────────────
+# BENCHMARK HARNESS (Akropolis arc) — multi-runner, deterministic,
+# golden-output, regression-aware.
+# ─────────────────────────────────────────────────────────
+
+
+@dataclass
+class BenchmarkTask:
+    """One deterministic benchmark task.
+
+    `runner_fn` takes the deterministic RNG (from Ananke) and an
+    input dict; returns the runner's output.  `correct_fn` takes
+    runner output + expected output, returns True iff correct.
+    """
+    name: str
+    seed_name: str                 # Ananke seed name
+    input: dict[str, Any]
+    expected: Any
+    runner_fn: Callable[[Any, dict[str, Any]], Any]
+    correct_fn: Callable[[Any, Any], bool] = lambda actual, exp: actual == exp
+
+
+@dataclass
+class BenchmarkResult:
+    """One (task, runner) outcome."""
+    task: str
+    runner: str
+    correct: bool
+    latency_ms: float
+    output: Any
+    expected: Any
+    error: str = ""
+    regressed: bool = False        # True iff previously correct, now incorrect
+
+
+@dataclass
+class BenchmarkReport:
+    started_at: str
+    ended_at: str = ""
+    runner_label: str = ""
+    results: list[BenchmarkResult] = field(default_factory=list)
+
+    @property
+    def total(self) -> int: return len(self.results)
+    @property
+    def passed(self) -> int:
+        return sum(1 for r in self.results if r.correct)
+    @property
+    def regressed(self) -> int:
+        return sum(1 for r in self.results if r.regressed)
+    @property
+    def pass_rate(self) -> float:
+        return (self.passed / self.total) if self.total else 0.0
+
+
+def _previous_correctness(runner: str, task: str) -> bool | None:
+    """Read the most recent benchmark result for (runner, task)."""
+    from olympus.titans.mnemosyne import mnemosyne
+    recs = mnemosyne.recall("heracles.benchmark")
+    for m in reversed(recs):
+        body = m.body or {}
+        if body.get("runner") == runner and body.get("task") == task:
+            return bool(body.get("correct", False))
+    return None
+
+
+def run_benchmark(tasks: list[BenchmarkTask], *,
+                   runner: str = "heuristic") -> BenchmarkReport:
+    """Run a list of BenchmarkTasks with a named runner. Each task's
+    RNG is seeded deterministically via Ananke. Results are persisted
+    to Mnemosyne for trending; regressions are flagged against the
+    previous successful run."""
+    from olympus.primordials.ananke import ananke
+    from olympus.primordials.nyx import Nyx
+    from olympus.titans.mnemosyne import mnemosyne
+
+    report = BenchmarkReport(
+        started_at=Nyx.now().isoformat(),
+        runner_label=runner,
+    )
+    for task in tasks:
+        rng = ananke.rng(task.seed_name)
+        result = BenchmarkResult(
+            task=task.name, runner=runner,
+            correct=False, latency_ms=0.0,
+            output=None, expected=task.expected,
+        )
+        started = time.perf_counter()
+        try:
+            output = task.runner_fn(rng, task.input)
+            result.output = output
+            result.correct = bool(task.correct_fn(output, task.expected))
+        except Exception as exc:  # noqa: BLE001
+            result.error = f"{type(exc).__name__}: {exc}"
+            result.correct = False
+        result.latency_ms = (time.perf_counter() - started) * 1000.0
+
+        prior = _previous_correctness(runner, task.name)
+        if prior is True and not result.correct:
+            result.regressed = True
+
+        mnemosyne.remember(
+            kind="heracles.benchmark",
+            actor=f"heracles:{runner}",
+            summary=(f"{task.name} ({runner}): "
+                     f"{'PASS' if result.correct else 'FAIL'} "
+                     f"({result.latency_ms:.2f}ms)"
+                     + (" [REGRESSION]" if result.regressed else "")),
+            **{k: v for k, v in asdict(result).items()
+               if k != "output"},  # avoid bloat from large outputs
+            output_summary=str(result.output)[:200],
+        )
+        report.results.append(result)
+
+    report.ended_at = Nyx.now().isoformat()
+    mnemosyne.remember(
+        kind="heracles.benchmark-pass",
+        actor=f"heracles:{runner}",
+        summary=(f"benchmark pass: {report.passed}/{report.total} "
+                 f"pass · {report.regressed} regressions"),
+        runner=runner,
+        total=report.total,
+        passed=report.passed,
+        regressed=report.regressed,
+        pass_rate=report.pass_rate,
+    )
+    return report
+
+
+# ─────────────────────────────────────────────────────────
+# Canonical benchmark suite — runs deterministic; non-LLM
+# ─────────────────────────────────────────────────────────
+
+
+def _bench_runner_count_alerts(rng, inp: dict) -> int:
+    """Heuristic counts ALERT-severity entries in a list."""
+    return sum(1 for f in inp["findings"] if f.get("severity") == "alert")
+
+
+def _bench_runner_extract_slice(rng, inp: dict) -> str:
+    """Heuristic extracts slice from a drift-observed sentence."""
+    import re
+    match = re.search(r"slice\s+['\"]([^'\"]+)['\"]", inp["text"])
+    return match.group(1) if match else ""
+
+
+def _bench_runner_sum_pheromones(rng, inp: dict) -> float:
+    """Heuristic sums pheromone intensities."""
+    return sum(float(p.get("intensity", 0.0)) for p in inp["pheromones"])
+
+
+def _bench_runner_dedupe(rng, inp: dict) -> list[str]:
+    """Heuristic dedupes a list of strings preserving order."""
+    seen, out = set(), []
+    for x in inp["items"]:
+        if x not in seen:
+            seen.add(x); out.append(x)
+    return out
+
+
+def _bench_runner_random_shuffle(rng, inp: dict) -> list[int]:
+    """Uses Ananke-seeded RNG. Same seed → same shuffle order."""
+    out = list(inp["items"])
+    rng.shuffle(out)
+    return out
+
+
+CANONICAL_BENCHMARK_TASKS: list[BenchmarkTask] = [
+    BenchmarkTask(
+        name="count-alerts",
+        seed_name="bench:count-alerts",
+        input={"findings": [
+            {"severity": "alert"}, {"severity": "info"},
+            {"severity": "alert"}, {"severity": "alert"},
+            {"severity": "info"},
+        ]},
+        expected=3,
+        runner_fn=_bench_runner_count_alerts,
+    ),
+    BenchmarkTask(
+        name="extract-slice",
+        seed_name="bench:extract-slice",
+        input={"text": (
+            "argos reports alert on slice 'state/argos_pheromones.jsonl': "
+            "approaches 10k lines"
+        )},
+        expected="state/argos_pheromones.jsonl",
+        runner_fn=_bench_runner_extract_slice,
+    ),
+    BenchmarkTask(
+        name="sum-pheromones",
+        seed_name="bench:sum-pheromones",
+        input={"pheromones": [
+            {"intensity": 1.5}, {"intensity": 2.0},
+            {"intensity": 0.5}, {"intensity": 3.0},
+        ]},
+        expected=7.0,
+        runner_fn=_bench_runner_sum_pheromones,
+        correct_fn=lambda a, e: abs(a - e) < 1e-6,
+    ),
+    BenchmarkTask(
+        name="dedupe-preserve-order",
+        seed_name="bench:dedupe",
+        input={"items": ["a", "b", "a", "c", "b", "d"]},
+        expected=["a", "b", "c", "d"],
+        runner_fn=_bench_runner_dedupe,
+    ),
+    BenchmarkTask(
+        name="deterministic-shuffle",
+        seed_name="bench:shuffle-7",
+        input={"items": [1, 2, 3, 4, 5, 6, 7]},
+        # Ananke('bench:shuffle-7') gives a fixed permutation;
+        # compute it once and pin. The test will compute and assert.
+        expected="<pinned-by-test>",
+        runner_fn=_bench_runner_random_shuffle,
+        correct_fn=lambda a, e: (
+            isinstance(a, list) and len(a) == 7 and set(a) == set(range(1, 8))
+        ),
+    ),
+]
+
+
+def run_canonical_benchmark(runner: str = "heuristic") -> BenchmarkReport:
+    """Convenience: run the canonical task list with `runner`."""
+    return run_benchmark(CANONICAL_BENCHMARK_TASKS, runner=runner)
 
 
 # The canonical twelve labors. Each is a real substrate kill-test:

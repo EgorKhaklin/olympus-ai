@@ -31,6 +31,7 @@ If you add a new module, register it here. If a module exists on disk but is mis
 | **Nyx** | `src/olympus/primordials/nyx.py` | Night, older than the Olympians | background-task scheduling |
 | **Eros** | `src/olympus/primordials/eros.py` | primordial generation | deterministic id generation |
 | **Tartarus** | `src/olympus/primordials/tartarus.py` | the pit beneath the underworld | quarantine for forbidden artifacts |
+| **Ananke** | `src/olympus/primordials/ananke.py` | personification of necessity (the cannot-be-otherwise) | deterministic seed source — same name → same bytes; underpins reproducible benchmarks |
 
 ---
 
@@ -159,6 +160,7 @@ If you add a new module, register it here. If a module exists on disk but is mis
 | **Pythagoras** | `src/olympus/heroes/pythagoras.py` | mathematician of Samos, father of sacred numerics | constants (φ, π, √2, e), Fibonacci, golden-section search, harmony scoring, Pythagorean triples |
 | **Plato** | `src/olympus/heroes/plato.py` | philosopher of the five regular solids | five-solid taxonomy of substrate work (tetrahedron/cube/octahedron/dodecahedron/icosahedron → fire/earth/air/cosmos/water → observation/state/reasoning/authority/execution) |
 | **Phoenix** | `src/olympus/heroes/phoenix.py` | firebird of cyclical death and rebirth | regeneration primitive — surfaces state due for rebirth (retired prophecies, hung burdens, stale graduations) |
+| **Tiresias** | `src/olympus/heroes/tiresias.py` | blind prophet of Thebes who saw what others could not | ground-truth tracker for agent claims — records claims + verifies against observed outcomes; produces Brier-score calibration |
 
 ---
 
@@ -248,7 +250,7 @@ When a mortal head is cut (rewritten), its replacement may take a different form
 
 | tier | count |
 |------|------:|
-| Primordials | 5 |
+| Primordials | 6 |
 | Titans | 11 |
 | Olympians (incl. Hestia + Apollo subpackage with Pythia) | 16 |
 | Underworld | 6 |
@@ -256,10 +258,10 @@ When a mortal head is cut (rewritten), its replacement may take a different form
 | Furies | 3 |
 | Graces | 3 |
 | Muses | 9 |
-| Heroes | 17 |
+| Heroes | 18 |
 | Monsters (top-level) | 8 |
 | HYDRA heads | 9 (8 mortal + 1 immortal) |
-| **Total named principal figures** | **91** |
+| **Total named principal figures** | **93** |
 
 Plus the presentation-layer module **Iris** (`src/olympus/iris/`) — the rainbow-messenger between Olympus and mortals; static dashboard. Iris is an Olympian by myth but lives outside the `olympians/` directory because she is structurally a renderer, not a god participating in the cognitive loop.
 

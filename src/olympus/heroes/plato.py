@@ -172,6 +172,8 @@ _FIGURE_TO_SOLID: dict[str, str] = {
     "nyx":        "cube",           # time = state
     "eros":       "cube",           # id generation = state primitive
     "tartarus":   "cube",           # quarantine = state
+    "ananke":     "cube",           # deterministic seed = state primitive
+    "tiresias":   "octahedron",     # ground-truth tracker = reasoning
 
     # ─── Monsters not above — observation-tier mostly ─────
     "cerberus":   "tetrahedron",    # perimeter gate watches
