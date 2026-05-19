@@ -190,6 +190,41 @@ class AnthropicBridge(LLMBridge):
               **extra: Any) -> LLMResponse:
         started = time.perf_counter()
         response = LLMResponse(text="", bridge=self.name, model=self.model)
+
+        # Per Delphi 2026-05-19-plutus-budget-arc.md: refuse new LLM
+        # calls when over an operator-declared budget threshold, unless
+        # the operator has acknowledged the breach since the most recent
+        # crossing. The check is bounded (Plutus tally over recent
+        # records is fast) and only applies to PAID bridges (echo skips).
+        try:
+            from olympus.heroes.plutus import plutus
+            if plutus.breach_since_ack():
+                status = plutus.budget_status()
+                response.error = (
+                    "budget breach: " + ", ".join(
+                        f"{k} ${v['spent']}/${v['ceiling']} "
+                        f"({v['pct']}%)"
+                        for k, v in status.items()
+                        if isinstance(v, dict) and v.get("state") == "over"
+                    ) + " — run `invoke spend --acknowledge-budget` to override"
+                )
+                response.elapsed_ms = (time.perf_counter() - started) * 1000.0
+                # Record the refusal to Mnemosyne (S1) and Plutus breach log
+                from olympus.titans.mnemosyne import mnemosyne
+                mnemosyne.remember(
+                    kind="plutus.budget_breach",
+                    actor="plutus:budget-guard",
+                    summary=("refused LLM call: " + response.error[:160]),
+                    role=role, model=self.model,
+                    status=status,
+                )
+                self._record_call(system=system, user=user,
+                                   response=response, role=role)
+                return response
+        except Exception:  # noqa: BLE001
+            # Budget guard failure must NOT block calls; log + proceed
+            pass
+
         try:
             client = self._get_client()
             # Use streaming for any potentially-long call to avoid

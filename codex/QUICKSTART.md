@@ -23,7 +23,7 @@ Olympus is a **cognitive substrate for AI agents, organized as Greek mythology**
 - **Prometheus** improves the substrate within bounds.
 - **Pan** is a panic circuit breaker; **Asclepius** heals derived state.
 
-There are 93 named figures total. The mythology is **the architecture** — every claim Olympus makes about itself is a Greek figure you can read about.
+There are 94 named figures total across 22 arcs. The mythology is **the architecture** — every claim Olympus makes about itself is a Greek figure you can read about. The cinematic Agora web UI surfaces every Decade capability (12 pages).
 
 LLM agents can inhabit any figure. The substrate enforces a constitution (S1–S8) on every output, whether from a heuristic or an LLM.
 
@@ -31,26 +31,46 @@ LLM agents can inhabit any figure. The substrate enforces a constitution (S1–S
 
 ---
 
-## Five minutes, five steps
+## Two minutes, two steps
 
 ```bash
-# 1. Install
+# 1. Install + run the welcome wizard (kindle the hearth, pick your LLM)
 pip install -e .
-
-# 2. Run the welcome wizard (it does the rest)
 invoke setup
 
-# 3. Start the HTTP API in the background
-invoke serve --port 8765 &
-
-# 4. Build + open the Agora (web UI)
-invoke agora --open
-
-# 5. See what one concrete action the substrate suggests
-invoke today
+# 2. Open Zeus's Throne (chat in plain English — no CLI literacy needed)
+invoke serve --port 8765 &     # HTTP API in the background
+invoke agora --open            # browser opens to the Throne
 ```
 
-That's the whole tour. Steps 2 and 4 are interactive; everything else takes seconds.
+That's it. Everything else is in the Throne.
+
+### What's the Throne?
+
+A chat box. Type in plain English. **It does the rest.**
+
+| you type | throne does |
+|---|---|
+| "how's everything?" | runs `doctor`, summarizes |
+| "what should I look at today?" | runs `today`, explains the finding |
+| "ask hephaestus what's drifting" | calls the Hephaestus LLM agent, shows the structured drift |
+| "what has the substrate learned?" | runs `wisdom`, synthesizes the highlights |
+| "ratify proposal abc123" | **refuses** (S7) and shows the exact CLI command — you ratify yourself |
+| "what is Olympus?" | answers from its grounding, no errand needed |
+
+Every turn is recorded to Mnemosyne under `throne.turn`.
+
+---
+
+## When to leave the Throne and use the CLI
+
+The Throne refuses any HIGH-risk action (ratifying decisions, lighting
+the hearth, clearing a Pan panic, installing the daemon) by
+constitutional design. **Zeus is the operator-in-person, not the
+chatbot.** When you ask the Throne to do one of these, it shows you the
+exact command to run yourself — no judgment, no editorializing.
+
+Everything else is available through chat.
 
 ---
 

@@ -122,6 +122,28 @@ def run(*, interval_seconds: float = DEFAULT_INTERVAL_SECONDS,
                 time.sleep(interval_seconds)
                 continue
 
+            # Per Delphi 2026-05-19-chronos-arc.md: fire scheduled
+            # rituals each tick BEFORE the session (so a ritual that
+            # triggers `today` runs before the regular session work).
+            try:
+                from olympus.primordials.chronos import chronos
+                chronos_fired = chronos.tick()
+                if chronos_fired:
+                    _log_line({
+                        "event": "daemon.chronos",
+                        "ts": Nyx.now().isoformat(),
+                        "iteration": i,
+                        "fired_count": len(chronos_fired),
+                        "fired": [f.ritual_id for f in chronos_fired],
+                    })
+            except Exception as exc:  # noqa: BLE001
+                _log_line({
+                    "event": "daemon.chronos_raised",
+                    "ts": Nyx.now().isoformat(),
+                    "iteration": i,
+                    "error": str(exc),
+                })
+
             try:
                 report = run_session(directive=None)
                 session_ok = report.error is None

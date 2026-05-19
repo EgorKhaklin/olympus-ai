@@ -447,3 +447,180 @@ Understanding) operationalized.
 *Per Delphi 2026-05-18-compass-rose-arc.md. Maintained by the operator
 and by Asclepius when derivable, never by an LLM auto-edit (AP1 + AP6
 would fire).*
+
+---
+
+## The Decade + Eos errands (Arcs 12–22)
+
+Twelve arcs of operational capability added after the compass-rose
+era. Each is its own Delphi note in `codex/oracles/delphi/`.
+
+### 👑 Throne — conversational front door (Arc 12)
+
+```bash
+invoke throne                       # interactive REPL
+invoke throne "<one-shot question>"
+invoke throne --voice               # responses spoken via macOS `say`
+```
+
+The Throne calls **SAFE_ERRANDS** on the operator's behalf
+(`doctor`, `today`, `wisdom`, `harmony`, `status`, `shoulders`,
+`geometry`, `ask`, `agent`, `session`, `blessing`, `spend`, `vault`,
+`recall`, `replay`). For GATED operations (`kindle`, `ratify`,
+`hephaestus apply`, etc.) it shows the exact CLI command — never
+executes them.
+
+### 💧 Hippocrene — semantic recall (Arc 13)
+
+```bash
+invoke recall "<query>" [-k N] [--kinds K1,K2]
+invoke recall --stats              # what's indexed
+invoke recall --rebuild            # force re-index
+```
+
+Pure-Python TF-IDF over Mnemosyne kinds (`agent.invocation`,
+`llm.call`, `throne.turn`, `demeter.chunk`, etc.). Zero deps.
+
+### 👁️ Argos-Eyes — filesystem watcher (Arc 14)
+
+```bash
+invoke argos watches
+invoke argos watch add <id> <path> [--glob "*.md"] [--action alert]
+invoke argos watch remove <id>
+invoke argos scan
+```
+
+Action whitelist: `alert`, `errand:today`, `errand:session`,
+`errand:recall`, `errand:doctor`.
+
+### ⏰ Chronos — scheduled rituals (Arc 15)
+
+```bash
+invoke chronos rituals
+invoke chronos ritual add <id> <when> <do>      # e.g. "weekday 09:00" today
+invoke chronos ritual remove <id>
+invoke chronos tick
+invoke chronos check "<when-expr>"
+```
+
+Grammar: `daily HH:MM` · `weekday HH:MM` · `weekend HH:MM` ·
+`<day> HH:MM` · `monthly <N> [HH:MM]` · `every <N>m` · `every <N>h` ·
+`hourly`. Errand whitelist shared with Argos.
+
+### 🔧 Hephaestus-PR — proposals → real git PRs (Arc 16)
+
+```bash
+invoke hephaestus pending                                  # ratified-but-unapplied
+invoke hephaestus apply <pid>                              # DRY-RUN
+invoke hephaestus apply <pid> --really                     # actually mutate
+invoke hephaestus apply <pid> --really --skip-pr           # local commit only
+```
+
+**Constitutional guarantees (all tested):**
+- Never push to `main`/`master`/`trunk`/`production`/`release`
+- Never `--force` push (no parameter exists)
+- Never `git merge` (no merge function exists)
+- Refuse on dirty tree
+- Branch name always `prometheus/<pid>` (no operator-chosen paths)
+- Throne CANNOT trigger apply (S7-gated)
+- Every apply records `prometheus.applied` to Mnemosyne
+
+### 📚 Demeter-Library — knowledge-base ingestion (Arc 17)
+
+```bash
+cp ~/docs/onboarding.md state/demeter/library/
+invoke demeter ingest                # process new/changed files
+invoke demeter ingest --reingest     # force re-process
+invoke demeter library               # list ingested docs
+invoke demeter forget <document_id>  # mark forgotten (S1: chunks remain)
+```
+
+Supports `.md`, `.txt`, `.rst`, `.pdf` (pdf needs `pip install pypdf`).
+
+### 🎙️ Throne-Voice — TTS (Arc 18)
+
+```bash
+invoke speak "<text>" [--voice V] [--rate N] [--block]
+invoke throne --voice                # chat with speech output
+```
+
+macOS `say` only. STT explicitly deferred. `speak` is in
+`AUTOMATED_ERRANDS` so Chronos rituals can speak.
+
+### 🪶 Hermes-MCP — Olympus as MCP server (Arc 19)
+
+```bash
+invoke mcp           # serve over stdio
+invoke mcp --probe   # print server info + tools; exit
+```
+
+Wire into `~/.claude/mcp_servers.json`:
+```json
+{"mcpServers": {"olympus":
+    {"command": "/Users/vanta/.local/bin/invoke", "args": ["mcp"]}}}
+```
+
+Exposes 14 SAFE_ERRANDS as MCP tools; GATED ops are unreachable.
+
+### 💸 Plutus — spend ledger + budget (Arcs 9 + 20)
+
+```bash
+invoke spend                                  # all-time
+invoke spend --today | --7d | --30d
+invoke spend --budget                         # budget status
+invoke spend --acknowledge-budget --reason "..."   # clear breach refusal
+```
+
+Opt-in budget enforcement: set `plutus.budget.enabled = true` +
+at least one threshold (`daily_usd`/`weekly_usd`/`monthly_usd`).
+When over AND not acknowledged, `AnthropicBridge.call` refuses with
+a clear error + override command. **Pan is NOT involved** — the
+constitutional debate decided cost is a soft enforcement layer, not
+a new Pan authority.
+
+### 🗝️ Hades — secrets vault (Arc 10)
+
+```bash
+invoke vault status                       # what's stored, where (no values)
+invoke vault deposit <name>               # hidden-input → keychain
+invoke vault forget <name>
+invoke vault migrate                      # plaintext config.json → keychain
+```
+
+Uses `keyring`: macOS Keychain · Linux Secret Service · Windows
+Credential Manager.
+
+### ⏪ Olympus-Replay — regression harness (Arc 21)
+
+```bash
+invoke replay                              # 20 recent, echo bridge (free)
+invoke replay --limit 50
+invoke replay --role hephaestus
+invoke replay --since 24h
+invoke replay --use-anthropic              # real LLM (respects budget)
+```
+
+Classifications: `stable` · `drift` · `broken` · `skipped` ·
+`over-budget`. Schedule via Chronos for nightly sweeps.
+
+### 🌅 Eos — UI + dashboard (Arc 22)
+
+```bash
+invoke agora --open
+invoke serve --port 8765 &
+```
+
+12 pages: 👑 Throne · Dashboard · Today · Doctor · Spend · Library ·
+Watches · Rituals · Replay · Proposals · Agents · Setup.
+
+### 🔄 today --resolve — Tartarus discipline (Arc 12)
+
+```bash
+invoke today --resolve <slice> --re-raise
+invoke today --resolve <slice> --dismiss-as-stale "<reason>"
+```
+
+Closes longstanding `today` findings honestly: re-raise as a fresh
+proposal OR record an explicit dismissal-reaffirmation (suppresses
+for 7d). Per Tartarus: nothing deleted from Mnemosyne; production
+metrics filter test seeds.

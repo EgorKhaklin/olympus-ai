@@ -114,9 +114,14 @@ class Wisdom:
         return "\n".join(lines)
 
 
-def wisdom() -> Wisdom:
+def wisdom(*, include_test_seeds: bool = False) -> Wisdom:
     """Compose the current wisdom-portrait by reasoning over Mnemosyne
-    and Styx. Pure read — never writes."""
+    and Styx. Pure read — never writes.
+
+    Per Delphi 2026-05-19-tartarus-arc.md: by default, production
+    metrics exclude test-seed records (proposals with fix='test',
+    actors ending with '-test', etc.). Pass include_test_seeds=True
+    to see the raw historical counts including test residue."""
     import re as _re
     from olympus.primordials.nyx import Nyx
     from olympus.titans.mnemosyne import mnemosyne
@@ -128,8 +133,18 @@ def wisdom() -> Wisdom:
     )
 
     # Activity
-    sessions = mnemosyne.recall("session.completed")
-    errored = mnemosyne.recall("session.errored")
+    # Per Delphi 2026-05-19-tartarus-arc.md: production aggregates
+    # filter test seeds. Raw counts (with test data) available via
+    # include_test_seeds=True kwarg (see below).
+    from olympus.runtime.test_seeds import (
+        filter_out_test_records, is_test_proposal,
+    )
+    sessions_raw = mnemosyne.recall("session.completed")
+    errored_raw = mnemosyne.recall("session.errored")
+    sessions = (sessions_raw if include_test_seeds
+                else filter_out_test_records(sessions_raw))
+    errored = (errored_raw if include_test_seeds
+               else filter_out_test_records(errored_raw))
     w.sessions_total = len(sessions)
     w.sessions_examined = len(sessions)
     w.sessions_with_errors = len(errored)
@@ -166,10 +181,40 @@ def wisdom() -> Wisdom:
     ]
 
     # Proposal patterns: walk action.* memories
-    promoted = mnemosyne.recall("action.promoted")
-    rejected = mnemosyne.recall("action.rejected")
-    ratified = mnemosyne.recall("action.ratified")
-    executed = mnemosyne.recall("action.executed")
+    # Per tartarus arc: production counts filter test seeds (proposals
+    # whose underlying Hephaestus file is a test artifact).
+    promoted_raw = mnemosyne.recall("action.promoted")
+    rejected_raw = mnemosyne.recall("action.rejected")
+    ratified_raw = mnemosyne.recall("action.ratified")
+    executed_raw = mnemosyne.recall("action.executed")
+
+    def _is_test_action(action_mem):
+        """An action memory is a test seed if its underlying proposal
+        is a test artifact OR the action's actor is a test actor."""
+        if include_test_seeds:
+            return False
+        body = action_mem.body or {}
+        # Try the underlying proposal first
+        aid = body.get("action_id", "")
+        pid = aid[4:] if aid.startswith("act-") else aid
+        pp = root.child("state", "hephaestus", f"{pid}.json")
+        if pp.exists():
+            try:
+                import json as _json
+                with pp.open("r", encoding="utf-8") as fh:
+                    proposal = _json.load(fh)
+                if is_test_proposal(proposal):
+                    return True
+            except Exception:  # noqa: BLE001
+                pass
+        # Fall back to actor check
+        from olympus.runtime.test_seeds import is_test_actor
+        return is_test_actor(getattr(action_mem, "actor", ""))
+
+    promoted = [m for m in promoted_raw if not _is_test_action(m)]
+    rejected = [m for m in rejected_raw if not _is_test_action(m)]
+    ratified = [m for m in ratified_raw if not _is_test_action(m)]
+    executed = [m for m in executed_raw if not _is_test_action(m)]
     w.proposal_count_total = len(promoted)
     w.proposal_count_rejected = len(rejected)
     w.proposal_count_ratified = len(ratified)

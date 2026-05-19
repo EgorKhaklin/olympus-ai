@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agora — Watches (Argos-Eyes)</title>
+    <style>/*__AGORA_CSS__*/</style>
+</head>
+<body>
+__AGORA_NAV__
+
+<main>
+    <header class="page-head">
+        <h1>👁️ Argos-Eyes — Filesystem Watches</h1>
+        <div class="subtitle">the giant's hundred eyes turned outward · path changes raise pheromones</div>
+        <div class="status-strip">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="status-text">connecting…</span>
+        </div>
+    </header>
+
+    <section class="panel">
+        <h2>Configured watches</h2>
+        <div class="panel-body" id="watches">loading…</div>
+    </section>
+
+    <section class="panel">
+        <h2>Manage via CLI</h2>
+        <div class="panel-body">
+            <p>Watches are operator-declared; the substrate doesn't auto-create them. Add via CLI:</p>
+            <pre class="cli">$ invoke argos watch add &lt;id&gt; &lt;path&gt; [--glob "*.md"] [--action alert|errand:&lt;name&gt;]
+$ invoke argos watch remove &lt;id&gt;
+$ invoke argos scan          # force a scan now
+$ invoke argos watches       # list (this page mirrors)</pre>
+            <p><strong>Errand whitelist for <code>action: errand:...</code></strong> — <code>today</code>, <code>session</code>, <code>recall</code>, <code>doctor</code>. Anything else is refused at config-load.</p>
+        </div>
+    </section>
+</main>
+
+<footer class="agora-foot">
+    Per Argos-Eyes arc · 9 substrate-watching Eyes + N operator-declared filesystem Eyes
+</footer>
+
+<script>/*__AGORA_JS__*/</script>
+<script>
+"use strict";
+
+function renderWatches(watches) {
+    var body = document.getElementById("watches");
+    body.innerHTML = "";
+    if (!watches.length) {
+        body.innerHTML = "<p><em>No watches configured.</em> Try <code>invoke argos watch add config-self state/config.json</code> to alert on Hades-style config contamination.</p>";
+        return;
+    }
+    var table = AGORA.el("table", {"class": "iris"});
+    var thead = AGORA.el("thead", null, [
+        AGORA.el("tr", null, [
+            AGORA.el("th", {text: ""}),
+            AGORA.el("th", {text: "id"}),
+            AGORA.el("th", {text: "path"}),
+            AGORA.el("th", {text: "glob"}),
+            AGORA.el("th", {text: "action"}),
+            AGORA.el("th", {text: "max"}),
+        ]),
+    ]);
+    var tbody = AGORA.el("tbody");
+    watches.forEach(function (w) {
+        var enabled = w.enabled !== false;
+        var badge = AGORA.el("span", {
+            "class": "badge " + (enabled ? "ok" : "warn"),
+            text: enabled ? "active" : "off",
+        });
+        tbody.appendChild(AGORA.el("tr", null, [
+            AGORA.el("td", null, [badge]),
+            AGORA.el("td", {"class": "mono", text: w.id || ""}),
+            AGORA.el("td", {text: w.path || ""}),
+            AGORA.el("td", {"class": "mono",
+                text: w.glob || "*"}),
+            AGORA.el("td", {"class": "mono",
+                text: w.action || "alert"}),
+            AGORA.el("td", {"class": "mono",
+                text: String(w.max_files || 500)}),
+        ]));
+    });
+    table.appendChild(thead); table.appendChild(tbody);
+    body.appendChild(table);
+}
+
+function refresh() {
+    AGORA.get("/watches", function (err, r) {
+        if (err) {
+            AGORA.setStatus(false, "error: " + err.message);
+            return;
+        }
+        AGORA.setStatus(true, "live");
+        renderWatches((r || {}).watches || []);
+    });
+}
+refresh();
+setInterval(refresh, AGORA.INTERVAL_MS);
+</script>
+</body>
+</html>

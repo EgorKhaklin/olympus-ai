@@ -16,25 +16,15 @@ __AGORA_NAV__
         <div class="status-strip">
             <span class="status-dot" id="status-dot"></span>
             <span id="status-text">connecting…</span>
-            · run <code>invoke doctor</code> in the terminal to refresh
+            &nbsp;·&nbsp; live from <code>/doctor</code>
         </div>
     </header>
 
-    <section class="panel">
-        <h2>Substrate health</h2>
-        <div class="panel-body" id="doctor-body">
-            <p>The doctor endpoint is CLI-only by design (it reads
-            live state across every tier). For now this page shows
-            the status endpoint; future arc will expose a JSON
-            doctor endpoint to the HTTP API.</p>
-            <p>Run in your terminal:</p>
-            <pre class="cli"><span class="prompt">$</span> invoke doctor</pre>
-        </div>
-    </section>
+    <section class="grid" id="summary"></section>
 
     <section class="panel">
-        <h2>Live status (subset)</h2>
-        <div class="panel-body"><pre class="json" id="status-json">loading…</pre></div>
+        <h2>Findings</h2>
+        <div class="panel-body" id="findings">loading…</div>
     </section>
 </main>
 
@@ -45,21 +35,71 @@ __AGORA_NAV__
 <script>/*__AGORA_JS__*/</script>
 <script>
 "use strict";
-(function () {
-    function refresh() {
-        AGORA.get("/status", function (err, status) {
-            if (err) {
-                AGORA.setStatus(false, "error: " + err.message);
-                return;
-            }
-            AGORA.setStatus(true, "live");
-            document.getElementById("status-json").textContent =
-                JSON.stringify(status, null, 2);
-        });
+
+function renderSummary(report) {
+    var root = document.getElementById("summary");
+    root.innerHTML = "";
+    var tiles = [
+        ["Overall",
+         (report.ok_count || 0) + " ok",
+         (report.warn_count || 0) + " warn · " + (report.fail_count || 0) + " fail"],
+        ["Olympus", report.olympus_version || "?", "version"],
+        ["Platform", report.platform || "?", report.python_version || ""],
+        ["Diagnosed", (report.diagnosed_at || "").substring(11, 19), "(UTC)"],
+    ];
+    tiles.forEach(function (t) {
+        root.appendChild(AGORA.el("div", {"class": "card"}, [
+            AGORA.el("div", {"class": "label", text: t[0]}),
+            AGORA.el("div", {"class": "value", text: String(t[1])}),
+            AGORA.el("div", {"class": "annot", text: String(t[2])}),
+        ]));
+    });
+}
+
+function renderFindings(findings) {
+    var body = document.getElementById("findings");
+    body.innerHTML = "";
+    if (!findings || !findings.length) {
+        body.innerHTML = "<p><em>no findings yet</em></p>";
+        return;
     }
-    refresh();
-    setInterval(refresh, AGORA.INTERVAL_MS);
-})();
+    var table = AGORA.el("table", {"class": "iris"});
+    var thead = AGORA.el("thead", null, [
+        AGORA.el("tr", null, [
+            AGORA.el("th", {text: "check"}),
+            AGORA.el("th", {text: "status"}),
+            AGORA.el("th", {text: "detail"}),
+        ]),
+    ]);
+    var tbody = AGORA.el("tbody");
+    findings.forEach(function (f) {
+        var badge = AGORA.el("span", {
+            "class": "badge " + (f.status || ""),
+            text: f.status || "?",
+        });
+        tbody.appendChild(AGORA.el("tr", null, [
+            AGORA.el("td", {"class": "mono", text: f.name || ""}),
+            AGORA.el("td", null, [badge]),
+            AGORA.el("td", {text: f.detail || ""}),
+        ]));
+    });
+    table.appendChild(thead); table.appendChild(tbody);
+    body.appendChild(table);
+}
+
+function refresh() {
+    AGORA.get("/doctor", function (err, report) {
+        if (err) {
+            AGORA.setStatus(false, "error: " + err.message);
+            return;
+        }
+        AGORA.setStatus(true, "live");
+        renderSummary(report);
+        renderFindings(report.findings || []);
+    });
+}
+refresh();
+setInterval(refresh, AGORA.INTERVAL_MS);
 </script>
 </body>
 </html>

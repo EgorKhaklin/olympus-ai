@@ -377,7 +377,28 @@ def run(role_name: str, user_prompt: str, *,
 
     system = r.render_system()
     b = bridge()
-    response = b.call(system=system, user=user_prompt,
+
+    # Per Delphi 2026-05-19-grounding-arc.md: every agent call gets a
+    # role-specific grounding block prepended. The block contains real
+    # Pantheon roster + recent Mnemosyne records so the LLM cites real
+    # things instead of fabricating paths/identifiers.
+    from olympus.runtime.grounding import (
+        build_grounding_for_role, apply_grounding,
+    )
+    grounding_block = build_grounding_for_role(role_name)
+    if grounding_block:
+        grounded_user = (
+            "GROUNDING (verified at call time — cite ONLY paths and "
+            "record-ids present in this block; if you cite a path "
+            "absent here, the substrate will verify it and downgrade "
+            "your confidence on fabrication):\n\n"
+            "```json\n" + grounding_block + "\n```\n\n"
+            "---\n\nQUESTION:\n" + user_prompt
+        )
+    else:
+        grounded_user = user_prompt
+
+    response = b.call(system=system, user=grounded_user,
                        max_tokens=max_tokens, role=role_name)
 
     if response.error:
@@ -388,6 +409,11 @@ def run(role_name: str, user_prompt: str, *,
         )
 
     parsed = r.parse(response.text)
+    # Verify cited paths; downgrade confidence on fabrication; record
+    # the check to Mnemosyne under `agent.grounding_check`.
+    parsed = apply_grounding(role=role_name,
+                              response_text=response.text,
+                              parsed=parsed)
     confidence = float(parsed.get("confidence", 0.0))
     result = AgentResult(
         role=role_name, bridge=b.name,

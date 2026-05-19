@@ -238,36 +238,162 @@ def _check_state_disk() -> DoctorFinding:
         )
 
 
+_DEFAULT_ERROR_WINDOW_SECONDS = 24 * 3600  # 24h
+_MIN_DENOM_FOR_RATE = 5
+
+
 def _check_session_errors() -> DoctorFinding:
-    """Recent error rate from session.errored vs session.completed."""
+    """Recent error rate from session.errored vs session.completed.
+
+    Per Delphi 2026-05-19-pause-arc.md: previous implementation used
+    `[-50:]` which made errors STICKY — once 50 historical errors
+    accumulated, the rate stayed warning-level forever even as the
+    substrate ran cleanly. New implementation is time-windowed: only
+    counts events in the last `OLYMPUS_DOCTOR_ERROR_WINDOW_SECONDS`
+    (default 24h). When the denominator is small (< 5 sessions in the
+    window), reports `ok · insufficient data` instead of flapping.
+    """
+    import datetime as _dt
+    import os as _os
     try:
+        window_s = float(_os.environ.get(
+            "OLYMPUS_DOCTOR_ERROR_WINDOW_SECONDS",
+            _DEFAULT_ERROR_WINDOW_SECONDS))
+    except (TypeError, ValueError):
+        window_s = _DEFAULT_ERROR_WINDOW_SECONDS
+
+    def _within_window(remembered_at: str, now: _dt.datetime) -> bool:
+        if not remembered_at:
+            return False
+        try:
+            ts = _dt.datetime.fromisoformat(
+                remembered_at.replace("Z", "+00:00"))
+        except (ValueError, TypeError):
+            return False
+        if ts.tzinfo is None and now.tzinfo is not None:
+            ts = ts.replace(tzinfo=now.tzinfo)
+        delta = (now - ts).total_seconds()
+        return 0 <= delta <= window_s
+
+    try:
+        from olympus.runtime.test_seeds import is_test_record
         errors = mnemosyne.recall("session.errored")
         completed = mnemosyne.recall("session.completed")
-        if not completed:
+        now = Nyx.now()
+        # Per Delphi 2026-05-19-tartarus-arc.md: filter test seeds
+        # from production-facing error rate. Investigation showed 98%
+        # of historical session.errored records are test-actor.
+        recent_e = sum(1 for m in errors
+                       if _within_window(m.remembered_at, now)
+                       and not is_test_record(m))
+        recent_c = sum(1 for m in completed
+                       if _within_window(m.remembered_at, now)
+                       and not is_test_record(m))
+        denom = recent_c + recent_e   # total sessions, errored or not
+        window_hr = window_s / 3600.0
+        if denom < _MIN_DENOM_FOR_RATE:
             return DoctorFinding(
                 "session-errors", "ok",
-                "no sessions yet",
-            )
-        # Last 50 of each
-        recent_e = len(errors[-50:])
-        recent_c = len(completed[-50:])
-        denom = max(recent_c, 1)
-        rate = recent_e / denom
+                f"{recent_e}e/{recent_c}c in {window_hr:.0f}h "
+                f"· insufficient data for rate")
+        rate = recent_e / max(denom, 1)
         if rate > 0.2:
             return DoctorFinding(
                 "session-errors", "warn",
-                f"{recent_e}/{recent_c} recent error rate "
-                f"({rate*100:.1f}%) — investigate",
-            )
+                f"{recent_e}/{denom} in {window_hr:.0f}h "
+                f"({rate*100:.1f}%) — investigate")
         return DoctorFinding(
             "session-errors", "ok",
-            f"{recent_e}/{recent_c} recent ({rate*100:.1f}%)",
-        )
+            f"{recent_e}/{denom} in {window_hr:.0f}h "
+            f"({rate*100:.1f}%)")
     except Exception as exc:  # noqa: BLE001
         return DoctorFinding(
             "session-errors", "warn",
-            f"could not check: {exc}",
-        )
+            f"could not check: {exc}")
+
+
+def _check_secrets() -> DoctorFinding:
+    """Hades vault status: are the operator's secrets encrypted at
+    rest, or sitting in plaintext config? Per Delphi
+    2026-05-19-hades-arc.md."""
+    try:
+        from olympus.olympians.hades import hades, ENV_OVERRIDES
+        if not hades.available():
+            return DoctorFinding(
+                "vault", "warn",
+                f"keyring unavailable on this platform "
+                f"({hades.backend_name()}); plaintext is the only option")
+        locations: dict[str, int] = {"env": 0, "keychain": 0,
+                                       "plaintext": 0, "unset": 0}
+        plaintext_names: list[str] = []
+        for name in ENV_OVERRIDES:
+            loc = hades.where(name)
+            locations[loc] = locations.get(loc, 0) + 1
+            if loc == "plaintext":
+                plaintext_names.append(name)
+        if plaintext_names:
+            return DoctorFinding(
+                "vault", "warn",
+                f"{len(plaintext_names)} secret(s) in PLAINTEXT "
+                f"({', '.join(plaintext_names)}) — "
+                f"run `invoke vault migrate`")
+        kc = locations["keychain"]
+        env = locations["env"]
+        return DoctorFinding(
+            "vault", "ok",
+            f"{kc} in keychain · {env} via env · "
+            f"backend={hades.backend_name()}")
+    except Exception as exc:  # noqa: BLE001
+        return DoctorFinding(
+            "vault", "warn", f"check raised: {exc}")
+
+
+def _check_budget() -> DoctorFinding:
+    """Plutus budget status. Per Delphi 2026-05-19-plutus-budget-arc.md.
+    Returns ok/warn/fail based on operator-declared thresholds. fail
+    is reserved for over-budget AND breach-since-ack (LLM calls
+    currently refusing)."""
+    try:
+        from olympus.heroes.plutus import plutus
+        s = plutus.budget_status()
+        if not s.get("enabled"):
+            return DoctorFinding(
+                "budget", "ok",
+                "(disabled — set plutus.budget.enabled to opt in)")
+        # Compose a compact status line
+        bits: list[str] = []
+        worst = "ok"
+        for key, label in (("daily", "d"), ("weekly", "w"),
+                            ("monthly", "m")):
+            e = s.get(key) or {}
+            if e.get("state") == "unset":
+                continue
+            bits.append(f"{label}=${e['spent']:.2f}/"
+                        f"${e['ceiling']:.2f}({e['pct']:.0f}%)")
+            if e.get("state") == "over":
+                worst = "fail"
+            elif e.get("state") == "warn" and worst != "fail":
+                worst = "warn"
+        if not bits:
+            return DoctorFinding(
+                "budget", "ok",
+                "(enabled but no thresholds set)")
+        detail = " · ".join(bits)
+        if worst == "fail":
+            if plutus.breach_since_ack():
+                return DoctorFinding(
+                    "budget", "fail",
+                    detail + " — LLM REFUSED until "
+                              "`invoke spend --acknowledge-budget`")
+            return DoctorFinding(
+                "budget", "warn",
+                detail + " — over (acknowledged)")
+        if worst == "warn":
+            return DoctorFinding("budget", "warn", detail)
+        return DoctorFinding("budget", "ok", detail)
+    except Exception as exc:  # noqa: BLE001
+        return DoctorFinding(
+            "budget", "warn", f"check raised: {exc}")
 
 
 def _check_today() -> DoctorFinding:
@@ -316,6 +442,8 @@ def diagnose() -> DoctorReport:
         _check_state_disk,
         _check_session_errors,
         _check_today,
+        _check_secrets,   # Per Delphi 2026-05-19-hades-arc.md
+        _check_budget,    # Per Delphi 2026-05-19-plutus-budget-arc.md
     ):
         try:
             report.findings.append(check())

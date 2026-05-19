@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agora — Rituals (Chronos)</title>
+    <style>/*__AGORA_CSS__*/</style>
+</head>
+<body>
+__AGORA_NAV__
+
+<main>
+    <header class="page-head">
+        <h1>⏰ Chronos — Scheduled Rituals</h1>
+        <div class="subtitle">the clock that does things · cron-style scheduling on the daemon</div>
+        <div class="status-strip">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="status-text">connecting…</span>
+        </div>
+    </header>
+
+    <section class="panel">
+        <h2>Configured rituals</h2>
+        <div class="panel-body" id="rituals">loading…</div>
+    </section>
+
+    <section class="panel">
+        <h2>Grammar</h2>
+        <div class="panel-body">
+            <pre class="cli">daily HH:MM            every day at HH:MM
+weekday HH:MM          Mon-Fri at HH:MM
+weekend HH:MM          Sat-Sun at HH:MM
+&lt;day&gt; HH:MM            monday/tuesday/.../sunday at HH:MM
+monthly &lt;N&gt; [HH:MM]    1..28 of each month
+every &lt;N&gt;m | every &lt;N&gt;h     every N minutes/hours
+hourly                 on the hour</pre>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>Manage via CLI</h2>
+        <div class="panel-body">
+            <pre class="cli">$ invoke chronos ritual add &lt;id&gt; &lt;when&gt; &lt;do&gt;
+$ invoke chronos ritual remove &lt;id&gt;
+$ invoke chronos tick                       # force evaluation now
+$ invoke chronos check "&lt;when-expr&gt;"        # parse + project next 3 due</pre>
+            <p><strong>Errand whitelist:</strong> <code>today, session, recall, doctor, ferry, spend, heal, blessing, speak</code> — anything else is refused.</p>
+        </div>
+    </section>
+</main>
+
+<footer class="agora-foot">
+    Per Chronos arc · daemon tick fires matching rituals; each → <code>chronos.fired</code>
+</footer>
+
+<script>/*__AGORA_JS__*/</script>
+<script>
+"use strict";
+
+function fmtNext(iso) {
+    if (!iso) return "(never)";
+    try {
+        var d = new Date(iso);
+        return d.toLocaleString();
+    } catch (e) { return iso; }
+}
+
+function renderRituals(rituals) {
+    var body = document.getElementById("rituals");
+    body.innerHTML = "";
+    if (!rituals.length) {
+        body.innerHTML = "<p><em>No rituals configured.</em> Try <code>invoke chronos ritual add morning weekday 09:00 today</code> for a daily-9am briefing.</p>";
+        return;
+    }
+    var table = AGORA.el("table", {"class": "iris"});
+    var thead = AGORA.el("thead", null, [
+        AGORA.el("tr", null, [
+            AGORA.el("th", {text: ""}),
+            AGORA.el("th", {text: "id"}),
+            AGORA.el("th", {text: "when"}),
+            AGORA.el("th", {text: "do"}),
+            AGORA.el("th", {text: "next due"}),
+        ]),
+    ]);
+    var tbody = AGORA.el("tbody");
+    rituals.forEach(function (r) {
+        var enabled = r.enabled !== false;
+        var badge = AGORA.el("span", {
+            "class": "badge " + (enabled ? "ok" : "warn"),
+            text: enabled ? "active" : "off",
+        });
+        tbody.appendChild(AGORA.el("tr", null, [
+            AGORA.el("td", null, [badge]),
+            AGORA.el("td", {"class": "mono", text: r.id || ""}),
+            AGORA.el("td", {"class": "mono", text: r.when || ""}),
+            AGORA.el("td", {"class": "mono", text: "invoke " + (r.do || "")}),
+            AGORA.el("td", {"class": "mono", text: fmtNext(r.next_due)}),
+        ]));
+    });
+    table.appendChild(thead); table.appendChild(tbody);
+    body.appendChild(table);
+}
+
+function refresh() {
+    AGORA.get("/rituals", function (err, r) {
+        if (err) {
+            AGORA.setStatus(false, "error: " + err.message);
+            return;
+        }
+        AGORA.setStatus(true, "live");
+        renderRituals((r || {}).rituals || []);
+    });
+}
+refresh();
+setInterval(refresh, AGORA.INTERVAL_MS);
+</script>
+</body>
+</html>

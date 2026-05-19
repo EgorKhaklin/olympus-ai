@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agora — Replay (Olympus-Replay)</title>
+    <style>/*__AGORA_CSS__*/</style>
+</head>
+<body>
+__AGORA_NAV__
+
+<main>
+    <header class="page-head">
+        <h1>⏪ Olympus-Replay</h1>
+        <div class="subtitle">re-run past agent invocations · catch what unit tests miss</div>
+        <div class="status-strip">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="status-text">connecting…</span>
+        </div>
+    </header>
+
+    <section class="grid" id="counts"></section>
+
+    <section class="panel">
+        <h2>Recent replay records</h2>
+        <div class="panel-body" id="records">loading…</div>
+    </section>
+
+    <section class="panel">
+        <h2>Run replay (via CLI)</h2>
+        <div class="panel-body">
+            <pre class="cli">$ invoke replay                          # 20 recent, echo bridge (free)
+$ invoke replay --limit 50
+$ invoke replay --role hephaestus
+$ invoke replay --use-anthropic          # real LLM (respects Plutus budget)</pre>
+            <p>Classifications: <span class="badge ok">stable</span> · <span class="badge warn">drift</span> · <span class="badge fail">broken</span> · <span class="badge calm">skipped</span> · <span class="badge fail">over-budget</span>.</p>
+        </div>
+    </section>
+</main>
+
+<footer class="agora-foot">
+    Per Olympus-Replay arc · the regression harness that protects all 9 prior Decade arcs
+</footer>
+
+<script>/*__AGORA_JS__*/</script>
+<script>
+"use strict";
+
+function renderCounts(report) {
+    var root = document.getElementById("counts");
+    root.innerHTML = "";
+    var total = report.total || 0;
+    var c = report.counts || {};
+    var stable = c.stable || 0;
+    var pct = total ? ((100 * stable / total).toFixed(0) + "%") : "—";
+    var tiles = [
+        ["Stability", pct, stable + "/" + total + " stable"],
+        ["Stable", String(stable), "no drift detected"],
+        ["Drift", String(c.drift || 0), "schema match, values shifted"],
+        ["Broken", String(c.broken || 0), "raised or schema regression"],
+        ["Skipped", String(c.skipped || 0), "no paired llm.call"],
+    ];
+    tiles.forEach(function (t) {
+        root.appendChild(AGORA.el("div", {"class": "card"}, [
+            AGORA.el("div", {"class": "label", text: t[0]}),
+            AGORA.el("div", {"class": "value", text: t[1]}),
+            AGORA.el("div", {"class": "annot", text: t[2]}),
+        ]));
+    });
+}
+
+function renderRecords(records) {
+    var body = document.getElementById("records");
+    body.innerHTML = "";
+    if (!records.length) {
+        body.innerHTML = "<p><em>No replay records yet.</em> Run <code>invoke replay</code> in your terminal to generate some.</p>";
+        return;
+    }
+    var table = AGORA.el("table", {"class": "iris"});
+    var thead = AGORA.el("thead", null, [
+        AGORA.el("tr", null, [
+            AGORA.el("th", {text: "when"}),
+            AGORA.el("th", {text: "role"}),
+            AGORA.el("th", {text: "result"}),
+            AGORA.el("th", {text: "notes"}),
+        ]),
+    ]);
+    var tbody = AGORA.el("tbody");
+    records.slice().reverse().forEach(function (r) {
+        var cls = r.classification || "?";
+        var badgeCls = {
+            "stable": "ok", "drift": "warn",
+            "broken": "fail", "skipped": "calm",
+            "over-budget": "fail",
+        }[cls] || "calm";
+        var badge = AGORA.el("span",
+            {"class": "badge " + badgeCls, text: cls});
+        var when = (r.remembered_at || "").substring(0, 19);
+        var notes = (r.diffs && r.diffs.length)
+            ? r.diffs.join("; ").substring(0, 120) : "";
+        tbody.appendChild(AGORA.el("tr", null, [
+            AGORA.el("td", {"class": "mono", text: when}),
+            AGORA.el("td", {text: r.role || ""}),
+            AGORA.el("td", null, [badge]),
+            AGORA.el("td", {text: notes}),
+        ]));
+    });
+    table.appendChild(thead); table.appendChild(tbody);
+    body.appendChild(table);
+}
+
+function refresh() {
+    AGORA.get("/replay/recent?limit=30", function (err, r) {
+        if (err) {
+            AGORA.setStatus(false, "error: " + err.message);
+            return;
+        }
+        AGORA.setStatus(true, "live");
+        renderCounts(r);
+        renderRecords(r.records || []);
+    });
+}
+refresh();
+setInterval(refresh, AGORA.INTERVAL_MS);
+</script>
+</body>
+</html>

@@ -249,6 +249,135 @@ def _route_raise_proposal(body: dict) -> tuple[int, dict]:
     }
 
 
+def _route_spend(query: dict) -> tuple[int, dict]:
+    """Per Delphi 2026-05-19-eos-arc.md. Plutus ledger snapshot."""
+    from olympus.heroes.plutus import plutus
+    window = (query.get("window") or ["all"])[0]
+    if window not in ("today", "1h", "24h", "7d", "30d", "all"):
+        window = "all"
+    return 200, plutus.tally(window=window).to_dict()
+
+
+def _route_budget(_query: dict) -> tuple[int, dict]:
+    """Per Eos arc. Plutus budget state + breach status."""
+    from olympus.heroes.plutus import plutus
+    s = plutus.budget_status()
+    if s.get("enabled"):
+        s["over_budget"] = plutus.is_over_budget()
+        s["breach_since_ack"] = plutus.breach_since_ack()
+    return 200, s
+
+
+def _route_vault(_query: dict) -> tuple[int, dict]:
+    """Per Eos arc. Hades vault status — locations + metadata only,
+    NEVER the secret values."""
+    from olympus.olympians.hades import hades, ENV_OVERRIDES
+    import dataclasses as _dc
+    out: dict[str, Any] = {
+        "available": hades.available(),
+        "backend": hades.backend_name(),
+        "secrets": [],
+    }
+    for name in sorted(ENV_OVERRIDES.keys()):
+        st = hades.status(name)
+        # Convert dataclass to dict; status() carries metadata only
+        out["secrets"].append(_dc.asdict(st))
+    return 200, out
+
+
+def _route_library(_query: dict) -> tuple[int, dict]:
+    """Per Eos arc. Demeter library — documents + chunk counts."""
+    from olympus.olympians.demeter import library
+    return 200, {"documents": library.documents()}
+
+
+def _route_watches(_query: dict) -> tuple[int, dict]:
+    """Per Eos arc. Argos filesystem watches."""
+    from olympus.runtime.config import load as load_cfg
+    cfg = load_cfg()
+    return 200, {"watches": cfg.argos.watches}
+
+
+def _route_rituals(_query: dict) -> tuple[int, dict]:
+    """Per Eos arc. Chronos rituals + next-due times."""
+    from olympus.primordials.chronos import (
+        chronos, parse_when, next_due,
+    )
+    from olympus.primordials.nyx import Nyx
+    rituals = chronos.load_rituals()
+    now = Nyx.now()
+    out: list[dict[str, Any]] = []
+    for r in rituals:
+        nd = next_due(parse_when(r.when), now)
+        out.append({
+            "id": r.id,
+            "when": r.when,
+            "do": r.do,
+            "enabled": r.enabled,
+            "next_due": nd.isoformat() if nd else None,
+        })
+    return 200, {"rituals": out}
+
+
+def _route_replay_recent(query: dict) -> tuple[int, dict]:
+    """Per Eos arc. Recent replay.regression records."""
+    from olympus.titans.mnemosyne import mnemosyne
+    limit = int((query.get("limit") or ["20"])[0])
+    limit = max(1, min(limit, 200))
+    records = mnemosyne.recall("replay.regression")
+    recent = records[-limit:]
+    # Aggregate stats over the window
+    counts = {"stable": 0, "drift": 0, "broken": 0,
+              "skipped": 0, "over_budget": 0}
+    for r in recent:
+        c = (r.body or {}).get("classification", "")
+        key = c.replace("-", "_")
+        if key in counts:
+            counts[key] += 1
+    return 200, {
+        "total": len(recent),
+        "counts": counts,
+        "records": [
+            {"role": (r.body or {}).get("role", ""),
+             "classification": (r.body or {}).get("classification", ""),
+             "diffs": (r.body or {}).get("diffs", [])[:3],
+             "remembered_at": r.remembered_at}
+            for r in recent
+        ],
+    }
+
+
+def _route_today_live(_query: dict) -> tuple[int, dict]:
+    """Per Eos arc. Live today oracle (not the static guide page)."""
+    from olympus.runtime.today import today
+    import dataclasses as _dc
+    return 200, _dc.asdict(today())
+
+
+def _route_doctor_live(_query: dict) -> tuple[int, dict]:
+    """Per Eos arc. Live doctor diagnosis."""
+    from olympus.runtime.doctor import diagnose
+    import dataclasses as _dc
+    return 200, _dc.asdict(diagnose())
+
+
+def _route_library_ingest(_body: dict) -> tuple[int, dict]:
+    """Per Eos arc. Trigger Demeter ingestion. Idempotent — re-running
+    with unchanged files produces 0 new chunks. Records to Mnemosyne
+    under both `http.library_ingest_request` (this request) AND
+    `demeter.ingest_pass` (the underlying ingest pass)."""
+    from olympus.olympians.demeter import library
+    from olympus.titans.mnemosyne import mnemosyne
+    import dataclasses as _dc
+    mnemosyne.remember(
+        kind="http.library_ingest_request",
+        actor="http-api",
+        summary="operator triggered demeter ingest via Agora",
+    )
+    report = library.ingest()
+    return 200, _dc.asdict(report)
+
+
 def _route_mnemosyne(query: dict, *, kind: str) -> tuple[int, dict]:
     from olympus.titans.mnemosyne import mnemosyne
     limit = int(query.get("limit", ["50"])[0])
@@ -295,6 +424,26 @@ def dispatch(path: str, query: dict[str, list[str]]) -> tuple[int, dict]:
         return _route_specs(query)
     if path == "/geometry":
         return _route_geometry(query)
+    # Per Delphi 2026-05-19-eos-arc.md — UI-surfacing endpoints
+    if path == "/spend":
+        return _route_spend(query)
+    if path == "/budget":
+        return _route_budget(query)
+    if path == "/vault":
+        return _route_vault(query)
+    if path == "/library":
+        return _route_library(query)
+    if path == "/watches":
+        return _route_watches(query)
+    if path == "/rituals":
+        return _route_rituals(query)
+    if path == "/replay/recent":
+        return _route_replay_recent(query)
+    if path == "/today":
+        return _route_today_live(query)
+    if path == "/doctor":
+        return _route_doctor_live(query)
+
     if path.startswith("/mnemosyne/"):
         kind = path[len("/mnemosyne/"):]
         if not kind:
@@ -304,13 +453,49 @@ def dispatch(path: str, query: dict[str, list[str]]) -> tuple[int, dict]:
                  "routes": _route_root({})[1]["routes"]}
 
 
+def _route_throne_turn(body: dict) -> tuple[int, dict]:
+    """POST /throne/turn — one conversational turn at Zeus's Throne.
+
+    Request:  {"input": "<plain English>"}
+    Response: {"answer", "actions_taken", "suggested_command",
+               "sources", "elapsed_ms", "bridge"}
+
+    Per Delphi 2026-05-19-throne-arc.md. S7 enforcement is internal to
+    the Throne (GATED errands NEVER execute); this endpoint just
+    relays input → respond() → JSON. Every turn is recorded to
+    Mnemosyne under `throne.turn`."""
+    user_input = (body.get("input") or body.get("text") or "").strip()
+    if not user_input:
+        return 400, {"error": "missing 'input' field"}
+    if len(user_input) > 4000:
+        return 400, {"error": "input too long (max 4000 chars)"}
+    try:
+        from olympus.throne import throne
+        r = throne().respond(user_input)
+    except Exception as exc:  # noqa: BLE001
+        return 500, {"error": f"{type(exc).__name__}: {exc}"}
+    return 200, r.to_dict()
+
+
 def dispatch_post(path: str, body: dict) -> tuple[int, dict]:
-    """POST dispatch — exactly one route. The constitutional reason for
-    keeping this tiny: every new write surface is a new attack surface."""
+    """POST dispatch — short whitelist. The constitutional reason for
+    keeping this tiny: every new write surface is a new attack surface.
+
+    Routes:
+      /proposals/raise — adds to the Hephaestus queue (writes one file)
+      /throne/turn     — one Throne turn (records to Mnemosyne via Throne)
+      /library/ingest  — trigger Demeter ingest (Eos arc; idempotent)
+    """
     if path == "/proposals/raise":
         return _route_raise_proposal(body)
+    if path == "/throne/turn":
+        return _route_throne_turn(body)
+    if path == "/library/ingest":
+        return _route_library_ingest(body)
     return 405, {"error": f"POST not allowed at {path!r}",
-                 "allowed_post_routes": ["/proposals/raise"]}
+                 "allowed_post_routes": ["/proposals/raise",
+                                          "/throne/turn",
+                                          "/library/ingest"]}
 
 
 # ─────────────────────────────────────────────────────────
@@ -329,9 +514,19 @@ class OlympusHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         # Pre-emptive CORS so a local dashboard can curl us
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Access-Control-Allow-Methods", "GET")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
         self.end_headers()
         self.wfile.write(body)
+
+    def do_OPTIONS(self) -> None:  # noqa: N802
+        """CORS preflight for the Agora chat UI (file:// → 127.0.0.1)."""
+        self.send_response(204)
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
 
     def do_GET(self) -> None:  # noqa: N802 (http.server API)
         try:
@@ -342,10 +537,11 @@ class OlympusHandler(BaseHTTPRequestHandler):
             status, payload = 500, {"error": f"{type(exc).__name__}: {exc}"}
         self._write(status, payload)
 
-    # The only path that accepts POST — every other POST returns 405
-    # BEFORE we even try to parse the body. This keeps the API honestly
-    # read-only-except-for-this-one-route.
-    _POST_ALLOWED_PATHS = ("/proposals/raise",)
+    # The only paths that accept POST — every other POST returns 405
+    # BEFORE we even try to parse the body. Keeps the API honestly
+    # read-only-except-for-this-tight-whitelist.
+    _POST_ALLOWED_PATHS = ("/proposals/raise", "/throne/turn",
+                            "/library/ingest")
 
     def do_POST(self) -> None:  # noqa: N802
         """The only allowed POST routes go through dispatch_post; any

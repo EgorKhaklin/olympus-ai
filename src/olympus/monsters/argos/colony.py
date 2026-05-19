@@ -39,9 +39,17 @@ class Colony:
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
         self._eyes: list[Eye] = []
 
-    def register(self, eye_cls: Type[Eye]) -> None:
-        """Instantiate and add an Eye to the colony."""
-        self._eyes.append(eye_cls())
+    def register(self, eye_or_cls) -> None:
+        """Add an Eye to the colony. Accepts either:
+          - an Eye subclass (will be instantiated with no args), OR
+          - an Eye instance (used directly)
+
+        The instance path was added by the argos-eyes arc to support
+        parameterized Eyes (e.g., FilesystemEye(spec))."""
+        if isinstance(eye_or_cls, Eye):
+            self._eyes.append(eye_or_cls)
+        else:
+            self._eyes.append(eye_or_cls())
 
     def eyes(self) -> list[Eye]:
         return list(self._eyes)
@@ -152,6 +160,16 @@ def _register_defaults() -> None:
                 EyeOathFreshness, EyeApolloCoverage, EyeDelphiPending,
                 EyeUnderstandingGap):
         colony.register(cls)
+
+    # Per Delphi 2026-05-19-argos-eyes-arc.md: register one
+    # FilesystemEye per operator-declared WatchSpec.
+    try:
+        from olympus.monsters.argos.eyes.eye_filesystem import (
+            register_filesystem_eyes,
+        )
+        register_filesystem_eyes(colony)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 _register_defaults()

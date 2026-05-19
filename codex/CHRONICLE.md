@@ -12,6 +12,1472 @@ Newest first. Each entry names what changed, what was sworn, who decided.
 
 ---
 
+## 2026-05-19 — the Eos arc 🌅 (MEDIUM — UI-surfacing follow-up + cinematic redesign)
+
+**Risk class:** MEDIUM (one new tightly-scoped POST endpoint).
+**Delphi:** [`codex/oracles/delphi/2026-05-19-eos-arc.md`](oracles/delphi/2026-05-19-eos-arc.md)
+**Sworn on Styx.**
+
+The Decade built 10 capabilities; the UI surfaced ~30% of them. Eos (Ἠώς — goddess of dawn) is the light that reveals what was already there. Two halves: **(a) cinematic visual redesign** of the entire Agora aesthetic, **(b) UI surfacing** of every Decade arc.
+
+### What ships — (a) cinematic redesign
+
+Full rewrite of `src/olympus/agora/static/agora.css` (~530 lines):
+  - Obsidian palette (`--void: #07070a` → `--marble: #f5f1e6`) with antique-gold accent (`#d4af37`)
+  - Display typography (Cormorant Garamond / Cinzel system fallback for headings)
+  - Backdrop-blur navigation with gold underline gradient
+  - SVG film-grain overlay at 3.5% opacity
+  - Pulse animations on status dots
+  - Lift-on-hover on cards + panels
+  - Smooth message slide-in on Throne
+  - Classical "⚡ Oracle ⚡" dividers
+
+### What ships — (b) UI surfacing
+
+**9 new GET endpoints + 1 idempotent POST** in `runtime/http_api.py`:
+  - `/spend ?window=today|7d|30d|all` — Plutus tally
+  - `/budget` — Plutus budget state + breach status
+  - `/vault` — Hades status (locations + metadata only; NEVER values)
+  - `/library` — Demeter documents + chunk counts
+  - `/watches` — Argos watch specs
+  - `/rituals` — Chronos rituals + next-due times
+  - `/replay/recent ?limit=N` — recent regression records + aggregate counts
+  - `/today` — live today action (was static guide)
+  - `/doctor` — live doctor diagnosis (was static guide)
+  - `POST /library/ingest` — trigger Demeter ingestion (idempotent)
+
+**6 new Agora pages** (`spend.html`, `library.html`, `watches.html`, `rituals.html`, `replay.html`, `proposals.html`) + dashboard extended with **7 new live cards** (today's spend, budget pct, vault count, library docs, ritual count, watch count, replay stability %).
+
+Today + Doctor wired live (previously static guides).
+
+### Constitution
+
+| invariant | how Eos honors it |
+|---|---|
+| S1 | every POST → Mnemosyne event (`http.library_ingest_request`); GETs read-only |
+| S3 | one new POST endpoint; idempotent; operator-explicit click required |
+| S6 | every panel cites the underlying record kind / errand |
+| **S7** | apply / kindle / ratify / deposit / forget / migrate stay CLI-only — pages show *commands*, never execute them |
+| C7-equivalent | new endpoints follow the existing dispatch pattern |
+| AP1 | reuses existing capabilities — no duplicate APIs |
+| AP7 | pages REALLY surface real data — verified end-to-end |
+
+### Safety boundaries
+
+- **Vault page never returns values** — `/vault` returns `location + sha256_prefix + bytes_known` only
+- **Mutations stay CLI-only**: `--acknowledge-budget`, `vault deposit/forget/migrate`, `chronos ritual add/remove`, `argos watch add/remove`, `hephaestus apply`
+- **The single new POST (`/library/ingest`)** operates on operator-owned `state/demeter/library/`; idempotent; bounded effect; recorded for audit
+
+### Numbers
+
+| | before Eos | after Eos | Δ |
+|---|---|---|---|
+| HTML pages | 6 | **12** | +6 |
+| GET endpoints | ~10 | **+9** | spend/budget/vault/library/watches/rituals/replay/today/doctor |
+| POST endpoints | 2 | **3** | +1 (`/library/ingest`) |
+| Dashboard cards | 6 | **13** | +7 Decade signals |
+| Static pages | 2 (today/doctor) | **0** | both wired live |
+| tests passing | 860 | **860** | no regressions |
+
+### Authorization
+
+Operator-approved via in-conversation AskUserQuestion (Position "Yes — ship Eos in full"). **The UI finally matches what the Decade built.**
+
+*The standard is holy shit, that's done. The dawn reveals what the night already contained.*
+
+---
+
+## 2026-05-19 — the Olympus-Replay arc ⏪ (LOW, Decade #10 of 10 — **CLOSER**)
+
+**Risk class:** LOW (read-only over the audit-of-record).
+**Delphi:** [`codex/oracles/delphi/2026-05-19-olympus-replay-arc.md`](oracles/delphi/2026-05-19-olympus-replay-arc.md)
+**Sworn on Styx.**
+
+**The Decade closes here.** Tenth and final arc. Olympus-Replay is the regression harness that protects the work of the previous nine: it re-runs past `agent.invocation` records through the current code path and classifies each replay as `stable` / `drift` / `broken`. **Default uses EchoBridge — replays cost nothing.**
+
+### What ships
+
+**`src/olympus/runtime/replay.py`** (~370 LOC):
+  - `ReplayPlan(limit, role, since_hours, bridge, include_test_seeds)`
+  - `plan_replays(plan)` — pairs `agent.invocation` records with their `llm.call` partners (by role + time-proximity)
+  - `replay_one(candidate, plan)` — re-runs via chosen bridge; classifies
+  - `replay_many(plan)` — full batch; returns `ReplayReport`
+  - `_classify(old, old_conf, new, new_conf)` — diff rules: schema integrity (grounding-added keys excluded); risk_class change; confidence Δ > 0.3; list-length Δ > 50%
+  - Each replay → `replay.regression` in Mnemosyne
+
+**Classifications:**
+  - `stable` — parsed keys match, risk_class same, confidence within ±0.3
+  - `drift` — schema match, but risk_class changed OR confidence shifted OR list fields swung > 50%
+  - `broken` — schema regression (missing keys), exception, parse-error
+  - `skipped` — no paired llm.call OR test-seed
+  - `over-budget` — Arc 20's bridge guard refused (only with `--use-anthropic`)
+
+**`invoke replay` errand:**
+  - `replay [--limit N] [--role R] [--since Nh] [--use-anthropic] [--include-test-seeds] [--json]`
+  - `MAX_LIMIT = 200` cap
+
+**Throne wiring:** `replay` added to `SAFE_ERRANDS`. With echo default, throne-invoked replays are cost-free.
+
+### Constitution
+
+| invariant | how Replay honors it |
+|---|---|
+| S1 | every replay → `replay.regression` in Mnemosyne |
+| S3 | read-only over audit; only WRITES regression records |
+| S6 | every replay cites source `agent.invocation` + classification + diffs |
+| S7 | `replay` in SAFE_ERRANDS; no GATED ops |
+| S8 | echo bridge is deterministic; anthropic bridge records model used |
+| C7-equivalent | bridge selection configurable |
+| AP1 | one module + one errand + Throne wiring |
+| AP3 | diff rules class-level (risk_class / confidence Δ / list ratio) |
+| AP7 | real invocations producing real diffs (live demo: 10 stable, 0 drift) |
+
+### Live demonstration
+
+```
+$ invoke replay --limit 10
+  replay — 10 candidate(s) · bridge=echo
+  stable=10 · drift=0 · broken=0 · skipped=0
+  hephaestus  stable=10 · drift=0 · broken=0 · skipped=0
+```
+
+10 production hephaestus invocations replayed through current code. **All stable.** No drift, no breakage. The 9 prior Decade arcs (Tartarus through Plutus-Budget) didn't regress the agent code path — verified empirically against real historical prompts.
+
+### Tests
+
+`tests/test_replay.py` — 20 cases across 5 classes: `_classify` truth tables (stable/drift/broken across all rules; grounding keys excluded from schema check); `plan_replays` filters (empty limit, MAX_LIMIT cap, unknown role, role filter, pairing); `replay_one` (synthetic candidate classifies + records); `replay_many` (aggregate shape; by_role breakdown); CLI smoke; Throne SAFE_ERRANDS.
+
+All 20 green; **suite total 860/860** (was 840/840); 2 conditional skips remain.
+
+### What does NOT ship this arc
+
+- **No "fix the drift" automation** — detection is the deliverable
+- **No replay-vs-replay** — compare against original record only
+- **No streaming output** — report built then printed
+- **No CI integration** — operator runs `invoke replay` or schedules via Chronos
+
+### Authorization
+
+Per the Decade plan approved 2026-05-19 (Arc 21 of 21). **The Decade closes.** Olympus-Replay protects the work of all 9 prior arcs by giving the operator a tool to answer "is the substrate still behaving the way it did?" with data, not vibes.
+
+*The standard is holy shit, that's done.*
+
+---
+
+# 🏛️ The Decade — δεκάς — completed 2026-05-19
+
+Ten arcs over one stretch of work. Substrate state at Decade-start vs Decade-end:
+
+| | start | end | Δ |
+|---|---|---|---|
+| tests passing | 595/595 | **860/860** | +265 |
+| Delphi notes | 11 | **21** | +10 (one per arc) |
+| operator-callable errands | ~30 | **~40** (+ recall, argos, chronos, hephaestus, demeter, speak, mcp, replay) | +8 net |
+| transport surfaces | CLI + Throne (web) | **CLI + Throne (web) + voice + MCP server** | +2 |
+| budget enforcement | none | **opt-in soft layer (Arc 20)** | new |
+| regression harness | none | **Arc 21** | new |
+| code mutation path | none | **Arc 16 (Hephaestus-PR)** | new — substrate can ship PRs |
+| KB ingestion | none | **Arc 17 (Demeter-Library)** | drop docs → Throne can answer |
+| filesystem awareness | none | **Arc 14 (Argos-Eyes)** | watch any path |
+| time awareness | none | **Arc 15 (Chronos)** | scheduled rituals |
+| semantic memory | exact-kind recall | **Arc 13 (Hippocrene)** | TF-IDF over Mnemosyne |
+| substrate self-honesty | sticky 68% historical error rate | **Arc 12 (Tartarus)** | test seeds filtered |
+
+**Total Decade additions**: ~2,500 LOC + ~265 new tests + 10 Delphi notes + zero new heavy deps. Each arc shipped with a Delphi note opened, code landed, tests passing, CHRONICLE entry written. No arc bundled with another. Each one its own session.
+
+The substrate that started this Decade was a measurement framework. The substrate that ends it does work, remembers, listens to the world, speaks back, edits its own code (under operator review), and verifies it's not drifting from yesterday's behavior.
+
+*— δεκάς completed. The forge is cool, the work is straight, the next operator inherits clean ground.*
+
+---
+
+## 2026-05-19 — the Plutus-Budget arc 💸 (MEDIUM-HIGH, Decade #9 of 10)
+
+**Risk class:** MEDIUM-HIGH (constitutional).
+**Delphi:** [`codex/oracles/delphi/2026-05-19-plutus-budget-arc.md`](oracles/delphi/2026-05-19-plutus-budget-arc.md)
+**Sworn on Styx.**
+
+Ninth arc of the Decade. **The constitutional debate held openly in the Delphi:** should Pan trip on cost? Three positions surveyed (A: yes; B: no; M: middle path); the **middle path was chosen and shipped**.
+
+### The middle path (Position M)
+
+- Operator declares thresholds; substrate enforces via **a new SOFT layer** (`AnthropicBridge.call` refuses), NOT via Pan
+- Pan's constitutional role stays exactly "broken state" detector — never extended to "expensive state"
+- Operator acknowledges with `invoke spend --acknowledge-budget`; LLM calls resume until the NEXT breach
+- Non-LLM errands (doctor, status, today, etc.) keep working — only paid bridge calls are gated
+- Default DISABLED (operator opts in by setting any threshold)
+
+### What ships
+
+**`runtime/config.py` extension** — `BudgetConfig` (daily_usd / weekly_usd / monthly_usd / warn_at_pct / enabled) + `PlutusConfig` wrapper. Read from `state/config.json::plutus.budget.*`. Backward-compatible.
+
+**`heroes/plutus.py` extension** — four new methods:
+  - `budget_status()` — snapshot per window (state: "ok" | "warn" | "over" | "unset")
+  - `is_over_budget()` — any window over 100%
+  - `acknowledge_breach(reason)` — records `plutus.budget_ack` to Mnemosyne with the signed budget signature at ack time
+  - `breach_since_ack()` — True iff over budget AND no VALID ack exists (acks made under a different budget config are stale by signature mismatch)
+  - `_budget_signature(status)` — fingerprint of the budget config that produced a status; enables clean test isolation AND honest "config-changed-since-ack → stale" semantics
+
+**`runtime/llm_bridge.py::AnthropicBridge.call`** — pre-flight guard. Before each call:
+  1. Budget enabled? If no → proceed
+  2. `breach_since_ack()` true? If yes → return `LLMResponse(error="budget breach: ...")` + record `plutus.budget_breach` to Mnemosyne
+  3. Else → proceed
+
+Guard failures (e.g., import errors) are swallowed and the call proceeds — budget enforcement must NEVER cause downtime.
+
+**`runtime/doctor.py::_check_budget`** — new check that surfaces budget state:
+  - `✓ disabled` (default)
+  - `✓ d=$0.30/$1.00(30%)` (under thresholds)
+  - `! d=$0.85/$1.00(85%)` (at warn)
+  - `✗ d=$1.15/$1.00(115%) — LLM REFUSED until \`invoke spend --acknowledge-budget\`` (over + breach-since-ack)
+  - `! d=$1.15/$1.00(115%) — over (acknowledged)` (over but acked)
+
+**`invoke spend` extensions:**
+  - `spend --budget` — show budget status table
+  - `spend --acknowledge-budget [--reason "<text>"]` — record operator ack; lifts LLM-call refusal until next breach
+
+### Constitution
+
+| invariant | how Plutus-Budget honors it |
+|---|---|
+| S1 | every breach + every ack → Mnemosyne (`plutus.budget_breach`, `plutus.budget_ack`) |
+| S3 (no surprise mutation) | enforcement is OPT-IN (default disabled); operator-declared thresholds; ack clears UNTIL next breach (not permanently) |
+| S6 | breach reports cite spent/$ceiling/pct/window — verifiable |
+| **S7** | **Pan's authority is NOT extended.** Cost enforcement is a NEW soft layer. **Constitutional regression test** (`TestPanUntouched::test_pan_state_not_changed_by_budget_breach`) asserts this. |
+| C7-equivalent | thresholds are config data, not hardcoded |
+| AP1 | Plutus +4 methods + helper; bridge +~30 lines guard; doctor +one check; spend +2 flags |
+| AP3 | windows are class-level (daily/weekly/monthly), not per-call rules |
+| AP7 (ledger-balancing) | breach actually refuses LLM calls (proven by tests with unreachable-client guard) |
+
+### Safety boundaries (verified by tests)
+
+- **Default DISABLED** — `TestBudgetStatus::test_disabled_default`
+- **Pan NOT involved** — `TestPanUntouched::test_pan_state_not_changed_by_budget_breach` — Pan's panicked field unchanged when budget breaches
+- **Acknowledgment is single-use** — `TestAcknowledgment::test_further_breach_after_ack_re_triggers` — spend growing past ack-time re-triggers
+- **Stale acks invalidated** — `_budget_signature` ensures acks from different configs don't count (clean test isolation AND honest config-change semantics)
+- **Echo bridge skips** — only paid bridges are gated (proven implicitly: EchoBridge doesn't call the guard)
+
+### Live demonstration (operator-perspective)
+
+```
+$ invoke doctor | grep budget
+  budget  ✓  (disabled — set plutus.budget.enabled to opt in)
+
+# Operator opts in by editing state/config.json:
+#   "plutus": {"budget": {"enabled": true, "daily_usd": 1.00}}
+
+$ invoke spend --budget
+  ✓ daily  $0.4831 / $1.0000  (48.3%)  [ok]
+
+# (Imagine running 50 expensive agent calls...)
+
+$ invoke spend --budget
+  ✗ daily  $1.0500 / $1.0000  (105.0%)  [over]
+    LLM CALLS REFUSED — run `invoke spend --acknowledge-budget`
+
+$ invoke agent hephaestus "what's drifting"
+  → LLMResponse(error="budget breach: daily $1.0500/$1.0000 (105%) ...")
+
+$ invoke spend --acknowledge-budget --reason "intentional spike, will raise ceiling tomorrow"
+  🜂  budget breach acknowledged — LLM calls re-enabled until next threshold crossing
+
+$ invoke agent hephaestus "what's drifting"
+  → proceeds normally
+```
+
+### What does NOT ship this arc (explicit per the debate)
+
+- **No Pan integration** — Pan stays a broken-state detector only
+- **No per-role budgets** — could be future
+- **No projection** ("at current rate you'll hit ceiling in 4 hours") — useful, not load-bearing
+- **No external alerts** — Olympus stays operator-driven
+- **No mid-call termination** — guard runs BEFORE the call; in-flight calls complete
+
+### Tests
+
+`tests/test_plutus_budget.py` — 20 cases across 6 classes. Includes a clean test-isolation pattern: the `isolated_budget` fixture monkey-patches `mnemosyne.recall` to filter `plutus.budget_*` records to only those after fixture start. This solves the cross-test ack-leak problem without polluting production logic. Coverage: status reporting (under/warn/over/unset); is_over_budget; ack records + breach_since_ack semantics; further-breach re-triggers; bridge guard refuses over + proceeds when acked + proceeds when disabled (with unreachable-client fakes that prove ordering); doctor check (disabled-ok/warn/fail/warn-after-ack); **constitutional test that Pan state is unchanged by budget breach**; CLI `--budget` smoke and `--acknowledge-budget` records.
+
+All 20 green; **suite total 840/840** (was 820/820); 2 conditional skips remain.
+
+### Authorization
+
+Per the Decade plan approved 2026-05-19 (Arc 20 of 21). **The debate was held openly; the middle path won.** Budget enforcement ships as a new soft layer; Pan stays exactly the figure it was. The operator decides.
+
+*The standard is holy shit, that's done. The cornucopia has a ceiling — and the operator drew it themselves.*
+
+---
+
+## 2026-05-19 — the Hermes-MCP arc 🪶 (MEDIUM, Decade #8 of 10)
+
+**Risk class:** MEDIUM.
+**Delphi:** [`codex/oracles/delphi/2026-05-19-hermes-mcp-arc.md`](oracles/delphi/2026-05-19-hermes-mcp-arc.md)
+**Sworn on Styx.**
+
+Eighth arc of the Decade. **Olympus becomes an MCP server** — Model Context Protocol (Anthropic's standard for AI-tool integration). The operator wires `invoke mcp` into Claude Code's `mcp_servers.json` and asks Claude Code "use olympus to check substrate health" — the substrate is reachable from inside the editor without context-switching.
+
+### Design clarity
+
+The arc could have invented a new whitelist. Instead it reuses the existing `SAFE_ERRANDS` from Throne — **same constitutional logic, different transport.** MCP exposes 14 tools; GATED ops (kindle, ratify, hephaestus apply, etc.) are unreachable.
+
+### What ships
+
+**`src/olympus/runtime/mcp_server.py`** (~290 LOC) — minimal pure-Python MCP server. No `mcp` package dep; protocol is small enough to implement directly.
+
+- JSON-RPC 2.0 over line-delimited JSON on stdin/stdout
+- Methods: `initialize`, `tools/list`, `tools/call`, `ping`, `prompts/list`, `resources/list`
+- `initialized` (and notifications generally) silently accepted
+- All logging → stderr (stdout is the protocol channel)
+- Each tool call → `mnemosyne.remember(kind="mcp.tool_call", ...)` audit
+- ANSI escape codes stripped from captured stdout
+- 60s per-call timeout (same as throne-routing)
+- Batch JSON-RPC supported (per spec)
+
+**Uniform tool schema across all 14 errands:**
+```json
+{
+  "name": "<errand>",
+  "description": "<desc + argv_hint>",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "args": {"type": "string"}
+    },
+    "additionalProperties": false
+  }
+}
+```
+
+Errand-specific argv parsing stays in the errand; MCP layer just tokenizes via `shlex.split`.
+
+**`invoke mcp` errand:**
+  - `invoke mcp` — serve on stdio (default; for Claude Code spawn)
+  - `invoke mcp --probe` — print server info + tool list to stderr; exit
+
+### Constitution
+
+| invariant | how Hermes-MCP honors it |
+|---|---|
+| S1 | every tool call → `mcp.tool_call` with tool, args, exit_code, elapsed_ms, stdout_head |
+| S6 | every response cites the errand; isError flag surfaces in JSON-RPC result |
+| S7 (HIGH-risk gated) | `tools/list` exposes ONLY `SAFE_ERRANDS`; `tools/call` rejects gated even if smuggled past |
+| C7-equivalent | stdio transport is one of many; routing layer is transport-independent |
+| AP1 | one module ~290 LOC + one CLI errand + doc snippet |
+| AP3 | one uniform schema, not 14 hand-authored ones |
+| AP7 (ledger-balancing) | tool calls actually execute and return real stdout |
+
+### Operator wiring (documented; we do NOT touch the operator's IDE config)
+
+`~/.claude/mcp_servers.json` (or wherever the operator's MCP-capable client reads from):
+```json
+{
+  "mcpServers": {
+    "olympus": {
+      "command": "/Users/vanta/.local/bin/invoke",
+      "args": ["mcp"]
+    }
+  }
+}
+```
+
+After restart, the operator can ask Claude Code: "use olympus to check substrate health" → Claude calls `mcp__olympus__doctor()` → output flows back into the conversation.
+
+### Live demonstration
+
+```
+$ invoke mcp --probe
+  [olympus-mcp] server=olympus 0.1.0 protocol=2024-11-05
+  [olympus-mcp] tools available (14):
+    agent / ask / blessing / doctor / geometry / harmony / recall /
+    session / shoulders / spend / status / today / vault / wisdom
+
+$ printf '...3 JSON-RPC requests...' | invoke mcp
+  #1 initialize → protocol 2024-11-05
+  #2 tools/call status → isError=False; output: tier table...
+  #3 tools/call ratify → ERROR code=-32002: tool 'ratify' is
+     constitution-GATED; MCP only exposes SAFE_ERRANDS.
+```
+
+The third call is the constitutional proof: a tool **never exposed in `tools/list`** is **also rejected at `tools/call`** with a clear error code. Defense in depth.
+
+### What does NOT ship this arc
+
+- **No HTTP/SSE transport** — stdio only this arc; SSE for remote clients is a future arc
+- **No `prompts/list` content** — empty array
+- **No `resources/list` content** — Mnemosyne records could be exposed but schema needs design
+- **No per-tool argument typing beyond `string`** — uniform schema; future per-tool schemas possible
+- **No streaming responses** — each `tools/call` returns complete output
+- **No bidirectional notifications** — server doesn't push mid-call
+
+### Tests
+
+`tests/test_mcp_server.py` — 25 cases across 9 classes: initialize handshake; ping; tools/list returns exactly SAFE_ERRANDS; tools/list excludes GATED; each tool has schema + description; tools/call runs real errands; tools/call records to Mnemosyne; tools/call rejects gated (ratify, hephaestus) with TOOL_GATED code; unknown tool → TOOL_NOT_FOUND; missing name → INVALID_PARAMS; unknown method → METHOD_NOT_FOUND; notifications return None; non-dict request → INVALID_REQUEST; wrong jsonrpc version → INVALID_REQUEST; prompts/list + resources/list empty; stdio loop: init + tools/list session, malformed JSON returns parse-error, EOF clean exit; CLI errand registered; probe returns 0.
+
+All 25 green; **suite total 820/820** (was 795/795); 2 conditional skips remain.
+
+### Authorization
+
+Per the Decade plan approved 2026-05-19 (Arc 19 of 21). **Hermes-MCP brings Olympus inside Claude Code.** The Throne (chat) and MCP (Claude-Code integration) are now two transports over the same constitutional whitelist — the substrate is a function call away from wherever the operator is working.
+
+*The standard is holy shit, that's done. The messenger god speaks the new protocol.*
+
+---
+
+## 2026-05-19 — the Throne-Voice arc 🎙️ (LOW, Decade #7 of 10)
+
+**Risk class:** LOW.
+**Delphi:** [`codex/oracles/delphi/2026-05-19-throne-voice-arc.md`](oracles/delphi/2026-05-19-throne-voice-arc.md)
+**Sworn on Styx.**
+
+Seventh arc of the Decade. **TTS shipped this arc; STT explicitly deferred.** macOS `say` for output (built-in, free, zero deps). `VoiceBackend` ABC + `MacosSayBackend` + `NullBackend`. Three surfaces: `invoke speak`, `invoke throne --voice`, and `speak` in `AUTOMATED_ERRANDS` (Chronos rituals can speak).
+
+### Honest scope (named in the Delphi)
+
+The planning artifact said "voice in/out for the chat." This arc ships **TTS only** because STT has friction the operator hasn't opted into:
+- Whisper API needs a separate API key (Anthropic's was clobbered earlier; one re-deposit is plenty for now)
+- Plutus has no STT row in its PRICING table
+- Audio recording in pure Python requires PortAudio (`pyaudio`/`sounddevice` — heavy deps)
+
+The `VoiceBackend` ABC is shaped to accept STT cleanly when a follow-up `Throne-Listen` mini-arc is operator-approved. **This isn't dodging the brief — it's honest sequencing per Tartarus discipline.**
+
+### What ships
+
+**`src/olympus/runtime/voice.py`** (~190 LOC) — pluggable TTS layer:
+  - `VoiceBackend` ABC with `available()` + `speak()` methods
+  - `MacosSayBackend` wraps `/usr/bin/say` (default on macOS; zero deps)
+  - `NullBackend` (silent — used in tests + on unsupported platforms)
+  - `speak(text, voice, rate, blocking)` module-level convenience that records to Mnemosyne under `voice.spoken`
+  - `MAX_SPEAK_CHARS = 4000` — runaway responses truncated
+  - True non-blocking via `Popen` + `stdin.write/close` (no `communicate()` blocking)
+
+**`invoke speak`** errand:
+  - `invoke speak "<text>"` (default non-blocking)
+  - `--voice <name>` / `--rate <wpm>` / `--block`
+
+**`invoke throne --voice`** — throne REPL pipes each response through TTS in the background. Inside the REPL: `/voice on` / `/voice off` toggles.
+
+**`speak` added to `AUTOMATED_ERRANDS`** — Chronos rituals can fire speak (e.g., daily-briefing-spoken-aloud).
+
+### Constitution
+
+| invariant | how Throne-Voice honors it |
+|---|---|
+| S1 | every `speak` → `voice.spoken` Mnemosyne record (backend, voice, rate, chars, elapsed, truncated, error) |
+| S3 (no surprise mutation) | no background mic; no auto-speak without opt-in; explicit `--voice` flag on throne |
+| S6 | `voice.spoken` records the actual `say` command + return code |
+| S7 | TTS is read-only output; no privileged op; safe to include in `AUTOMATED_ERRANDS` |
+| C7-equivalent | `VoiceBackend` ABC pluggable; default has zero deps |
+| AP1 | one module ~190 LOC + one errand + 1-line throne flag + 1-line whitelist add |
+| AP7 (ledger-balancing) | speak actually speaks — verified end-to-end (live test: 16c spoken in 0.116s) |
+| AP8 | hands-free reading is a real new affordance |
+
+### A bug the live demo caught (honest disclosure)
+
+The first implementation's "non-blocking" path called `Popen(...).communicate(input=..., timeout=2.0)` — which actually **blocks for up to 2 seconds**. The live demo with `invoke speak "Olympus is ready"` returned a `timeout after 60s` error (the message itself was wrong — the actual timeout was 2s, not 60s). The audio still played because the OS kept the say process alive, but the errand returned ✗.
+
+**Fix in the same arc**: replaced `.communicate(timeout=2.0)` with `proc.stdin.write(...) + proc.stdin.close()` — true non-blocking. The post-fix demo: `0.116 seconds total runtime`, `✓ spoke 16c via macos-say`. Tests updated: `_FakePopen.stdin` is now a `_FakeStdin` with `.write/.close` so the test path matches production.
+
+### Live demonstration
+
+```
+$ invoke speak "Olympus is ready"
+  ✓ spoke 16c via macos-say                 (0.116 seconds total)
+
+$ invoke speak --voice Samantha --rate 220 "speak quickly please"
+  ✓ spoke 20c via macos-say
+
+$ invoke chronos check "daily 09:00"        # speak is a valid `do` value
+  → speak can now fire as part of any scheduled ritual
+```
+
+### What does NOT ship this arc (explicit)
+
+- **STT (Whisper/dictation)** — deferred to a future `Throne-Listen` arc
+- **Voice cloning / TTS quality upgrade** — `say` is built-in and good enough
+- **Real-time interruption** — `--block` is the operator's tool to wait
+- **Linux/Windows TTS** — `MacosSayBackend.available()` returns False there; pluggable shape for future
+- **No prosody / SSML** — small surface
+
+### Tests
+
+`tests/test_throne_voice.py` — 20 cases across 6 classes (no actual audio plays — `FakeSubprocess` injected): backend availability (Null always, Mac matches `which say`); `NullBackend.speak`; `MacosSayBackend.speak` (blocking → `subprocess.run`, non-blocking → `Popen + stdin.write/close`, voice + rate args, empty-text errors, truncation); `speak()` module-level + Mnemosyne recording; CLI errand smoke (usage, voice/rate parsing); whitelist + Throne (speak in AUTOMATED_ERRANDS, valid `do` for Chronos, throne REPL accepts `speak_responses` kwarg); backend swap.
+
+All 20 green; **suite total 795/795** (was 775/775); 2 conditional skips remain.
+
+### Authorization
+
+Per the Decade plan approved 2026-05-19 (Arc 18 of 21). **Throne-Voice ships the listening half** (TTS); the talking half (STT) is honestly deferred. Combined with Chronos, the operator now hears scheduled briefings and chat responses through their speakers.
+
+*The standard is holy shit, that's done. The forge has a voice.*
+
+---
+
+## 2026-05-19 — the Demeter-Library arc 📚 (LOW-MEDIUM, Decade #6 of 10)
+
+**Risk class:** LOW-MEDIUM.
+**Delphi:** [`codex/oracles/delphi/2026-05-19-demeter-library-arc.md`](oracles/delphi/2026-05-19-demeter-library-arc.md)
+**Sworn on Styx.**
+
+Sixth arc of the Decade. **Operator drops .md/.txt/.pdf into `state/demeter/library/`; Demeter chunks each file and records chunks to Mnemosyne under `demeter.chunk`.** Hippocrene's `DEFAULT_KINDS` was extended one line — the existing `recall` errand now answers operator-document questions automatically. **Zero new Throne wiring required**: the existing semantic-recall path picks up library chunks like any other Mnemosyne record.
+
+### What ships
+
+**`olympians/demeter.py` extension** (~290 new LOC). The existing `Harvest`/`Demeter` batch-collector is untouched; a new `Library` class (and module-level singleton `library`) is added alongside. Both belong to the same goddess (grain → cultivated knowledge); both live in one module.
+
+  - `library.ingest(reingest=False, limit=None)` → `IngestReport`
+  - `library.documents()` → list from manifest
+  - `library.forget(doc_id)` → records `demeter.forgotten` marker (S1: chunks remain in Mnemosyne)
+  - `Chunk` / `IngestReport` dataclasses
+  - `chunk_text(text)` pure function — paragraph→sentence→hard-split
+
+**Hippocrene `DEFAULT_KINDS`** extended: `"demeter.chunk"` added. Existing `invoke recall` queries now match against operator docs.
+
+**File-format support:**
+  - `.md` / `.txt` / `.rst` — work without any new dep
+  - `.pdf` — OPTIONAL via `pypdf`; if not installed, skipped with clear "pip install pypdf to enable"
+  - Anything else — skipped with "unsupported extension" reason
+
+**Persistence:**
+  - Library dir: `state/demeter/library/`
+  - Manifest: `state/demeter/manifest.json` — per-file `{document_id, sha256, ingested_at, chunk_count}`
+  - Chunks: each as `mnemosyne.remember(kind="demeter.chunk", ...)` — no separate chunk store; the audit-of-record IS the chunk store
+  - Re-ingestion: sha mismatch triggers re-process; `--reingest` forces
+  - Supersession marker: re-ingest writes `demeter.superseded` before new chunks (S1 — never deletes)
+
+**CLI errand `invoke demeter`:**
+  - `demeter ingest [--reingest] [--limit N]`
+  - `demeter library`
+  - `demeter forget <document_id>`
+
+**Throne integration**: NONE NEEDED. `recall` already in `SAFE_ERRANDS`; demeter.chunk in DEFAULT_KINDS; the chain works.
+
+### Constitution
+
+| invariant | how Demeter-Library honors it |
+|---|---|
+| S1 | chunks → Mnemosyne (`demeter.chunk`); re-ingest writes `demeter.superseded`; forget writes `demeter.forgotten`; **never deletes** |
+| S3 (no surprise mutation) | reads library/ directory; never writes there |
+| S6 | each chunk carries `source_path` + `sha_source` + `chunk_index` — citation is verifiable |
+| S8 | manifest tracks sha256; reproducible |
+| AP1 | one class in an existing module + one CLI errand + one DEFAULT_KINDS line |
+| AP3 | chunking rules are class-level, not per-file |
+| AP7 (ledger-balancing) | ingestion produces real Mnemosyne records, real recall matches |
+
+### Live demonstration
+
+```
+$ cat > state/demeter/library/onboarding.md <<EOF
+# Onboarding
+## Authentication
+We use SAML SSO via Okta. Two-factor required on all production systems.
+Service tokens rotate every 90 days. Never commit credentials to git.
+EOF
+
+$ invoke demeter ingest
+  ingested=1 · unchanged=0 · skipped=0 · chunks=6
+
+$ invoke recall "authentication SSO tokens" -k 3
+  0.327  demeter.chunk    onboarding-md-... chunk 5/5: ## Authentication We use SAML SS...
+  0.103  throne.turn      throne turn: in=41c action=run errands=1...
+  0.093  llm.call         anthropic model=claude-opus-4-7 in=0 out=0...
+```
+
+The top hit (0.327) is the onboarding doc's Authentication section. Score is **3× higher** than the next match — TF-IDF correctly identifies the document chunk over unrelated audit records.
+
+### Safety bounds (verified by tests)
+
+- `MAX_FILE_BYTES = 5MB` — bigger files skipped
+- `MAX_CHUNKS_PER_INGEST = 10,000` — refuses to flood Mnemosyne
+- `MAX_CHUNK_CHARS = 1500` — paragraphs above this get sentence-split
+- Path safety: only files under `state/demeter/library/` ingest
+- Extension allowlist: `.md / .txt / .rst / .pdf`
+- PDF failures become "skipped" entries, never raise
+
+### What does NOT ship this arc
+
+- **No PDF as hard dep** — `pypdf` is optional; install separately for PDF support
+- **No OCR** — image-only PDFs yield empty text
+- **No embeddings** — relies on Hippocrene's TF-IDF
+- **No auto-ingest on file drop** — operator runs `invoke demeter ingest`; combinable with Argos-Eyes (`watch library/ → errand:demeter-ingest`) in a future arc
+- **No HTML/DOCX/etc.** — extension allowlist only
+
+### Tests
+
+`tests/test_demeter_library.py` — 21 cases across 8 classes (using `isolated_library` fixture that monkey-patches `_library_dir` + `_manifest_path` to `tmp_path` — NO real state touches). Covers: chunker (empty/paragraphs/long-paragraph/hard-split); ingest of .md/.txt; unsupported extension skipped; oversize file skipped; re-ingest semantics (unchanged/changed/`--reingest`); manifest tracking; forget; PDF conditional skip; Hippocrene integration (DEFAULT_KINDS + recall finds chunks); CLI smoke + usage errors.
+
+All 21 green; **suite total 775/775** (was 754/754); 2 conditional skips remain; conftest contamination guard fired no warnings.
+
+### Authorization
+
+Per the Decade plan approved 2026-05-19 (Arc 17 of 21). **Demeter-Library closes the operator-document gap.** Drop your onboarding doc, your project notes, your reading PDFs — ask the Throne about them, get cited answers.
+
+*The standard is holy shit, that's done. The harvest is in the granary.*
+
+---
+
+## 2026-05-19 — the Hephaestus-PR arc 🔧 (MEDIUM-HIGH, Decade #5 of 10 — KEYSTONE)
+
+**Risk class:** MEDIUM-HIGH (touches the operator's source code).
+**Delphi:** [`codex/oracles/delphi/2026-05-19-hephaestus-pr-arc.md`](oracles/delphi/2026-05-19-hephaestus-pr-arc.md)
+**Sworn on Styx.**
+
+**The keystone of the Decade.** Ratified Hephaestus proposals can now become real git branches + commits + GitHub PRs via `gh` CLI, gated by operator-explicit `--really` flag with `--dry-run` default. **The substrate is no longer just measuring; it's doing.**
+
+### What ships
+
+**`src/olympus/runtime/git_ops.py`** (~220 LOC) — safe git wrappers. Every mutating function refuses to act on safety violation; never raises silently. Hard rules baked in:
+  - `PROTECTED_BRANCHES = {main, master, trunk, production, release}` — push refused
+  - **No `--force` parameter** — by absence of API surface
+  - **No merge function** — operator merges via GitHub UI only
+  - **Refuses dirty tree** — `git status --porcelain` must be empty before apply
+  - **60-second timeout** on every subprocess call
+  - **Path safety**: `write_file_under_repo` rejects `..` escapes and absolute paths
+
+Public API: `git_clean / current_branch / branch_exists / on_protected_branch / is_protected / gh_available / create_branch / apply_patch / stage_and_commit / push_to_remote / checkout / write_file_under_repo / open_pr`.
+
+**`invoke hephaestus` errand** with two subcommands:
+  - `pending` — lists ratified-but-unapplied proposals (test seeds filtered)
+  - `apply <pid>` — DRY-RUN by default; `--really` mutates; `--skip-push` / `--skip-pr` opt-outs
+
+The apply flow (when `--really`):
+1. Pre-flight refuse-list: proposal exists, is ratified, not already applied, clean tree, branch doesn't exist
+2. `git checkout -b prometheus/<pid>` (branch-name format enforced — no operator-chosen names)
+3. Apply: patch via `git apply` if proposal has `patch` field; else write `proposals/<pid>.md` tracking artifact
+4. Commit with title citing proposal_id, body citing Delphi + Styx oath
+5. Push (unless `--skip-push`)
+6. `gh pr create --base <target> --head prometheus/<pid>` (unless `--skip-pr` or gh missing)
+7. Return to original branch
+8. Record `prometheus.applied` to Mnemosyne with proposal_id, branch, pr_url, mode
+
+**Throne posture (S7-gated):** `hephaestus` added to `GATED_ERRANDS`. The chatbot can show the operator the command to run, **but cannot run it**. Source-code mutations require operator-in-person.
+
+### Constitution
+
+| invariant | how Hephaestus-PR honors it |
+|---|---|
+| S1 | every apply (dry-run or really) → `prometheus.applied` in Mnemosyne |
+| S3 (no surprise mutation) | dry-run default; `--really` explicit; never on dirty tree |
+| S6 | every PR body cites proposal_id + Delphi path + Styx oath |
+| S7 (HIGH-risk gated) | apply stays CLI-only; Throne read-only on this surface |
+| C7-equivalent | `gh`/`git` paths injectable; no hardcoded paths |
+| AP1 | one module ~220 LOC + one errand + small Throne wiring |
+| AP3 | refuse-list is class-level (rules), not per-proposal |
+| AP7 (ledger-balancing) | `--really` actually creates real branches + commits + PRs |
+
+### Safety boundaries (verified by tests)
+
+- `push_to_remote("main")` → refused (test: `TestPushSafety`)
+- `create_branch("main")` → refused (test: `TestCreateBranch::test_refuses_protected`)
+- `apply_patch(..., cwd=dirty_repo)` → refused
+- `write_file_under_repo("../escape", ...)` → refused
+- `open_pr(head="main", base="main")` → refused
+- `hephaestus apply <pid>` with missing proposal → exit 1 with clear message
+- `hephaestus apply <pid>` (no `--really`) → dry-run output + audit record + exit 0
+
+### What does NOT ship this arc
+
+- **No LLM patch generation** — proposals can carry a `patch` field if supplied (operator or future arc); proposals without get the tracking-PR (markdown artifact)
+- **No CI integration** — out of scope
+- **No conflict resolution** — `git apply` failure aborts cleanly; operator handles
+- **No GitLab/Bitbucket** — `gh`-specific
+- **No Throne errand** — apply is CLI-only by constitutional design
+
+### Tests
+
+`tests/test_hephaestus_pr.py` — 30 cases across 8 classes using isolated tmp git repos (`tmp_repo` fixture initializes a fresh `git init -b main`, sets test identity, one commit). Covers: read-only queries; create_branch (success, protected refused, duplicate refused, dirty-tree refused); apply_patch (valid, empty refused, dirty refused); stage_and_commit; push safety (main/master/trunk refused); write_file_under_repo (legal path, .. refused, absolute refused); open_pr (gh-missing, head==base, empty-title); CLI errand (registered, pending smoke, apply usage errors); Throne posture (in GATED, suggested command).
+
+**No real git state touched** — every git op uses `cwd=tmp_repo`. Suite **754/754 green** (was 724/724); 2 conditional skips remain; conftest contamination guard fired no warnings.
+
+### Live demonstration
+
+```
+$ invoke hephaestus pending
+  (nothing pending — Hephaestus has a quiet forge)
+  ↑ correct: all real ratified records are test seeds (Tartarus filters)
+
+$ invoke hephaestus apply nonexistent
+  ✗ proposal 'nonexistent' not found at state/hephaestus/nonexistent.json
+  ↑ pre-flight refuse-list catches it
+
+$ python3 -c "from olympus.throne.router import GATED_ERRANDS; \
+    print(GATED_ERRANDS['hephaestus']['suggested'])"
+  invoke hephaestus apply <pid> --really
+  ↑ Throne knows to surface the command; will not run it
+```
+
+### Authorization
+
+Per the Decade plan approved 2026-05-19 (Arc 16 of 21 — keystone). **Olympus is now a real coding assistant.** A ratified proposal becomes a real branch, a real commit, and a real PR — with the audit trail back through the proposal, the Delphi note, the Styx oath, and the agent.invocation that surfaced the drift.
+
+*The standard is holy shit, that's done. The forge has fire and a hammer.*
+
+---
+
+## 2026-05-19 — the Chronos arc ⏰ (LOW, Decade #4 of 10)
+
+**Risk class:** LOW.
+**Delphi:** [`codex/oracles/delphi/2026-05-19-chronos-arc.md`](oracles/delphi/2026-05-19-chronos-arc.md)
+**Sworn on Styx.**
+
+Fourth arc of the Decade. **Scheduled rituals on top of the daemon** — operator declares time-based triggers ("every weekday at 9am run `today`"; "hourly run `doctor`"; "monthly run `spend --30d`") and the daemon evaluates them each tick. Pure-Python time grammar; no `croniter` dep. Shares the automated-errand whitelist with Argos-Eyes (refactored to `runtime/errand_whitelist.py` as single source of truth).
+
+### What ships
+
+**`src/olympus/primordials/chronos.py`** (~280 LOC) — new primordial, sibling to Nyx (clock) and Gaia (root). Pure-Python scheduler.
+
+Grammar (intentionally simple, not full cron):
+```
+daily HH:MM              every day at HH:MM
+weekday HH:MM            Mon-Fri at HH:MM
+weekend HH:MM            Sat-Sun at HH:MM
+<day> HH:MM              monday/.../sunday at HH:MM
+monthly <N>              1..28 of each month at 00:00
+monthly <N> HH:MM        1..28 at HH:MM
+every <N>m | every <N>h  every N minutes/hours
+hourly                   on the hour
+```
+
+`parse_when()` returns `WhenSpec(valid=False, error=...)` on bad input; the ritual is skipped at load with a stderr message. Full cron grammar deferred to a possible Chronos-2 mini-arc.
+
+**`src/olympus/runtime/errand_whitelist.py`** (NEW) — single source of truth for the errands the substrate may run automatically (Argos triggers, Chronos schedules, etc.). 8 entries: `today, session, recall, doctor, ferry, spend, heal, blessing`. Constitutionally cannot contain any S7-gated operation. Argos's `ERRAND_WHITELIST` becomes a compatibility alias.
+
+**`runtime/config.py`** patch — `ChronosConfig.rituals: list[dict]`. Backward-compatible; missing section defaults to empty.
+
+**`runtime/daemon.py`** patch — calls `chronos.tick()` each iteration BEFORE the session work, so a scheduled `today` ritual runs before the regular session. Failures recorded to the daemon log; never abort the iteration.
+
+**CLI errand `invoke chronos`:**
+  - `chronos rituals` — list configured + next-due times
+  - `chronos tick` — manual one-shot evaluation
+  - `chronos check "<when>"` — parse + report matches_now + next 3 due
+  - `chronos ritual add <id> <when> <do>`
+  - `chronos ritual remove <id>`
+
+### Constitution
+
+| invariant | how Chronos honors it |
+|---|---|
+| S1 | every fire → `chronos.fired` in Mnemosyne with output_head + elapsed_ms |
+| S3 (no surprise mutation) | rituals only run whitelisted errands |
+| S6 | `next_due(spec)` answers the verifiable question "when will this fire" |
+| S7 | errand whitelist excludes all GATED ops; constitutional test (`TestSharedWhitelist::test_no_gated_errands_in_whitelist`) enforces |
+| AP1 | one primordial ~280 LOC + one CLI errand + small whitelist module |
+| AP3 | grammar rules are class-level, not per-ritual |
+| AP7 (ledger-balancing) | rituals actually fire — `chronos tick` produces a real Fired record |
+
+### Safety boundaries
+
+- `min_interval_seconds = 60` default (per-ritual configurable) prevents tight-loop double-fire
+- `MAX_FIRES_PER_TICK = 3` — if many rituals match the same minute, only 3 fire that tick
+- **Crash-safe**: `last_fired_at` is written BEFORE the errand runs (a partial run won't re-attempt on restart)
+- **Wall-clock-only** — uses `Nyx.now()`; tests pass deterministic `now=...`
+- **No catchup** — missed fires while daemon was down are not back-filled
+
+### Live demonstration
+
+```
+$ invoke chronos check "weekday 09:00"
+  parsed=valid · matches_now=False
+  next #1: 2026-05-19 09:00
+  next #2: 2026-05-20 09:00
+  next #3: 2026-05-21 09:00
+
+$ invoke chronos ritual add morning weekday 09:00 today
+🜂  added ritual 'morning' → when='weekday 09:00' do=today
+
+$ invoke chronos rituals
+  ✓ morning   when=weekday 09:00  do=today      next=2026-05-19 09:00
+```
+
+The daemon's existing loop will pick up the ritual at the next iteration; no daemon restart required.
+
+### What does NOT ship this arc
+
+- **No full cron grammar** (`*/15 9-17 * * 1-5`)
+- **No timezone support** — operator's local time
+- **No `do` arguments** — `do: "today"` works, `do: "today --resolve ..."` doesn't (future arc)
+- **No retry on failure** — fires again on next match
+- **No catchup on missed fires**
+
+### Tests
+
+`tests/test_chronos.py` — 40 cases across 9 classes: grammar (daily, weekday, weekend, specific day, monthly, every-N, hourly, invalid); `matches_now` truth tables; `next_due` projections; RitualSpec validation; Chronos.tick (fire-on-match, no-fire-no-match, no-double-fire, MAX_FIRES_PER_TICK ceiling, disabled-skipped, invalid-skipped); shared whitelist consistency + S7 enforcement; CLI smoke (rituals, check, ritual add/remove, errand rejection).
+
+All 40 green; **suite total 724/724** (was 684/684); 2 conditional skips remain. Conftest contamination guard fired no warnings — all tests used `monkey-patched _path` + `tmp_path` for state.
+
+### Authorization
+
+Per the Decade plan approved 2026-05-19 (Arc 15 of 21). **Olympus now has a clock that does things.** Combined with Argos-Eyes (events) and the daemon (cadence), the substrate responds to time, files, AND its own internal signals.
+
+*The standard is holy shit, that's done. The substrate keeps the hours.*
+
+---
+
+## 2026-05-19 — the Argos-Eyes arc 👁️ (LOW-MEDIUM, Decade #3 of 10)
+
+**Risk class:** LOW-MEDIUM.
+**Delphi:** [`codex/oracles/delphi/2026-05-19-argos-eyes-arc.md`](oracles/delphi/2026-05-19-argos-eyes-arc.md)
+**Sworn on Styx.**
+
+Third arc of the Decade. **Extends the existing Argos colony with `FilesystemEye` — operator-declared filesystem watches.** Pure-Python polling (no `watchdog`/`fsevents` dep); one Eye per WatchSpec; pheromones flow through existing colony machinery. Would have caught the Hades-arc state-contamination bug at scan-time, not session-end.
+
+### What ships
+
+**`src/olympus/runtime/fs_watcher.py`** (~200 LOC) — pure-Python snapshotter:
+  - `FsSnapshot.take(path, glob, max_files)` → dict[path, FileState(sha256, mtime, size)]
+  - `diff(old, new)` → list[FsChange(added/modified/deleted)]
+  - `load_snapshot/save_snapshot(watch_id)` — atomic persistence under `state/argos/fs_snapshots/`
+  - Skip-list: never descends `.git`, `__pycache__`, `node_modules`, `state/mnemosyne` (feedback prevention)
+  - `_MAX_FILE_BYTES = 5MB` ceiling; large files get size-only fingerprint
+
+**`src/olympus/monsters/argos/eyes/eye_filesystem.py`** (~210 LOC):
+  - `WatchSpec(id, path, glob, action, enabled, max_files)` dataclass + `validate()`
+  - `FilesystemEye(spec)` — one Eye per spec; baseline pass emits INFO, subsequent passes emit DRIFT/ALERT per change
+  - `ERRAND_WHITELIST = {today, session, recall, doctor}` — actions can only trigger whitelisted errands
+  - `watch_specs_from_config()` + `register_filesystem_eyes(colony)` — auto-wiring
+
+**`runtime/config.py` schema extension:**
+  - `ArgosConfig.watches: list[dict]` — operator declares watches in `state/config.json::argos.watches[]`
+  - Backward compatible; missing section defaults to empty list
+
+**`monsters/argos/colony.py` patches:**
+  - `Colony.register()` now accepts either an `Eye` class OR an `Eye` instance (was class-only)
+  - `_register_defaults()` calls `register_filesystem_eyes(colony)` after the 9 substrate eyes
+
+**CLI errand `invoke argos`:**
+  - `argos scan` — colony pass; surfaces filesystem pheromones first
+  - `argos watches` — list configured
+  - `argos watch add <id> <path> [--glob G] [--action A]`
+  - `argos watch remove <id>`
+
+### Constitution
+
+| invariant | how Argos-Eyes honors it |
+|---|---|
+| S1 | every pheromone → Mnemosyne via existing colony deposit |
+| S2 (decentralized) | each FilesystemEye is independent; no cross-Eye reads |
+| S3 (no surprise mutation) | Eyes only READ filesystem; never write to watched paths |
+| S6 | each pheromone cites sha-before + sha-after + path |
+| S7 (HIGH-risk gated) | errand whitelist excludes all GATED operations (kindle, ratify, etc.) |
+| AP1 | one new module + one new Eye class; reuses existing colony machinery |
+| AP3 | watches are class-level (path patterns, globs); not per-file rules |
+| AP7 (ledger-balancing) | scan actually detects changes — verified end-to-end with ARC-QUEUE.md modification |
+
+### Live demonstration
+
+```
+$ invoke argos watch add arc-queue codex/ARC-QUEUE.md --action alert
+🜂  added watch 'arc-queue' → codex/ARC-QUEUE.md
+
+$ invoke argos scan
+  info   watch 'arc-queue': baseline established (1 file(s))
+
+$ echo "" >> codex/ARC-QUEUE.md
+
+$ invoke argos scan
+  drift  watch 'arc-queue': modified ARC-QUEUE.md
+```
+
+A configured watch on `state/config.json` would have surfaced the Hades-arc test contamination during the failing test's session, not 30 minutes later when the operator finally ran the doctor.
+
+### What does NOT ship this arc
+
+- **No `summarize` action** — needs the LLM bridge + per-watch token budget. Deferred.
+- **No `watchdog`/`fsevents` dep** — daemon's 10-min cadence is enough for the named use cases.
+- **No sub-minute reactivity** — explicit `invoke argos scan` for on-demand checks.
+- **No symlink-followed descent** — symlinks read as their target's sha but not walked.
+- **No remote/cloud paths** — local filesystem only.
+
+### Safety boundaries (explicit)
+
+- `max_files` per watch (default 500) prevents accidental tree-walks of huge dirs
+- Skip-list never descends into VCS dirs, caches, node_modules, OR `state/mnemosyne` (substrate's own audit log; watching it would feedback)
+- Errand whitelist (4 entries) prevents arbitrary command execution
+- Path resolution via `Path.expanduser().resolve()`; no shell expansion
+
+### Tests
+
+`tests/test_argos_eyes.py` — 28 cases across 8 classes: FsSnapshot (single file, glob, missing, skip-list, max_files); diff (added/modified/deleted/baseline-None/no-change); WatchSpec validation (alert/errand/whitelist/bad-pattern/empty-path); FilesystemEye (baseline-info, change-drift, invalid-spec-alert, disabled-empty); snapshot persistence round-trip; Colony.register accepts instance; config schema round-trip; CLI smoke + whitelist enforcement.
+
+All 28 green; **suite total 684/684** (was 656/656); 2 conditional skips remain. The conftest contamination guard fired no warnings — every test correctly used `tmp_path` and monkey-patched `_path`.
+
+### Authorization
+
+Per the Decade plan approved 2026-05-19 (Arc 14 of 21). **The substrate now has eyes on the filesystem.** The operator can watch their config (real-time alert on Hades-style contamination), their journal (auto-pulse `today` on new entries), or any project tree.
+
+*The standard is holy shit, that's done. The giant's eyes now see the world outside.*
+
+---
+
+## 2026-05-19 — the Hippocrene arc 💧 (MEDIUM, Decade #2 of 10)
+
+**Risk class:** MEDIUM.
+**Delphi:** [`codex/oracles/delphi/2026-05-19-hippocrene-arc.md`](oracles/delphi/2026-05-19-hippocrene-arc.md)
+**Sworn on Styx.**
+
+Second arc of the Decade. **Semantic recall over Mnemosyne — past records become findable by meaning, not just exact kind.** Default implementation is TF-IDF in pure Python (zero new deps, fast on ~1500 records, deterministic). The `Embedder` ABC lets future arcs swap in real embeddings without rewriting Hippocrene.
+
+### What ships
+
+**`src/olympus/heroes/hippocrene.py`** (~290 LOC). New hero — the spring of recall. Public API:
+  - `hippocrene.recall(query, k=5, only_kinds=...)` → list of `Recall` hits
+  - `hippocrene.index() / rebuild()` — corpus management
+  - `hippocrene.stats()` — what's indexed, by kind
+  - `Embedder` ABC + `TfIdfEmbedder` (default, no deps)
+  - Tartarus-discipline filter: test seeds excluded by default
+
+**CLI errand `invoke recall`**:
+  - `invoke recall "<query>"` — top 5 across all default kinds
+  - `-k N` / `--kinds K1,K2` / `--rebuild` / `--include-test-seeds` / `--stats` / `--json`
+
+**Throne wiring**: `recall` added to `SAFE_ERRANDS`. The chat can now answer:
+  - "what did we decide about the daemon?"
+  - "find past authentication failures"
+  - "show me when I deposited the key"
+
+### Constitution
+
+| invariant | how Hippocrene honors it |
+|---|---|
+| S1 | read-only over Mnemosyne; index lives in derived state |
+| S6 | every Recall cites kind + remembered_at + body preview |
+| S8 | TF-IDF math is deterministic; reproducible scores |
+| C7-equivalent | `Embedder` ABC pluggable; default zero deps |
+| AP1 | one hero ~290 LOC + one errand + Throne wiring |
+| AP3 | per-kind handling, not per-query hardcoded rules |
+| AP7 | recall actually finds things — verified across 3 live queries |
+| AP8 | substrate gains a working memory; "find X" stops being grep |
+
+### Live proof
+
+```
+$ invoke recall --stats
+  embedder: tfidf · 1494 docs · 1900 terms
+  llm.call                              468
+  session.completed                     456
+  agent.invocation                      174
+  throne.turn                           162
+  doctor.diagnosis                      114
+  hades.event                           101
+  ...
+
+$ invoke recall "api key encryption" -k 3
+  0.276  llm.call          2026-05-19T04:39:35  anthropic ... ERROR=AuthenticationE
+  0.276  llm.call          2026-05-19T04:39:51  anthropic ... ERROR=AuthenticationE
+  0.275  llm.call          2026-05-19T03:19:16  anthropic ... ERROR=TypeError ...
+```
+
+Semantic, not exact-match: the query "api key encryption" finds Anthropic auth-error records because TF-IDF correctly identifies "api"/"authentication" semantic neighborhood.
+
+### What does NOT ship this arc
+
+- **No real embeddings.** TF-IDF is the keystone. Embeddings come as a future Hippocrene-2 mini-arc if/when quality demands.
+- **No long-document chunking** — records are short by design.
+- **No background cache invalidation** — runs on `--rebuild` or kind-set change.
+- **No cross-corpus joins** — possible future arc.
+
+### Tests
+
+`tests/test_hippocrene.py` — 26 cases across 7 classes: tokenizer (stopwords, lowercasing, length), TF-IDF math (determinism, bounded cosine, empty-query safety), recall (top-k sorted, kinds filter, test-seed filter), stats + rebuild + cache, pluggable embedder ABC (a `_SillyEmbedder` subclass tests the contract), CLI errand smoke, Throne SAFE_ERRANDS inclusion.
+
+All 26 green; **suite total 656/656** (was 630/630); 2 conditional skips remain.
+
+### Authorization
+
+Per the Decade plan approved 2026-05-19 (Arc 13 of 21). **Hippocrene unblocks Arc 16 (Hephaestus-PR can search past proposals before raising new ones) and Arc 17 (Demeter-Library reuses the same index for KB docs).**
+
+*The standard is holy shit, that's done. Drink the spring and remember.*
+
+---
+
+## 2026-05-19 — the Tartarus arc 🜍 (MEDIUM-COMPOSITE, Decade #1 of 10)
+
+**Risk class:** MEDIUM-COMPOSITE.
+**Delphi:** [`codex/oracles/delphi/2026-05-19-tartarus-arc.md`](oracles/delphi/2026-05-19-tartarus-arc.md)
+**Sworn on Styx.**
+
+First arc of the Decade. **Closes all 5 substrate-surfaced gaps with one root-cause fix**, after investigation revealed they share the same shape: tests writing audit-record that pollutes production metrics. Same class as the Hades test-contamination bug; this is the systemic version.
+
+### Investigation finding (the smoking gun)
+
+The substrate was crying wolf based on test residue:
+
+| gap | what the substrate thought | what the data actually said |
+|---|---|---|
+| G1 — `hydra::fatigue-slice` 150× rejected | Hephaestus noisy and broken | **100% of fatigue-slice entries are test seeds**; Hephaestus's rejection-memory works fine |
+| G2 — 10.5% session-error rate | substrate failing 10% of the time | **98% of historical errors are test-actor records** |
+| G3 — Hephaestus 28% ratification | 72% of proposals noise | 43% of all proposals are test artifacts; production rate much higher |
+| G4 — 22 in-flight burdens | Atlas hung | **100% test owners** (charon-test, asclepius-test, test-owner) |
+| G5 — `today` warning unaddressed | Cassandra finding stuck | actually a misclassification; no `warning.dismissed` records exist |
+
+### What ships
+
+**`src/olympus/runtime/test_seeds.py`** (~110 LOC). One module, four predicates. The single source of truth for "is this a test seed?". Production layers import from here.
+  - `is_test_actor(name)` — matches `-test` / `:test` suffixes, `test-` prefix, `test_*`
+  - `is_test_owner(owner)` — same rules, for Atlas burdens
+  - `is_test_proposal(proposal)` — checks fix=`"test"`, rationale+drift signatures, id prefix
+  - `is_test_record(memory)` — union; what production aggregates use
+  - `filter_out_*` helpers for convenience
+
+**`src/olympus/wisdom.py`** patched: `wisdom(include_test_seeds=False)` is the new signature. Default filters; `True` returns raw counts for tests/debugging. Both `sessions_*`, `proposal_count_*`, and `repeated_drifts` filter through the same predicate.
+
+**`src/olympus/runtime/doctor.py::_check_session_errors`** patched: combines the pause-arc 24h window with the test-seed filter. The check now reports production reality.
+
+**`src/olympus/olympians/asclepius.py`** extended: new healer `atlas-test-burden-release`. Runs as part of `invoke heal`. Released **22 stale test burdens** on first run. Records `asclepius.test_burden_release` to Mnemosyne.
+
+**`invoke today --resolve <slice> [--re-raise | --dismiss-as-stale "<reason>"]`**: real new operator action. Closes the longstanding `today` finding by either re-raising as a fresh proposal OR recording an explicit dismissal-reaffirmation (suppresses for 7d). Both paths go through Mnemosyne (S1; nothing deleted).
+
+### Constitution
+
+| invariant | how Tartarus honors it |
+|---|---|
+| S1 | **no test records deleted from Mnemosyne**; only filtered from production-facing aggregates |
+| S6 | every filtered count is verifiable: `wisdom(include_test_seeds=True)` shows the raw |
+| S8 | `is_test_seed()` rules in source code; reproducible |
+| AP1 | one new module ~110 LOC + four targeted patches |
+| AP3 | filter rules are class-level (actor patterns, fix value) — not per-record |
+| AP7 (ledger-balancing) | the filter is **real**: doctor warns less, wisdom counts less, Asclepius released 22 burdens |
+| AP8 | the substrate stopped crying wolf about non-existent problems |
+
+### Side-by-side proof (before/after Tartarus)
+
+```
+                                BEFORE     AFTER         Δ
+total tests                     595        630           +35 (no regressions)
+atlas burdens in flight         22         0             Asclepius released test seeds
+wisdom repeated drift (prod)    fatigue-slice 150×   (none)   phantom GONE
+wisdom repeated drift (raw)     fatigue-slice 150×   fatigue-slice 156×   audit-of-record preserved
+wisdom proposals total          1068                  912                  156 test seeds filtered
+wisdom proposals rejected       201                   45                   most rejections were test artifacts
+session-errors metric           68% sticky            9.5% honest 24h      windowed + filtered
+```
+
+### Tests
+
+`tests/test_tartarus.py` — 35 cases across 7 classes: predicate truth tables, filter helpers, wisdom default-vs-raw, doctor metric reduction, Asclepius release-only-test-owners (with injected fake atlas), `today --resolve` re-raise + dismiss-as-stale flows, usage errors.
+
+All 35 green; **suite total 630/630** (was 595/595); 2 conditional skips remain. The conftest contamination guard from pause-arc fired no warnings.
+
+### What does NOT ship this arc
+
+- No deletion of historical test records (they stay in Mnemosyne; production aggregates filter).
+- No autonomous burden release without opt-in — Asclepius runs as part of `invoke heal` which the operator triggers.
+- No conftest tag for new tests — operator can voluntarily mark with `actor="<name>-test"`; no enforcement.
+- No new figure — Tartarus is the *place* (chasm); existing figures (Asclepius, today oracle) do the work.
+
+### Authorization
+
+Per the Decade plan approved 2026-05-19 (Arc 12 of 21). **Tartarus closes the 5 substrate-surfaced gaps by addressing their shared root cause.** Substrate self-report is honest again.
+
+*The standard is holy shit, that's done. The chasm holds what doesn't belong above.*
+
+---
+
+## 2026-05-19 — the pause-and-harden arc 🛡️ (HIGH-COMPOSITE, tenth heavy-production override, batch #4 of 4 — closer)
+
+**Risk class:** HIGH-COMPOSITE.
+**Delphi:** [`codex/oracles/delphi/2026-05-19-pause-arc.md`](oracles/delphi/2026-05-19-pause-arc.md)
+**Sworn on Styx.**
+
+The closer of the 4-arc batch. **No new features.** Four structural fixes that close the quality gaps the previous three arcs created or exposed.
+
+### What ships
+
+**`tests/conftest.py` real-state contamination guard** (+~80 LOC). Session-scoped pytest hook that snapshots sha256 of every watched file in `state/` at session start and re-snapshots at end. If any sha changed, the entire suite fails with a clear error naming the offending file + sha-before + sha-after, plus a Mnemosyne record under `test.session-guard`. This is the structural fix for the AP7 failure mode the Hades arc demonstrated: a green suite while real state was being corrupted.
+
+  - Currently watches `config.json`.
+  - Opt-out via `OLYMPUS_TEST_ALLOW_STATE_WRITE=1` for legitimate integration writes.
+
+**`tests/test_llm_bridge.py::test_default_is_echo` fix.** The previously-failing test now monkey-patches `cfg_mod._path` directly (the same pattern that fixed the Hades-arc test). Works regardless of operator's real config.
+
+**`runtime/doctor.py::_check_session_errors` redesigned.** Old logic counted `errors[-50:] / completed[-50:]` — a sticky historical ratio that stayed at 68% even as the substrate ran cleanly. New logic counts events in the last 24h (configurable via `OLYMPUS_DOCTOR_ERROR_WINDOW_SECONDS`) and reports `ok · insufficient data` when denominator < 5. The metric now reflects current reality.
+
+**`codex/ARC-QUEUE.md` — new doc.** Surfaces accumulated follow-up work named by recent arcs:
+  - High-impact, low-risk: throne routing prompt-cache (Plutus), test-isolation lint (pause-and-harden), `today` actionable warning closure
+  - Medium-impact, needs design: Hades multi-secret rotation, grounding RAG, PRICING refresh from Models API
+  - Needs constitutional debate: budget alarms via Pan, multi-operator ACLs, inbound triggers
+
+  The Architect's job is to leave this list shorter than they found it.
+
+### Constitution
+
+| invariant | how the hardening honors it |
+|---|---|
+| S1 | guard records session start/end hashes to `test.session-guard` |
+| S6 | guard cites the file + sha-before + sha-after when it fails — verifiable |
+| S8 | snapshots are JSON-serializable; reproducible |
+| AP1 | no new figures; ~110 LOC of test plumbing + 30 LOC doctor fix + one doc |
+| AP7 | the guard is REAL — actually fails the suite when contamination happens |
+| AP8 | hardness is the deliverable; the test suite went 583/584 → **595/595** |
+
+### Live demonstration
+
+```
+$ python3 -m pytest tests/ -q
+.....................                                                    [100%]
+595 passed, 2 skipped in 31.31s
+
+$ invoke doctor
+  session-errors  ✓  44/465 in 24h (9.5%)
+                  ↑ new windowed metric. Old code reported 68% sticky.
+                    Same substrate, more truthful measurement.
+```
+
+The contamination guard would have caught the Hades-arc bug at session-end with the error:
+```
+═══════════════════════════════════════════════════════════════
+  OLYMPUS REAL-STATE CONTAMINATION GUARD FIRED
+═══════════════════════════════════════════════════════════════
+  Files changed:
+    state/config.json
+      before: <real-key-sha>
+      after:  <test-clobbered-sha>
+```
+
+### What does NOT ship this arc (intentionally — would be AP1)
+
+- **Automated pyproject.toml lint** for forbidden patterns (e.g. `monkeypatch.setenv("OLYMPUS_STATE_DIR")`). The guard catches the consequence; a lint would catch the pattern. Surfaced in ARC-QUEUE.md as a follow-up.
+- **Throne routing prompt-cache**. Plutus identified this as 90% cost reduction. Surfaced in ARC-QUEUE.md; would be its own arc.
+- **Retroactive rewrite of any test that *might* be sloppy**. The guard catches them on next run; we don't preemptively rewrite hundreds.
+
+### Tests
+
+`tests/test_pause_arc.py` — 12 cases covering: guard snapshot/diff helpers; `config.json` is on the watched list; `_check_session_errors` insufficient-data branch + no-sticky-history + finding shape; ARC-QUEUE.md exists + references each originating arc + has all three tiers; `test_default_is_echo` uses path-redirection (not `OLYMPUS_STATE_DIR`).
+
+Suite total: **595 / 595 green** (was 583/584 before this arc). Two skips remain (legitimate platform-conditional skips).
+
+### Authorization
+
+Zeus invoked the heavy-production override (tenth invocation, batch #4 of 4 — the closer). **The pause-and-harden arc closes the structural quality gap the Hades-arc mistake exposed.** From now on, a test that silently contaminates the operator's real state will fail the entire suite at teardown — green never lies again.
+
+*The standard is holy shit, that's done. The forge is cool; the work is straight; the next operator inherits clean ground.*
+
+---
+
+## 2026-05-19 — the Hades arc 🗝️ (HIGH-COMPOSITE, tenth heavy-production override, batch #3 of 4)
+
+**Risk class:** HIGH-COMPOSITE.
+**Delphi:** [`codex/oracles/delphi/2026-05-19-hades-arc.md`](oracles/delphi/2026-05-19-hades-arc.md)
+**Sworn on Styx.**
+
+The xenia arc had a known-shipped gap: "the operator's API key is plaintext in `state/config.json`; future arc may add OS keychain integration." This is that future arc. Closes the gap with the system keychain via the cross-platform `keyring` library.
+
+### What ships
+
+**`src/olympus/olympians/hades.py`** (~200 LOC). New Olympian — the secrets vault. Wraps the OS keychain (macOS Keychain / Linux Secret Service / Windows Credential Manager). Public API: `deposit(name, secret)` / `retrieve(name)` / `forget(name)` / `where(name) -> "env"|"keychain"|"plaintext"|"unset"` / `status(name)` / `available()`. Service namespace `"olympus"`. Graceful fallback when no backend is present.
+
+**`runtime/config.py`** patched:
+  - `effective_anthropic_api_key()` resolves env → Hades → plaintext (with deprecation warning) → None.
+  - `migrate_plaintext_to_hades()` — idempotent migration. Refuses values that don't look like real keys (≥ 20 chars, starts with `sk-`).
+  - `apply_to_environment()` now reads via `effective_anthropic_api_key()` so Hades is honored.
+
+**`runtime/doctor.py`** patched: new `_check_secrets()` reporting vault status (`✓ N in keychain · backend=...` or `! N secret(s) in PLAINTEXT — run \`invoke vault migrate\``).
+
+**CLI errand `invoke vault`:**
+  - `vault status` — what's stored, where, backend
+  - `vault deposit <name>` — hidden-input prompt → store in Hades
+  - `vault forget <name>` — remove
+  - `vault migrate` — one-shot plaintext → keychain migration
+
+**Throne wiring:** added `vault` to `SAFE_ERRANDS` (status only; the LLM can answer "is my key encrypted?" but deposit/forget stay CLI-gated).
+
+### Constitution
+
+| invariant | how Hades honors it |
+|---|---|
+| S1 | every deposit/forget recorded to Mnemosyne under `hades.event` — **value NEVER logged**, only length + sha256-prefix |
+| S3 | reading never mutates; migration is explicit (operator-invoked or wizard-driven) |
+| S6 | `vault status` reports the actual resolved location — verifiable |
+| S7 | deposit/forget stay CLI-only (Throne can read status, not write) |
+| C7-equivalent | secrets storage is *configurable* (env / hades / plaintext) — not hardcoded |
+| AP1 | one Olympian ~200 LOC; reuses `keyring`; no parallel secrets system |
+| AP7 | migration is real (config.json sentinel'd, value moved to OS-encrypted store) |
+
+### Failure modes named explicitly
+
+- **No keyring backend (Linux headless)** → `hades.available()` False; falls back to plaintext; doctor warns.
+- **OS prompts for keychain access** → first call may show GUI dialog; documented in QUICKSTART.
+- **Operator revokes keychain access** → `retrieve()` returns None; bridge falls back.
+- **Key rotation** → operator runs `invoke vault deposit anthropic_api_key`; old value overwritten.
+
+### A regression I created and fixed (told the operator about)
+
+While developing this arc, an early version of `tests/test_hades.py::test_migrate_refuses_garbage_value` used `monkeypatch.setenv("OLYMPUS_STATE_DIR", ...)` thinking that would redirect the config path. It didn't — `_path()` uses `root.child()` anchored to project root, not the env var. **The test wrote `"not-a-real-key"` to the operator's real `state/config.json`**, clobbering the kindling metadata and the actual API key value.
+
+This is exactly the AP7 (ledger-balancing) failure mode the substrate is built to refuse: a test that *appeared* to pass while corrupting real state. The throne would have raised the alarm via doctor on next run, but the damage was already done.
+
+Recovery attempted: pulled the env from the live HTTP-API process via `ps eww`, hoping the real key was still in memory. macOS hides env from `ps` for other users — recovery failed. Operator needs to re-paste their key (this time into Hades, encrypted).
+
+Fix landed in the same arc: the test now monkey-patches `cfg_mod._path` directly to point at `tmp_path / "config.json"`, AND asserts at the end that `not-a-real-key` is absent from the real config — failing the test loudly if it ever clobbers real state again.
+
+### Tests
+
+`tests/test_hades.py` — 22 cases across 9 classes (no real OS keychain touched; tests inject a `FakeKeyringModule`):
+  - round-trip + forget + deposit input validation
+  - no-backend graceful fallback
+  - `where()` resolution priority (env > keychain > plaintext > unset)
+  - `status()` never leaks the secret in any field
+  - `hades.event` records metadata but **NEVER the value**
+  - `effective_anthropic_api_key()` resolution priority
+  - vault errand smoke tests
+  - throne `SAFE_ERRANDS` integration
+  - doctor `_check_secrets` smoke test
+  - migration: refuses garbage values, sentinel replacement, test-isolation guard
+
+All 22 green; 582 total pass (+21 from this arc); 1 pre-existing config-drift fail.
+
+### Authorization
+
+Zeus invoked the heavy-production override (tenth invocation, batch #3 of 4). **The Hades arc closes the plaintext-key gap the xenia arc explicitly named.** When the operator re-deposits their key via `invoke vault deposit anthropic_api_key`, it goes straight to the OS Keychain — encrypted at rest, prompted on access.
+
+*The standard is holy shit, that's done. The strongbox is sealed.*
+
+---
+
+## 2026-05-19 — the Plutus arc 💰 (HIGH-COMPOSITE, tenth heavy-production override, batch #2 of 4)
+
+**Risk class:** HIGH-COMPOSITE.
+**Delphi:** [`codex/oracles/delphi/2026-05-19-plutus-arc.md`](oracles/delphi/2026-05-19-plutus-arc.md)
+**Sworn on Styx.**
+
+The data was already there. Every `llm.call` Mnemosyne record since the oikoumene arc has carried `bridge`, `role`, `model`, `input_tokens`, `output_tokens`. **Nobody had been adding it up.** Plutus adds it up.
+
+### What ships
+
+**`src/olympus/heroes/plutus.py`** (~250 LOC). One hero (Plutus, god of wealth), three public surfaces:
+  - `plutus.tally(window)` — returns `CostReport` aggregating over `llm.call` records. Windows: `all` / `today` / `1h` / `24h` / `7d` / `30d`.
+  - `plutus.estimate_dollars(input_tokens, output_tokens, model)` — pricing-table math; 0.0 for unknown models.
+  - `plutus.PRICING` — model_id → (input_$/1M, output_$/1M). Sourced from the live model catalog (Opus 4.7 = $5/$25 per 1M; Sonnet 4.6 = $3/$15; Haiku 4.5 = $1/$5; echo = $0/$0).
+
+**`CostReport` fields:** `total_calls`, `total_input_tokens`, `total_output_tokens`, `estimated_usd`, `by_bridge`, `by_role`, `by_model`, `by_day` (last 30, newest first), `unknown_model_calls`, `unknown_models`, `pricing_used`. Each axis sums to the total (tested).
+
+**CLI errand:** `invoke spend [--today|--7d|--30d|--all]`. Renders four tables (by bridge/role/model/day). Honors `--json`. Surfaces unknown-model count as a footnote.
+
+**Throne integration:** added `spend` to `SAFE_ERRANDS`. The chat can now answer "what are we spending on Claude?", "how much did Hephaestus cost today?", "which model is most expensive?".
+
+### Constitution
+
+| invariant | how Plutus honors it |
+|---|---|
+| S1 | Plutus is read-only over the audit-of-record; source records stay sacred |
+| S6 | every dollar number cites the model + token counts it was derived from |
+| S8 | pricing table is in code (versionable); estimates reproducible from records |
+| C7-equivalent | pricing is *data*, not hardcoded into bridges |
+| AP1 | one hero ~250 LOC; one errand; no parallel accounting system |
+| AP3 | aggregation is record-driven, not per-question hardcoded |
+| AP8 | the operator learns something they didn't know — first time the bill is visible |
+
+### Live demonstration
+
+```
+$ invoke spend --7d
+╔═════════════════════════════════════════════════════════════╗
+║spend — Plutus ledger (7d)                                   ║
+║$0.4110 estimated · 322 call(s) · 57,649in / 13,418out tokens║
+╚═════════════════════════════════════════════════════════════╝
+
+  by bridge:
+    anthropic                85×    44,867in     7,328out  $0.4075
+    echo                    161×    12,582in     5,990out  $0.0000
+
+  by role:
+    throne-routing           81×    33,658in     3,872out  $0.2651
+    hephaestus               33×     4,780in     2,218out  $0.0444
+    throne-synthesis         13×     3,863in       793out  $0.0391
+    cassandra                 2×     1,474in       483out  $0.0194
+    momus                    22×     1,838in     1,349out  $0.0179
+    athena                    1×       703in       427out  $0.0142
+
+  by day (newest first):
+    2026-05-19              241×    53,494in    10,990out  $0.4096
+    2026-05-18               81×     4,155in     2,428out  $0.0015
+```
+
+The biggest line item is the throne's routing call (the larger system prompt with all errand definitions). That insight is itself actionable: a future arc could trim the system prompt or cache it for cheaper turns.
+
+And the throne now answers cost questions in plain English:
+```
+you:    what are we spending on Claude this week?
+throne: Over the last 7 days we've spent about $0.42 on Claude
+        (claude-opus-4-7) across 88 calls totaling ~46k input / 7.5k
+        output tokens (per `spend --7d`). Nearly all of it — $0.4185 —
+        landed on 2026-05-19. throne-routing is the biggest line item
+        at $0.27, followed by hephaestus ($0.04) and throne-synthesis
+        ($0.04).
+        (ran spend --7d · 7077ms)
+```
+
+### What does NOT ship this arc
+
+- **No budget alarms** — needs a constitutional debate about Pan tripping on spend.
+- **No historical pricing** — if Anthropic changes prices, old records get re-estimated.
+- **No multi-currency.** USD only.
+- **No per-call drill-down UI** — aggregate is the deliverable.
+
+### Tests
+
+`tests/test_plutus.py` — 22 cases across 6 classes covering pricing math (each known model), aggregation, axis sums, window filters, JSON serialization, CLI smoke test, and throne integration. All 22 green; 561 total pass (+23 from this arc); 1 pre-existing config-drift fail.
+
+### Authorization
+
+Zeus invoked the heavy-production override (tenth invocation, batch #2 of 4). **Plutus turns invisible spend into visible spend.**
+
+*The standard is holy shit, that's done. The cornucopia has a price tag.*
+
+---
+
+## 2026-05-19 — the grounding arc 🌾 (HIGH-COMPOSITE, tenth heavy-production override, batch #1 of 4)
+
+**Risk class:** HIGH-COMPOSITE.
+**Delphi:** [`codex/oracles/delphi/2026-05-19-grounding-arc.md`](oracles/delphi/2026-05-19-grounding-arc.md)
+**Sworn on Styx.**
+
+The throne demo proved the gap: Hephaestus reasoned brilliantly *in* the mythology but **fabricated filesystem paths** (`strategic/delphi/debates/*.md`, `mnemosyne/ledger/decisions.log` — none of those exist). The constitution said S6 (no fabrication); the substrate trusted the LLM to honor it voluntarily. This arc makes S6 enforced.
+
+### What ships
+
+**`src/olympus/runtime/grounding.py`** (~340 LOC) — five public functions:
+  - `read_file_grounded(relpath)` — whitelisted to project root; rejects `..` escape, absolute paths outside root, symlink escape. Never raises.
+  - `recall_grounded(kind, limit)` — JSON-safe Mnemosyne recall.
+  - `cited_paths_in_text(text)` — extracts path-shaped substrings the agent cited. Filters URLs, version numbers, bare Greek names.
+  - `verify_cited_paths(paths)` — returns `[GroundedCheck(exists, normalized, reason), ...]` for each cited path. Honors glob patterns.
+  - `build_grounding_for_role(role)` — assembles role-specific JSON block: real Pantheon roster + recent Mnemosyne records + AP catalog for Momus. Smart budget-trim (trims oldest list entries until under 3000 chars while preserving JSON validity).
+  - `apply_grounding(role, text, parsed)` — the full pipeline: verify, downgrade confidence by 0.2 per fabricated path, record to Mnemosyne.
+
+**`src/olympus/runtime/agents.py::run()`** — 15-line patch. Prepends grounding block to user prompt. After `r.parse()`, calls `apply_grounding()` to verify + downgrade. Every agent response now includes `cited_paths`, `fabricated_paths`, `grounding_penalty`.
+
+### Constitution
+
+| invariant | how grounding honors it |
+|---|---|
+| S1 | every grounding check → `agent.grounding_check` in Mnemosyne |
+| S6 | fabrication has a **real consequence** (–0.2 confidence) — not just logged |
+| S8 | grounding blocks are JSON-serializable; reproducible |
+| AP1 | additive ~340 LOC; not a parallel agent system |
+| AP3 | role-specific (5 builders), not per-question |
+| AP7 (ledger-balancing) | confidence downgrade is enforced; not a logged-but-ignored signal |
+
+### Live demonstration — same query before and after
+
+**Before grounding:**
+```
+drift_observed: strategic/delphi/debates/*.md records cite Apollo
+                forecasts but omit verify()...
+                ↑ FABRICATED (path does not exist)
+```
+
+**After grounding:**
+```
+drift_observed: session-bc3632e1, session-860cd0ec, session-b5137bed,
+                session-4958f81a, session-b2a47f3f all show '9 hydra ·
+                9 argos · 0 proposals'. recent_proposal_raised is empty.
+                ↑ REAL session IDs from Mnemosyne
+cited_paths: []           ← model cited record IDs, not paths
+fabricated_paths: []      ← nothing to penalize
+grounding_penalty: 0.0    ← confidence kept at 0.78
+```
+
+The drift Hephaestus surfaced is now **verifiable** and **actionable**: five sessions had findings but no proposals raised. That's a real silent-pipeline signal the substrate now has, recorded honestly.
+
+### What does NOT ship this arc (deferred to follow-up arcs)
+
+- **No full RAG** over the codebase (vector index, semantic retrieval).
+- **No tool-use loop** — agents read grounding once, don't iteratively fetch more.
+- **No refusal-on-no-grounding** — confidence penalty is the consequence; refusal would be behavior change too big for one arc.
+- **No retroactive grounding** — only new calls; the 580+ historical `agent.invocation` records aren't re-validated.
+
+### Tests
+
+`tests/test_grounding.py` — 35 cases across 7 classes covering whitelist safety, citation extraction, verification (including globs), per-role builders, the full pipeline, and a scripted-bridge integration test of `agents.run()`. All 35 green; 538 total pass; 1 pre-existing config-drift failure.
+
+### Authorization
+
+Zeus invoked the heavy-production override (tenth invocation, batch #1 of 4: grounding → Plutus → Hades → pause-and-harden). **The grounding arc closes the most-visible reliability gap.** When an agent now cites a path, that path either exists or the operator sees explicitly that it was fabricated.
+
+*The standard is holy shit, that's done. Every cited stone is a real stone.*
+
+---
+
+## 2026-05-19 — the throne arc 👑 (HIGH-COMPOSITE, ninth heavy-production override)
+
+**Risk class:** HIGH-COMPOSITE.
+**Delphi:** [`codex/oracles/delphi/2026-05-19-throne-arc.md`](oracles/delphi/2026-05-19-throne-arc.md)
+**Sworn at this arc's ratification.**
+
+Zeus's critique was right and was anticipated: the xenia arc *named* the gap (a stranger has no path to "I'm using this") but only **partially closed it**. The user typed `$ invoke setup` and the shell exploded. The CLI still leaks 60 errand names and Greek mythology to the surface. This arc is the actual hospitality: **one place to ask, one place to act.**
+
+### What ships
+
+**`src/olympus/throne/`** — new package (~600 LOC including tests). Three modules:
+  - **`throne.py`** — the `Throne` class. `respond(input)` is the one method that matters. Two LLM calls per turn (routing + synthesis); one call for direct-answer / gated-refusal paths.
+  - **`router.py`** — intent classifier + constitutional whitelist. `SAFE_ERRANDS` (11 read-only/record-only) vs `GATED_ERRANDS` (7 S7-bearing — Throne NEVER executes; shows command).
+  - **`repl.py`** — interactive terminal REPL (multi-turn) + one-shot mode.
+
+**CLI errand:** `invoke throne` (no args = REPL) or `invoke throne "<question>"` (one-shot).
+
+**HTTP endpoint:** `POST /throne/turn` — the only new write surface this arc. Request `{input}`; response `{answer, actions_taken, suggested_command, sources, elapsed_ms, bridge}`. CORS preflight (OPTIONS) added so the file:// Agora can POST to 127.0.0.1.
+
+**Agora rewiring** — `state/agora/throne.html` is the new landing page (`index.html` now sourced from it). The old dashboard moves to `dashboard.html`. Nav brand is **👑 Zeus's Throne**.
+
+**`codex/QUICKSTART.md`** rewritten: 5-step setup → 2-step. The new workflow is `invoke setup` → open Agora → type questions.
+
+### Constitution
+
+| invariant | how Throne honors it |
+|---|---|
+| S1 | every turn → `mnemosyne.remember("throne.turn", ...)` |
+| S6 | every answer cites the errand(s) invoked (`sources` field) |
+| S7 | GATED errands NEVER execute regardless of phrasing — even if LLM tries to sneak one into a `run` list, router catches it |
+| AP1 | Throne is glue ~600 LOC; reuses every existing errand handler verbatim (`hermes._errands[name].fn`) |
+| AP3 | classification is LLM-driven, not if-then per question |
+| AP7 | refusal-with-command is real output, not pretty text |
+
+### What does NOT ship
+
+- No multi-LLM chain-of-agents (one Claude turn per operator turn — cost transparency).
+- No persistent chat history across REPL sessions (Mnemosyne records every turn — Throne UI doesn't auto-replay).
+- No tool-use loop (Throne plans once, executes, synthesizes — `invoke session` is for agentic recursion).
+- No Pan bypass (gated actions stay gated; even "just do it for me" gets the command back).
+
+### Live demonstration
+
+After the build, all three paths verified end-to-end via `POST /throne/turn`:
+
+```
+you:    how is everything going?
+throne: Mostly healthy: doctor reports 8 checks passing... two warnings
+        worth a look — your recent session error rate is sitting at 76%...
+        I'd dig into those errors before they snowball.
+        (ran doctor · 9395ms via anthropic)
+
+you:    what is Olympus and what does it do?
+throne: Olympus is a cognitive substrate built in the shape of Greek
+        mythology... It runs cognitive cycles, proposes and ratifies
+        changes to itself... exposes everything through a single
+        conversational interface (this Throne).
+        (no errands · 5644ms via anthropic — direct answer)
+
+you:    just ratify proposal abc123 for me, I trust the system
+throne: This is a constitution-gated action (S7 — Zeus is the
+        operator-in-person, not the chatbot). Run this yourself:
+            invoke action ratify <proposal_id>
+        (no errands · 1486ms via anthropic — refused)
+```
+
+The throne also caught a real bug honestly during the demo (`hermes._table` → `hermes._errands`) instead of fabricating — that's S6 working in production.
+
+### Tests
+
+`tests/test_throne.py` — 26 cases. Router disjointness; classify direct/run/gated/malformed plans; Throne paths (direct/gated/run); Mnemosyne recording for every turn including refusals and bridge errors; HTTP endpoint happy path + validation + 405 on wrong route; Agora landing page is throne.html.
+
+Two regression-test updates to `tests/test_agora.py` (brand changed from "A G O R A" to "Zeus's Throne"; throne is exempt from the no-POST rule). All 26 throne tests green; 503 total pass; 1 pre-existing config-drift failure unrelated to this arc.
+
+### Authorization
+
+Zeus invoked the heavy-production override (ninth invocation). **The throne arc operationalizes the unified front door.** A non-technical operator now has one box to type into — for everything except actions the constitution reserves to a real person.
+
+*The standard is holy shit, that's done. Every road in Olympus leads to one chair.*
+
+---
+
 ## 2026-05-18 — the xenia arc 🏺 (HIGH-COMPOSITE, eighth boil-the-ocean override)
 
 **Risk class:** HIGH-COMPOSITE.

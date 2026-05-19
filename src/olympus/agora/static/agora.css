@@ -1,271 +1,843 @@
 /* Agora — operator interactive surface.
-   Palette echoes Aphrodite (gold / wine / marble / sea / laurel).
-   No web fonts. No animations except hover. */
+   Cinematic mythic palette: obsidian + antique gold + marble.
+   No web fonts (zero deps). Smooth transitions on every interactive
+   element. The whole surface feels like a film poster + a control room. */
 
 :root {
-    --gold:   #d4a017;
-    --gold-2: #f0c43a;
-    --wine:   #722f37;
-    --wine-2: #4a1c22;
-    --marble: #ecebe4;
-    --ink:    #1c1a16;
-    --paper:  #faf8f1;
-    --sea:    #2d6a6a;
-    --laurel: #6b8e6b;
-    --line:   rgba(28, 26, 22, 0.12);
+    /* Depth — the night sky, the obsidian, the inscription background */
+    --void:        #07070a;
+    --abyss:       #0e0e14;
+    --abyss-2:     #15151d;
+    --panel:       #1a1a23;
+    --panel-2:     #22222d;
+    --line:        rgba(212, 175, 55, 0.13);
+    --line-strong: rgba(212, 175, 55, 0.28);
+
+    /* Light — marble, parchment, breath */
+    --marble:      #f5f1e6;
+    --marble-dim:  #b8b1a1;
+    --marble-muted:#6d685b;
+
+    /* Antique gold — the inscription, the laurel, the offering */
+    --gold:        #d4af37;
+    --gold-bright: #f0c845;
+    --gold-soft:   #a88820;
+    --gold-glow:   rgba(212, 175, 55, 0.22);
+
+    /* Accent — wine for emphasis, ember for alarm, olive for honor */
+    --wine:        #6b1f2c;
+    --wine-deep:   #2a0c14;
+    --ember:       #c4392f;
+    --olive:       #5c6b3a;
+    --copper:      #b87333;
+    --sea:         #2d6a7a;
+
+    /* Curves */
+    --r-sm: 4px;
+    --r-md: 8px;
+    --r-lg: 12px;
+    --r-xl: 18px;
+
+    /* Shadows — soft, layered, cinematic */
+    --shadow-sm:   0 1px 2px rgba(0,0,0,0.35);
+    --shadow-md:   0 4px 16px rgba(0,0,0,0.4),
+                   0 1px 3px rgba(0,0,0,0.25);
+    --shadow-lg:   0 12px 36px rgba(0,0,0,0.5),
+                   0 2px 8px rgba(0,0,0,0.3);
+    --glow-gold:   0 0 24px rgba(212, 175, 55, 0.18),
+                   0 0 1px rgba(212, 175, 55, 0.5);
+
+    /* Motion */
+    --ease:        cubic-bezier(0.16, 1, 0.3, 1);
+    --t-fast:      120ms;
+    --t-med:       220ms;
+    --t-slow:      420ms;
 }
 
 * { box-sizing: border-box; }
 
-body {
+html, body {
     margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-                 Georgia, serif;
-    background: var(--paper);
-    color: var(--ink);
-    line-height: 1.55;
+    padding: 0;
+    min-height: 100vh;
 }
 
-nav.agora-nav {
-    background: linear-gradient(180deg, var(--wine) 0%, var(--wine-2) 100%);
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue",
+                 "Inter", "Segoe UI", system-ui, sans-serif;
+    background:
+        radial-gradient(ellipse at top, rgba(212,175,55,0.04) 0%,
+                        transparent 60%),
+        radial-gradient(ellipse at bottom right,
+                        rgba(107, 31, 44, 0.08) 0%, transparent 70%),
+        var(--void);
+    background-attachment: fixed;
     color: var(--marble);
+    line-height: 1.6;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+}
+
+/* Subtle film grain — invisible but adds texture */
+body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.035;
+    z-index: 1000;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/></filter><rect width='200' height='200' filter='url(%23n)' opacity='0.55'/></svg>");
+}
+
+/* Display headings — a touch of inscriptional weight */
+h1, h2, h3, h4 {
+    font-family: "Cormorant Garamond", "Cinzel", Optima, Georgia,
+                 "Times New Roman", serif;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    color: var(--marble);
+    margin: 0 0 0.4em 0;
+}
+h1 { font-size: 1.8rem; letter-spacing: 0.12em; }
+h2 { font-size: 1.2rem; letter-spacing: 0.08em; text-transform: uppercase;
+     color: var(--gold); font-weight: 400; }
+h3 { font-size: 1rem; }
+
+a {
+    color: var(--gold);
+    text-decoration: none;
+    transition: color var(--t-fast) var(--ease);
+}
+a:hover { color: var(--gold-bright); }
+
+code, pre, .mono {
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono",
+                 "Menlo", monospace;
+    font-size: 0.85em;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Top navigation — obsidian bar with a gold underline
+   ───────────────────────────────────────────────────────────── */
+
+nav.agora-nav {
+    background: linear-gradient(180deg,
+                rgba(7,7,10,0.96) 0%,
+                rgba(14,14,20,0.92) 100%);
+    backdrop-filter: saturate(140%) blur(12px);
+    -webkit-backdrop-filter: saturate(140%) blur(12px);
+    border-bottom: 1px solid var(--line-strong);
     padding: 1rem 2rem;
-    border-bottom: 3px solid var(--gold);
     display: flex;
-    gap: 1.2rem;
+    gap: 0.4rem;
     align-items: center;
     flex-wrap: wrap;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+nav.agora-nav::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: -1px;
+    height: 1px;
+    background: linear-gradient(90deg,
+        transparent 0%,
+        var(--gold) 20%,
+        var(--gold-bright) 50%,
+        var(--gold) 80%,
+        transparent 100%);
+    opacity: 0.45;
 }
 
 nav.agora-nav a {
-    color: var(--marble);
+    color: var(--marble-dim);
     text-decoration: none;
-    font-size: 0.9rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    padding: 0.3rem 0.6rem;
-    border-radius: 2px;
-    transition: background 0.15s;
-}
-nav.agora-nav a:hover { background: rgba(212, 160, 23, 0.15); }
-nav.agora-nav a.brand {
-    font-weight: 600;
-    color: var(--gold-2);
+    font-size: 0.78rem;
     letter-spacing: 0.18em;
-    font-size: 1.1rem;
-    margin-right: 1rem;
+    text-transform: uppercase;
+    padding: 0.4rem 0.85rem;
+    border-radius: var(--r-sm);
+    transition: all var(--t-med) var(--ease);
+    position: relative;
+}
+nav.agora-nav a:hover {
+    color: var(--marble);
+    background: rgba(212, 175, 55, 0.07);
+}
+nav.agora-nav a.brand {
+    font-family: "Cormorant Garamond", Optima, Georgia, serif;
+    font-size: 1.15rem;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    color: var(--gold);
+    margin-right: 1.5rem;
+    padding: 0.3rem 0;
+    text-transform: none;
+}
+nav.agora-nav a.brand:hover {
+    color: var(--gold-bright);
+    background: transparent;
+    text-shadow: 0 0 18px rgba(212, 175, 55, 0.4);
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Main + page header
+   ───────────────────────────────────────────────────────────── */
+
 main {
-    max-width: 1100px;
+    max-width: 1180px;
     margin: 0 auto;
-    padding: 2rem 1.5rem 3rem;
+    padding: 2.5rem 1.75rem 4rem;
+    animation: fade-up var(--t-slow) var(--ease);
+}
+
+@keyframes fade-up {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 header.page-head {
-    margin-bottom: 1.5rem;
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+}
+header.page-head::after {
+    content: "";
+    position: absolute;
+    left: 0; bottom: -1px;
+    width: 80px; height: 1px;
+    background: var(--gold);
+    opacity: 0.6;
 }
 header.page-head h1 {
     margin: 0;
-    color: var(--wine);
-    font-size: 1.6rem;
-    letter-spacing: 0.05em;
+    color: var(--marble);
+    font-size: 2rem;
+    letter-spacing: 0.08em;
 }
 header.page-head .subtitle {
-    color: var(--sea);
+    color: var(--marble-dim);
     font-style: italic;
-    margin-top: 0.3rem;
+    margin-top: 0.4rem;
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
 }
 header.page-head .status-strip {
-    margin-top: 0.6rem;
-    font-size: 0.78rem;
-    color: var(--sea);
+    margin-top: 0.7rem;
+    font-size: 0.74rem;
+    color: var(--marble-muted);
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    letter-spacing: 0.05em;
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Cards — the dashboard tiles
+   ───────────────────────────────────────────────────────────── */
 
 .grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 1rem;
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem;
 }
 .card {
-    background: white;
+    background: linear-gradient(180deg,
+                var(--panel) 0%,
+                var(--abyss-2) 100%);
     border: 1px solid var(--line);
-    border-left: 4px solid var(--gold);
-    border-radius: 3px;
-    padding: 1rem;
+    border-radius: var(--r-md);
+    padding: 1.1rem 1.2rem;
+    position: relative;
+    transition: all var(--t-med) var(--ease);
+    overflow: hidden;
 }
+.card::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 0;
+    width: 3px; height: 100%;
+    background: linear-gradient(180deg,
+        var(--gold) 0%, transparent 100%);
+    opacity: 0.6;
+    transition: opacity var(--t-med) var(--ease);
+}
+.card:hover {
+    transform: translateY(-2px);
+    border-color: var(--line-strong);
+    box-shadow: var(--shadow-md);
+}
+.card:hover::before { opacity: 1; }
 .card .label {
     text-transform: uppercase;
-    font-size: 0.7rem;
-    letter-spacing: 0.1em;
-    color: var(--sea);
+    font-size: 0.66rem;
+    letter-spacing: 0.18em;
+    color: var(--marble-muted);
     font-weight: 600;
 }
 .card .value {
-    font-size: 2rem;
-    font-weight: 600;
-    color: var(--ink);
-    margin-top: 0.25rem;
+    font-family: "Cormorant Garamond", Optima, Georgia, serif;
+    font-size: 2.2rem;
+    font-weight: 500;
+    color: var(--marble);
+    margin-top: 0.15rem;
+    line-height: 1.1;
+    letter-spacing: 0.02em;
 }
 .card .annot {
-    color: var(--sea);
+    color: var(--marble-dim);
     font-size: 0.78rem;
-    margin-top: 0.1rem;
+    margin-top: 0.35rem;
+    letter-spacing: 0.02em;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Panels — major content sections
+   ───────────────────────────────────────────────────────────── */
+
 .panel {
-    background: white;
+    background: linear-gradient(180deg,
+                var(--panel) 0%,
+                var(--abyss-2) 100%);
     border: 1px solid var(--line);
-    border-radius: 3px;
+    border-radius: var(--r-md);
     margin-bottom: 1.5rem;
     overflow: hidden;
+    transition: border-color var(--t-med) var(--ease);
 }
+.panel:hover { border-color: var(--line-strong); }
 .panel h2 {
-    background: var(--marble);
+    background: linear-gradient(180deg,
+                rgba(212,175,55,0.06) 0%,
+                rgba(212,175,55,0.02) 100%);
     margin: 0;
-    padding: 0.7rem 1.1rem;
-    font-size: 0.95rem;
-    letter-spacing: 0.08em;
+    padding: 0.9rem 1.3rem;
+    font-size: 0.78rem;
+    letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--wine);
+    color: var(--gold);
     border-bottom: 1px solid var(--line);
+    font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-weight: 600;
 }
-.panel-body { padding: 1.1rem 1.1rem; }
+.panel-body { padding: 1.3rem 1.3rem; color: var(--marble); }
+.panel-body p { color: var(--marble-dim); }
+.panel-body strong { color: var(--marble); }
+
+/* ─────────────────────────────────────────────────────────────
+   Tables (iris)
+   ───────────────────────────────────────────────────────────── */
 
 table.iris {
     width: 100%;
     border-collapse: collapse;
-    font-size: 0.875rem;
+    font-size: 0.88rem;
 }
 table.iris th, table.iris td {
-    padding: 0.45rem 0.6rem;
+    padding: 0.55rem 0.7rem;
     text-align: left;
     border-bottom: 1px solid var(--line);
     vertical-align: top;
 }
 table.iris th {
-    color: var(--sea);
+    color: var(--marble-muted);
     font-weight: 600;
-    font-size: 0.75rem;
-    letter-spacing: 0.06em;
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
     text-transform: uppercase;
 }
+table.iris tr { transition: background var(--t-fast) var(--ease); }
+table.iris tbody tr:hover { background: rgba(212, 175, 55, 0.04); }
 table.iris tr:last-child td { border-bottom: none; }
 table.iris .mono {
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 0.78rem;
-    color: var(--wine-2);
+    font-size: 0.76rem;
+    color: var(--gold-soft);
+    letter-spacing: 0.02em;
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Badges
+   ───────────────────────────────────────────────────────────── */
 
 .badge {
     display: inline-block;
-    padding: 0.12rem 0.5rem;
+    padding: 0.14rem 0.55rem;
     border-radius: 12px;
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     font-weight: 600;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-family: -apple-system, system-ui, sans-serif;
 }
-.badge.ok       { background: var(--laurel); color: white; }
-.badge.warn     { background: var(--gold);   color: var(--ink); }
-.badge.fail     { background: var(--wine);   color: var(--marble); }
-.badge.urgent   { background: var(--wine);   color: var(--marble); }
-.badge.notable  { background: var(--gold);   color: var(--ink); }
-.badge.gentle   { background: var(--laurel); color: white; }
-.badge.calm     { background: var(--sea);    color: white; }
+.badge.ok       { background: rgba(92, 107, 58, 0.22);
+                  color: #a8c178; border: 1px solid rgba(92,107,58,0.5); }
+.badge.warn     { background: rgba(184, 115, 51, 0.22);
+                  color: #e0a578; border: 1px solid rgba(184,115,51,0.5); }
+.badge.fail     { background: rgba(196, 57, 47, 0.22);
+                  color: #e88e85; border: 1px solid rgba(196,57,47,0.5); }
+.badge.urgent   { background: rgba(196, 57, 47, 0.22);
+                  color: #e88e85; border: 1px solid rgba(196,57,47,0.5); }
+.badge.notable  { background: rgba(212, 175, 55, 0.18);
+                  color: var(--gold-bright); border: 1px solid var(--gold-soft); }
+.badge.gentle   { background: rgba(92, 107, 58, 0.22);
+                  color: #a8c178; border: 1px solid rgba(92,107,58,0.5); }
+.badge.calm     { background: rgba(45, 106, 122, 0.22);
+                  color: #87c4d4; border: 1px solid rgba(45,106,122,0.5); }
+
+/* ─────────────────────────────────────────────────────────────
+   CLI code blocks — operator commands stand out
+   ───────────────────────────────────────────────────────────── */
 
 .cli {
-    background: #1c1a16;
-    color: #ecebe4;
-    padding: 0.9rem 1.1rem;
-    border-radius: 3px;
+    background: var(--void);
+    color: var(--marble);
+    padding: 0.95rem 1.15rem;
+    border-radius: var(--r-md);
+    border: 1px solid var(--line);
     font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 0.85rem;
+    font-size: 0.84rem;
     overflow-x: auto;
-    line-height: 1.5;
+    line-height: 1.55;
+    box-shadow: var(--shadow-sm);
+    position: relative;
 }
-.cli .comment { color: var(--laurel); }
-.cli .prompt { color: var(--gold-2); }
+.cli::before {
+    content: "$";
+    color: var(--gold);
+    margin-right: 0.4rem;
+    opacity: 0.7;
+    display: none; /* turned on by .cli.with-prompt */
+}
+.cli .comment { color: var(--marble-muted); font-style: italic; }
+.cli .prompt  { color: var(--gold); }
+
+pre.json {
+    background: var(--void);
+    color: var(--marble);
+    padding: 1rem;
+    overflow: auto;
+    font-size: 0.78rem;
+    line-height: 1.55;
+    border-radius: var(--r-md);
+    border: 1px solid var(--line);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    margin: 0;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Step blocks — setup wizard
+   ───────────────────────────────────────────────────────────── */
 
 .step {
-    background: white;
+    background: linear-gradient(180deg,
+                var(--panel) 0%,
+                var(--abyss-2) 100%);
     border: 1px solid var(--line);
-    border-radius: 3px;
+    border-radius: var(--r-md);
     margin-bottom: 1rem;
-    padding: 1.1rem;
+    padding: 1.4rem;
+    transition: all var(--t-med) var(--ease);
+}
+.step:hover {
+    border-color: var(--line-strong);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
 }
 .step h3 {
-    margin: 0 0 0.4rem 0;
-    color: var(--wine);
-    font-size: 1rem;
+    margin: 0 0 0.45rem 0;
+    color: var(--marble);
+    font-size: 1.05rem;
     letter-spacing: 0.04em;
 }
 .step .step-num {
     background: var(--gold);
-    color: var(--ink);
-    padding: 0.1rem 0.5rem;
+    color: var(--void);
+    padding: 0.15rem 0.6rem;
     border-radius: 12px;
-    font-size: 0.75rem;
-    font-weight: 600;
-    margin-right: 0.5rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    margin-right: 0.6rem;
+    letter-spacing: 0.05em;
+    box-shadow: 0 0 12px rgba(212,175,55,0.3);
 }
 .step .why {
-    color: var(--sea);
+    color: var(--marble-muted);
     font-style: italic;
-    margin: 0.3rem 0 0.7rem 0;
+    margin: 0.4rem 0 0.85rem 0;
     font-size: 0.85rem;
+    letter-spacing: 0.02em;
 }
+
+/* ─────────────────────────────────────────────────────────────
+   Forms (agent invocation)
+   ───────────────────────────────────────────────────────────── */
 
 form.agent-form {
     display: flex;
     flex-direction: column;
-    gap: 0.6rem;
+    gap: 0.7rem;
 }
-form.agent-form select, form.agent-form textarea, form.agent-form button {
-    font-family: inherit;
-    font-size: 0.9rem;
-    padding: 0.5rem 0.7rem;
-    border: 1px solid var(--line);
-    border-radius: 3px;
+form.agent-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    color: var(--marble-muted);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
 }
-form.agent-form textarea { min-height: 5rem; resize: vertical; }
+form.agent-form select,
+form.agent-form textarea,
+form.agent-form input,
 form.agent-form button {
-    background: var(--gold);
-    color: var(--ink);
+    font-family: inherit;
+    font-size: 0.92rem;
+    padding: 0.6rem 0.8rem;
+    border: 1px solid var(--line);
+    background: var(--abyss);
+    color: var(--marble);
+    border-radius: var(--r-sm);
+    transition: all var(--t-fast) var(--ease);
+}
+form.agent-form select:focus,
+form.agent-form textarea:focus,
+form.agent-form input:focus {
+    outline: none;
+    border-color: var(--gold-soft);
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.12);
+}
+form.agent-form textarea {
+    min-height: 5rem;
+    resize: vertical;
+    line-height: 1.5;
+}
+form.agent-form button {
+    background: linear-gradient(180deg, var(--gold) 0%,
+                                          var(--gold-soft) 100%);
+    color: var(--void);
     border: none;
     font-weight: 600;
     cursor: pointer;
     align-self: flex-start;
+    letter-spacing: 0.06em;
+    padding: 0.7rem 1.4rem;
+    box-shadow: 0 4px 14px rgba(212,175,55,0.2);
 }
-form.agent-form button:hover { background: var(--gold-2); }
+form.agent-form button:hover {
+    background: linear-gradient(180deg, var(--gold-bright) 0%,
+                                          var(--gold) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(212,175,55,0.3);
+}
+form.agent-form button:active {
+    transform: translateY(0);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Footer
+   ───────────────────────────────────────────────────────────── */
 
 footer.agora-foot {
     text-align: center;
-    color: var(--sea);
+    color: var(--marble-muted);
     font-style: italic;
-    padding: 1.5rem 1rem 2rem;
-    font-size: 0.85rem;
+    padding: 2rem 1rem 2.5rem;
+    font-size: 0.82rem;
+    letter-spacing: 0.04em;
+    border-top: 1px solid var(--line);
+    margin-top: 3rem;
 }
+footer.agora-foot code {
+    color: var(--gold-soft);
+    background: var(--abyss);
+    padding: 0.12rem 0.4rem;
+    border-radius: 3px;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Status dot — pulses softly
+   ───────────────────────────────────────────────────────────── */
 
 .status-dot {
     display: inline-block;
-    width: 9px; height: 9px;
+    width: 8px; height: 8px;
     border-radius: 50%;
-    margin-right: 0.3rem;
-    background: var(--laurel);
+    margin-right: 0.45rem;
+    background: var(--olive);
     vertical-align: middle;
+    box-shadow: 0 0 0 0 rgba(168, 193, 120, 0.6);
+    animation: pulse-ok 2.4s infinite;
 }
-.status-dot.bad { background: var(--wine); }
+.status-dot.bad {
+    background: var(--ember);
+    box-shadow: 0 0 0 0 rgba(232, 142, 133, 0.6);
+    animation: pulse-bad 1.6s infinite;
+}
+@keyframes pulse-ok {
+    0%   { box-shadow: 0 0 0 0 rgba(168, 193, 120, 0.45); }
+    70%  { box-shadow: 0 0 0 8px rgba(168, 193, 120, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(168, 193, 120, 0); }
+}
+@keyframes pulse-bad {
+    0%   { box-shadow: 0 0 0 0 rgba(232, 142, 133, 0.45); }
+    70%  { box-shadow: 0 0 0 10px rgba(232, 142, 133, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(232, 142, 133, 0); }
+}
 
-pre.json {
-    background: #1c1a16;
-    color: #ecebe4;
-    padding: 1rem;
-    overflow: auto;
-    font-size: 0.78rem;
+/* ─────────────────────────────────────────────────────────────
+   Throne chat (overridden / supplemented by throne.html)
+   ───────────────────────────────────────────────────────────── */
+
+.throne-shell {
+    max-width: 920px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 5rem);
+    padding: 0 1.25rem 1rem;
+    animation: fade-up var(--t-slow) var(--ease);
+}
+.throne-head {
+    padding: 1.5rem 0 1rem;
+    border-bottom: 1px solid var(--line);
+    position: relative;
+}
+.throne-head::after {
+    content: "";
+    position: absolute;
+    left: 0; bottom: -1px;
+    width: 60px; height: 1px;
+    background: var(--gold);
+    opacity: 0.6;
+}
+.throne-head h1 {
+    margin: 0 0 0.3rem 0;
+    font-size: 1.6rem;
+    letter-spacing: 0.14em;
+    color: var(--marble);
+}
+.throne-sub {
+    font-size: 0.85rem;
+    color: var(--marble-muted);
+    letter-spacing: 0.03em;
+    font-style: italic;
+}
+
+.throne-log {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1.5rem 0.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    scroll-behavior: smooth;
+}
+.throne-log::-webkit-scrollbar { width: 8px; }
+.throne-log::-webkit-scrollbar-track { background: transparent; }
+.throne-log::-webkit-scrollbar-thumb {
+    background: rgba(212, 175, 55, 0.15);
+    border-radius: 4px;
+}
+.throne-log::-webkit-scrollbar-thumb:hover {
+    background: rgba(212, 175, 55, 0.3);
+}
+
+.msg {
+    padding: 0.9rem 1.15rem;
+    border-radius: var(--r-md);
+    max-width: 88%;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+    line-height: 1.6;
+    animation: msg-in 360ms var(--ease);
+    box-shadow: var(--shadow-sm);
+}
+@keyframes msg-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.msg-you {
+    background: linear-gradient(180deg,
+                rgba(45, 106, 122, 0.18) 0%,
+                rgba(45, 106, 122, 0.10) 100%);
+    border: 1px solid rgba(135, 196, 212, 0.22);
+    border-left: 3px solid var(--sea);
+    align-self: flex-end;
+    color: var(--marble);
+}
+.msg-throne {
+    background: linear-gradient(180deg,
+                rgba(212, 175, 55, 0.08) 0%,
+                rgba(212, 175, 55, 0.04) 100%);
+    border: 1px solid var(--line-strong);
+    border-left: 3px solid var(--gold);
+    color: var(--marble);
+}
+.msg-meta {
+    font-size: 0.7rem;
+    color: var(--marble-muted);
+    margin-top: 0.65rem;
+    font-family: ui-monospace, monospace;
+    letter-spacing: 0.04em;
+    border-top: 1px dashed rgba(212,175,55,0.15);
+    padding-top: 0.4rem;
+}
+.msg-cmd {
+    display: block;
+    font-family: ui-monospace, monospace;
+    background: var(--void);
+    padding: 0.6rem 0.85rem;
+    margin-top: 0.7rem;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--gold-soft);
+    color: var(--gold-bright);
+    user-select: all;
+    font-size: 0.85em;
+    box-shadow: var(--glow-gold);
+}
+
+.throne-input {
+    display: flex;
+    gap: 0.6rem;
+    padding: 1rem 0 0.25rem;
+    border-top: 1px solid var(--line);
+    position: relative;
+}
+.throne-input textarea {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border-radius: var(--r-md);
+    border: 1px solid var(--line);
+    background: var(--abyss);
+    color: var(--marble);
+    font: inherit;
+    font-size: 0.95rem;
+    resize: none;
+    min-height: 2.6rem;
+    max-height: 9rem;
+    transition: all var(--t-fast) var(--ease);
     line-height: 1.5;
-    border-radius: 3px;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    margin: 0;
+}
+.throne-input textarea:focus {
+    outline: none;
+    border-color: var(--gold-soft);
+    box-shadow: 0 0 0 3px rgba(212,175,55,0.10);
+    background: var(--abyss-2);
+}
+.throne-input textarea::placeholder {
+    color: var(--marble-muted);
+    font-style: italic;
+}
+.throne-input button {
+    padding: 0 1.4rem;
+    border-radius: var(--r-md);
+    border: 1px solid var(--gold-soft);
+    background: linear-gradient(180deg, var(--gold) 0%,
+                                          var(--gold-soft) 100%);
+    color: var(--void);
+    font: inherit;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: all var(--t-fast) var(--ease);
+    box-shadow: 0 4px 14px rgba(212,175,55,0.18);
+    text-transform: uppercase;
+    font-size: 0.78rem;
+}
+.throne-input button:hover {
+    background: linear-gradient(180deg, var(--gold-bright) 0%,
+                                          var(--gold) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(212,175,55,0.32);
+}
+.throne-input button:disabled {
+    opacity: 0.4;
+    cursor: wait;
+    transform: none;
+    box-shadow: none;
+}
+
+.throne-starter {
+    font-size: 0.88rem;
+    color: var(--marble-dim);
+    padding: 1.1rem 1.2rem;
+    border: 1px dashed var(--line-strong);
+    border-radius: var(--r-md);
+    margin: 1.5rem 0;
+    line-height: 1.9;
+    background: rgba(212, 175, 55, 0.025);
+}
+.throne-starter strong {
+    color: var(--gold);
+    font-weight: 500;
+    font-family: "Cormorant Garamond", Georgia, serif;
+    letter-spacing: 0.04em;
+}
+.throne-starter a {
+    display: inline-block;
+    margin: 0.3rem 0.35rem 0.3rem 0;
+    padding: 0.35rem 0.75rem;
+    background: rgba(212, 175, 55, 0.07);
+    border: 1px solid var(--line);
+    border-radius: var(--r-sm);
+    cursor: pointer;
+    color: var(--marble);
+    font-size: 0.82rem;
+    transition: all var(--t-fast) var(--ease);
+    letter-spacing: 0.02em;
+}
+.throne-starter a:hover {
+    background: rgba(212, 175, 55, 0.15);
+    border-color: var(--gold-soft);
+    color: var(--gold-bright);
+    transform: translateY(-1px);
+}
+
+/* Thinking indicator */
+.msg-thinking {
+    opacity: 0.7;
+}
+.msg-thinking::after {
+    content: "▒▒▒";
+    animation: thinking 1.6s infinite;
+    letter-spacing: 0.3em;
+}
+@keyframes thinking {
+    0%, 100% { opacity: 0.3; }
+    50%      { opacity: 0.9; }
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Utility — section dividers, sparkles
+   ───────────────────────────────────────────────────────────── */
+
+.divider-classical {
+    display: flex; align-items: center; gap: 1rem;
+    margin: 2rem 0;
+    color: var(--gold-soft);
+    font-size: 0.7rem;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+}
+.divider-classical::before,
+.divider-classical::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--line-strong), transparent);
+}
+
+/* Responsive */
+@media (max-width: 720px) {
+    main { padding: 1.5rem 1rem 3rem; }
+    nav.agora-nav { padding: 0.8rem 1rem; gap: 0.2rem; }
+    nav.agora-nav a { padding: 0.3rem 0.55rem; font-size: 0.7rem; }
+    nav.agora-nav a.brand { font-size: 1rem; letter-spacing: 0.15em; margin-right: 0.6rem; }
+    h1 { font-size: 1.5rem; }
+    .throne-shell { padding: 0 0.85rem 0.5rem; }
 }

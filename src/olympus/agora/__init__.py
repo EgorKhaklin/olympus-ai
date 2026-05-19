@@ -32,13 +32,23 @@ _HERE = pathlib.Path(__file__).resolve().parent
 _STATIC = _HERE / "static"
 
 
-# The page index — operator opens index.html to begin
+# The page index — operator opens index.html to begin.
+# Per Delphi 2026-05-19-throne-arc.md: throne is the landing page;
+# the substrate-status dashboard moves to dashboard.html.
 _PAGES: tuple[tuple[str, str], ...] = (
-    ("index.html",   "dashboard.html"),
-    ("setup.html",   "setup.html"),
-    ("doctor.html",  "doctor.html"),
-    ("today.html",   "today.html"),
-    ("agents.html",  "agents.html"),
+    ("index.html",      "throne.html"),
+    ("dashboard.html",  "dashboard.html"),
+    ("setup.html",      "setup.html"),
+    ("doctor.html",     "doctor.html"),
+    ("today.html",      "today.html"),
+    ("agents.html",     "agents.html"),
+    # Per Delphi 2026-05-19-eos-arc.md — Decade-surfacing pages
+    ("spend.html",      "spend.html"),
+    ("library.html",    "library.html"),
+    ("watches.html",    "watches.html"),
+    ("rituals.html",    "rituals.html"),
+    ("replay.html",     "replay.html"),
+    ("proposals.html",  "proposals.html"),
 )
 
 
@@ -77,12 +87,22 @@ def build(out_dir: pathlib.Path | None = None,
 
 
 def _render_nav() -> str:
-    """Top navigation rendered identically on every page."""
+    """Top navigation rendered identically on every page.
+
+    Per Delphi 2026-05-19-eos-arc.md — extended to 11 items grouped
+    cleanly. Throne stays the brand-anchored landing page."""
     return (
         '<nav class="agora-nav">'
-        '<a class="brand" href="index.html">A G O R A</a>'
+        '<a class="brand" href="index.html">👑 Zeus\'s Throne</a>'
+        '<a href="dashboard.html">dashboard</a>'
         '<a href="today.html">today</a>'
         '<a href="doctor.html">doctor</a>'
+        '<a href="spend.html">spend</a>'
+        '<a href="library.html">library</a>'
+        '<a href="watches.html">watches</a>'
+        '<a href="rituals.html">rituals</a>'
+        '<a href="replay.html">replay</a>'
+        '<a href="proposals.html">proposals</a>'
         '<a href="agents.html">agents</a>'
         '<a href="setup.html">setup</a>'
         '</nav>'

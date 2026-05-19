@@ -69,6 +69,8 @@ class Asclepius:
         self.register("pan-state-validity", self._h_pan_state)
         self.register("atlas-burden-consistency", self._h_atlas)
         self.register("rhea-directory-structure", self._h_directories)
+        # Per Delphi 2026-05-19-tartarus-arc.md
+        self.register("atlas-test-burden-release", self._h_release_test)
 
     # ─────────────────────────────────────────────────────────
     # Public API
@@ -173,6 +175,40 @@ class Asclepius:
                                   f"(NOT auto-released)")
         return (True, False, f"{report.current_count} burden(s) in flight, "
                               f"all healthy")
+
+    @staticmethod
+    def _h_release_test() -> tuple[bool, bool, str]:
+        """Release Atlas burdens whose owner is a test seed. Per Delphi
+        2026-05-19-tartarus-arc.md: investigation found 100% of the
+        substrate's reported 'in-flight' burdens were test residue
+        (charon-test, asclepius-test, test-owner). They should NOT
+        appear as production load. Each release is recorded individually
+        so the audit trail is complete."""
+        from olympus.titans.atlas import atlas
+        from olympus.runtime.test_seeds import is_test_owner
+        report = atlas.shoulders()
+        released = 0
+        kept_test = []  # release-failures we want to surface
+        for b in report.current:
+            if not is_test_owner(b.owner):
+                continue
+            try:
+                atlas.release(b.id, outcome="asclepius:test-seed-cleanup")
+                released += 1
+            except Exception as exc:  # noqa: BLE001
+                kept_test.append((b.id, str(exc)))
+        if released or kept_test:
+            mnemosyne.remember(
+                kind="asclepius.test_burden_release",
+                actor="asclepius",
+                summary=(f"released {released} test-seed burden(s); "
+                          f"{len(kept_test)} release-failures"),
+                released=released,
+                failures=kept_test[:20],
+            )
+        return (True, bool(released),
+                f"released {released} test-seed burden(s)"
+                + (f"; {len(kept_test)} failed" if kept_test else ""))
 
     @staticmethod
     def _h_directories() -> tuple[bool, bool, str]:

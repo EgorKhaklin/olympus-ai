@@ -64,29 +64,44 @@ class TestAgoraBuild(unittest.TestCase):
         self.assertIn("3000", index_text)
 
     def test_nav_present_on_every_page(self):
+        """Per Delphi 2026-05-19-throne-arc.md: nav brand is now
+        Zeus's Throne (index.html is the chat); the dashboard moves
+        to dashboard.html."""
         from olympus.agora import build
         out_dir = pathlib.Path(tempfile.mkdtemp())
         build(out_dir=out_dir)
-        for name in ("index.html", "setup.html", "doctor.html",
-                      "today.html", "agents.html"):
+        for name in ("index.html", "dashboard.html", "setup.html",
+                      "doctor.html", "today.html", "agents.html"):
             text = (out_dir / name).read_text(encoding="utf-8")
-            self.assertIn("A G O R A", text,
-                f"{name} should contain the AGORA brand")
+            # Brand is now Zeus's Throne (the chat landing page)
+            self.assertTrue(
+                "Throne" in text or "Zeus" in text,
+                f"{name} should contain the Throne/Zeus brand")
             self.assertIn("setup.html", text,
                 f"{name} should link to setup")
 
     def test_pages_use_only_read_only_endpoints(self):
-        """No agora page should POST to anything — the substrate's
-        mutation surface stays CLI-only by design. (xenia arc)"""
+        """Read-mostly pages do not invoke POST. Per Delphi
+        2026-05-19-throne-arc.md: index.html is now the Throne chat
+        (which DOES post to /throne/turn), so index is exempt. The
+        dashboard, today, doctor, and agents pages remain read-only.
+
+        Note: the bundled agora.js DEFINES `AGORA.post` so the string
+        "POST" appears on every page in the helper; we check only that
+        no page *invokes* it (`AGORA.post(`) or makes a direct fetch
+        with a POST method."""
         from olympus.agora import build
         out_dir = pathlib.Path(tempfile.mkdtemp())
         build(out_dir=out_dir)
-        for name in ("index.html", "today.html",
+        for name in ("dashboard.html", "today.html",
                       "doctor.html", "agents.html"):
             text = (out_dir / name).read_text(encoding="utf-8")
-            # No XHR POSTs on read-mostly pages
             self.assertNotIn('AGORA.post(', text,
-                f"{name} unexpectedly POSTs (only setup.html may)")
+                f"{name} unexpectedly invokes AGORA.post(")
+            self.assertNotIn('method: "POST"', text,
+                f"{name} unexpectedly does a direct fetch POST")
+            self.assertNotIn('method:"POST"', text,
+                f"{name} unexpectedly does a direct fetch POST")
 
 
 if __name__ == "__main__":

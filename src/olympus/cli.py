@@ -1578,8 +1578,17 @@ def _euterpe(argv: list[str]) -> int:
     return 0
 
 
-@hermes.register("today", "the single-action oracle — one concrete thing to do")
-def _today(_argv: list[str]) -> int:
+@hermes.register("today", "the single-action oracle — today "
+                            "[--resolve <slice> --re-raise|--dismiss-as-stale "
+                            "\"<reason>\"]")
+def _today(argv: list[str]) -> int:
+    """Per Delphi 2026-05-19-tartarus-arc.md: `--resolve` lets the
+    operator close longstanding findings the oracle keeps surfacing.
+    Two outcomes: --re-raise (creates a fresh proposal) or
+    --dismiss-as-stale (records operator's rationale; suppresses for 7d)."""
+    # --resolve sub-mode
+    if argv and argv[0] == "--resolve":
+        return _today_resolve(argv[1:])
     from olympus.runtime.today import today, record
     action = today()
     record(action)
@@ -1598,6 +1607,87 @@ def _today(_argv: list[str]) -> int:
         print(aglaia.murmur(f"  {action.detail}"))
     if action.drawn_from:
         print(aglaia.murmur(f"  sources: {', '.join(action.drawn_from)}"))
+    return 0
+
+
+def _today_resolve(argv: list[str]) -> int:
+    """`invoke today --resolve <slice> [--re-raise | --dismiss-as-stale "<reason>"]`"""
+    from olympus.titans.mnemosyne import mnemosyne
+    from olympus.primordials.nyx import Nyx
+    if not argv:
+        print(aglaia.murmur(
+            "usage: invoke today --resolve <slice> "
+            "[--re-raise | --dismiss-as-stale \"<reason>\"]"))
+        return 2
+    slice_id = argv[0]
+    mode = None
+    reason = ""
+    i = 1
+    while i < len(argv):
+        if argv[i] == "--re-raise":
+            mode = "re-raise"; i += 1
+        elif argv[i] == "--dismiss-as-stale":
+            mode = "dismiss-as-stale"
+            if i + 1 < len(argv):
+                reason = argv[i + 1]; i += 2
+            else:
+                i += 1
+        else:
+            i += 1
+    if mode is None:
+        print(aglaia.murmur(
+            "must specify --re-raise OR --dismiss-as-stale \"<reason>\""))
+        return 2
+    if mode == "re-raise":
+        # Create a fresh proposal in the Hephaestus queue referencing
+        # the original finding. This goes through normal Momus→Delphi→Zeus.
+        import uuid
+        from olympus.primordials.gaia import root
+        pid = (f"resolve-{Nyx.now().strftime('%Y%m%dT%H%M%SZ')}-"
+               f"{uuid.uuid4().hex[:8]}")
+        proposal = {
+            "id": pid,
+            "drift_observed": (
+                f"today --resolve --re-raise: operator re-raised "
+                f"slice '{slice_id}' after prior dismissal"),
+            "summary": f"re-raise of slice {slice_id}",
+            "proposed_fix": "operator decision; investigate the slice",
+            "rationale": "today --resolve --re-raise",
+            "risk_class": "MEDIUM",
+            "raised_by": "zeus:operator",
+            "raised_at": Nyx.now().isoformat(),
+            "raised_via": "today-resolve",
+            "original_slice": slice_id,
+        }
+        target = root.child("state", "hephaestus", f"{pid}.json")
+        target.parent.mkdir(parents=True, exist_ok=True)
+        import json as _json
+        target.write_text(_json.dumps(proposal, indent=2), encoding="utf-8")
+        mnemosyne.remember(
+            kind="warning.re-raised",
+            actor="zeus:operator",
+            summary=f"re-raised slice '{slice_id}' as proposal {pid}",
+            slice=slice_id,
+            proposal_id=pid,
+        )
+        print(aphrodite.laurel(
+            f"re-raised slice '{slice_id}' as proposal {pid}"))
+        print(aglaia.murmur(f"  proposal: {target}"))
+        return 0
+    # dismiss-as-stale
+    mnemosyne.remember(
+        kind="warning.dismissal-reaffirmed",
+        actor="zeus:operator",
+        summary=f"dismissed slice '{slice_id}' as stale: "
+                f"{reason[:80]}",
+        slice=slice_id,
+        reason=reason,
+        suppress_until_days=7,
+    )
+    print(aphrodite.laurel(
+        f"dismissed slice '{slice_id}' as stale (suppressed 7d)"))
+    if reason:
+        print(aglaia.murmur(f"  rationale: {reason}"))
     return 0
 
 
@@ -1698,6 +1788,1111 @@ def _setup(_argv: list[str]) -> int:
     from olympus.runtime.setup import run_setup
     run_setup()
     return 0
+
+
+@hermes.register("replay", "Olympus-Replay — regression harness over "
+                            "past agent.invocation; "
+                            "replay [--limit N] [--role R] [--since Nh] "
+                            "[--use-anthropic] [--include-test-seeds]")
+def _replay(argv: list[str]) -> int:
+    """Per Delphi 2026-05-19-olympus-replay-arc.md."""
+    from olympus.runtime.replay import (
+        ReplayPlan, replay_many, MAX_LIMIT,
+    )
+    limit = 20
+    role: str | None = None
+    since_hours: float | None = None
+    bridge = "echo"
+    include_test_seeds = False
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a == "--limit" and i + 1 < len(argv):
+            try:
+                limit = max(1, min(int(argv[i + 1]), MAX_LIMIT))
+            except ValueError:
+                pass
+            i += 2; continue
+        if a == "--role" and i + 1 < len(argv):
+            role = argv[i + 1]; i += 2; continue
+        if a == "--since" and i + 1 < len(argv):
+            s = argv[i + 1].strip().lower()
+            try:
+                if s.endswith("h"):
+                    since_hours = float(s[:-1])
+                elif s.endswith("d"):
+                    since_hours = float(s[:-1]) * 24.0
+                else:
+                    since_hours = float(s)
+            except ValueError:
+                pass
+            i += 2; continue
+        if a == "--use-anthropic":
+            bridge = "anthropic"; i += 1; continue
+        if a == "--include-test-seeds":
+            include_test_seeds = True; i += 1; continue
+        i += 1
+    plan = ReplayPlan(
+        limit=limit, role=role,
+        since_hours=since_hours, bridge=bridge,
+        include_test_seeds=include_test_seeds,
+    )
+    report = replay_many(plan)
+
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(report), default=str, indent=2))
+        return 0
+
+    print(aphrodite.banner(
+        f"replay — {report.total} candidate(s) · bridge={report.bridge_used}",
+        f"stable={report.stable} · drift={report.drift} · "
+        f"broken={report.broken} · skipped={report.skipped}"
+        + (f" · over-budget={report.over_budget}"
+           if report.over_budget else "")))
+    if report.by_role:
+        print(aglaia.section("by role"))
+        for r, counts in sorted(report.by_role.items()):
+            print(aglaia.murmur(
+                f"  {r:<18} stable={counts['stable']} · "
+                f"drift={counts['drift']} · broken={counts['broken']} · "
+                f"skipped={counts['skipped']}"))
+    if report.drift_examples:
+        print(aglaia.section("drift examples"))
+        for ex in report.drift_examples[:5]:
+            print(aglaia.murmur(
+                f"  {ex.role}/{ex.candidate_id}:  "
+                f"{'; '.join(ex.diffs[:2])[:100]}"))
+    if report.broken_examples:
+        print(aglaia.section("broken examples"))
+        for ex in report.broken_examples[:5]:
+            print(aglaia.murmur(
+                f"  {ex.role}/{ex.candidate_id}:  "
+                f"{(ex.error or '; '.join(ex.diffs))[:100]}"))
+    return 0
+
+
+@hermes.register("mcp", "Olympus as MCP server (stdio); "
+                          "mcp [--probe]")
+def _mcp(argv: list[str]) -> int:
+    """Per Delphi 2026-05-19-hermes-mcp-arc.md.
+
+    Run Olympus as an MCP server over stdio (the standard transport).
+    The operator wires this into Claude Code's mcp_servers.json:
+
+        {"mcpServers": {"olympus":
+            {"command": "<invoke-path>", "args": ["mcp"]}}}
+
+    `--probe` prints server info + tool list to stderr then exits.
+    """
+    from olympus.runtime.mcp_server import serve_stdio, probe
+    if "--probe" in argv:
+        return probe()
+    return serve_stdio()
+
+
+@hermes.register("speak", "TTS via macOS `say`; "
+                            "speak [\"<text>\"] [--voice V] [--rate N] [--block]")
+def _speak(argv: list[str]) -> int:
+    """Per Delphi 2026-05-19-throne-voice-arc.md.
+
+    Speak the given text aloud via the active VoiceBackend (default:
+    MacosSayBackend on macOS, NullBackend elsewhere). Records to
+    Mnemosyne under `voice.spoken`."""
+    from olympus.runtime.voice import speak, get_backend
+    voice = ""
+    rate = 0
+    blocking = False
+    text_parts: list[str] = []
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a == "--voice" and i + 1 < len(argv):
+            voice = argv[i + 1]; i += 2; continue
+        if a == "--rate" and i + 1 < len(argv):
+            try:
+                rate = int(argv[i + 1])
+            except ValueError:
+                pass
+            i += 2; continue
+        if a in ("--block", "--blocking"):
+            blocking = True; i += 1; continue
+        text_parts.append(a); i += 1
+    text = " ".join(text_parts).strip()
+    if not text:
+        print(aglaia.murmur(
+            'usage: invoke speak "<text>" '
+            "[--voice V] [--rate N] [--block]"))
+        return 2
+    backend = get_backend()
+    if not backend.available():
+        print(aglaia.murmur(
+            f"  TTS not configured on this platform "
+            f"(backend={backend.name})"))
+        return 1
+    result = speak(text, voice=voice, rate=rate, blocking=blocking)
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps(_dc.asdict(result), default=str, indent=2))
+        return 0
+    badge = "✓" if result.ok else "✗"
+    truncated = " (truncated)" if result.truncated else ""
+    print(aglaia.murmur(
+        f"  {badge} spoke {result.chars}c via {result.backend}{truncated}"
+        + (f"  error={result.error[:80]}" if result.error else "")))
+    return 0 if result.ok else 1
+
+
+@hermes.register("demeter", "Demeter — knowledge-base ingestion; "
+                              "demeter <ingest|library|forget>")
+def _demeter(argv: list[str]) -> int:
+    """Per Delphi 2026-05-19-demeter-library-arc.md.
+
+    Operator drops .md/.txt/.pdf into state/demeter/library/;
+    `invoke demeter ingest` chunks each file and records chunks to
+    Mnemosyne under `demeter.chunk`. Hippocrene's `recall` errand
+    finds them automatically (demeter.chunk is in DEFAULT_KINDS).
+    """
+    from olympus.olympians.demeter import library
+    sub = argv[0] if argv else "library"
+
+    if sub == "ingest":
+        reingest = "--reingest" in argv
+        limit: int | None = None
+        i = 1
+        while i < len(argv):
+            if argv[i] == "--limit" and i + 1 < len(argv):
+                try:
+                    limit = int(argv[i + 1])
+                except ValueError:
+                    pass
+                i += 2; continue
+            i += 1
+        report = library.ingest(reingest=reingest, limit=limit)
+        if _GLOBAL_FLAGS["json"]:
+            import dataclasses as _dc
+            print(_json.dumps(_dc.asdict(report), default=str, indent=2))
+            return 0
+        print(aphrodite.banner(
+            "demeter ingest" + (" --reingest" if reingest else ""),
+            f"ingested={report.documents_ingested} · "
+            f"unchanged={report.documents_unchanged} · "
+            f"skipped={report.documents_skipped} · "
+            f"chunks={report.chunks_recorded}"))
+        if report.by_extension:
+            print(aglaia.section("by extension"))
+            for ext, n in sorted(report.by_extension.items(),
+                                   key=lambda kv: -kv[1]):
+                print(aglaia.murmur(f"  {ext:<8} {n}"))
+        if report.skipped:
+            print(aglaia.section("skipped (head 10)"))
+            for s in report.skipped[:10]:
+                print(aglaia.murmur(
+                    f"  {s['path']:<48} {s['reason'][:80]}"))
+        return 0
+
+    if sub == "library":
+        docs = library.documents()
+        print(aphrodite.banner(
+            "demeter library", f"{len(docs)} document(s) tracked"))
+        if not docs:
+            print(aglaia.murmur(
+                "  (no documents yet — drop .md/.txt/.pdf into "
+                "state/demeter/library/ then run `invoke demeter ingest`)"))
+            return 0
+        print(aglaia.murmur(
+            f"  {'source':<50} {'chunks':>6}  {'sha':<14}  ingested_at"))
+        for d in docs:
+            print(aglaia.murmur(
+                f"  {d['source_path']:<50} {d['chunk_count']:>6}  "
+                f"{d['sha256'][:12]:<14}  "
+                f"{d.get('ingested_at','')[:19]}"))
+        return 0
+
+    if sub == "forget":
+        if len(argv) < 2:
+            print(aglaia.murmur(
+                "usage: invoke demeter forget <document_id>"))
+            return 2
+        doc_id = argv[1]
+        ok = library.forget(doc_id)
+        if ok:
+            print(aphrodite.laurel(
+                f"forgot document '{doc_id}' (chunks remain in "
+                "Mnemosyne under demeter.chunk; S1 preserved)"))
+            return 0
+        print(aglaia.murmur(f"  no document with id {doc_id!r}"))
+        return 1
+
+    print(aglaia.murmur(
+        f"  unknown subcommand {sub!r}; "
+        "valid: ingest, library, forget"))
+    return 2
+
+
+@hermes.register("hephaestus", "Hephaestus — apply ratified proposals "
+                                "as real git PRs; "
+                                "hephaestus <pending|apply <pid> [--really]>")
+def _hephaestus(argv: list[str]) -> int:
+    """Per Delphi 2026-05-19-hephaestus-pr-arc.md.
+
+    `pending` — list ratified proposals not yet applied.
+    `apply <pid>` — dry-run by default; `--really` performs the work.
+    """
+    from olympus.runtime import git_ops
+    from olympus.primordials.gaia import root
+    from olympus.primordials.nyx import Nyx
+    from olympus.titans.mnemosyne import mnemosyne
+    import json as _json
+
+    sub = argv[0] if argv else "pending"
+
+    if sub == "pending":
+        ratified = mnemosyne.recall("action.ratified")
+        applied = mnemosyne.recall("prometheus.applied")
+        applied_pids = {m.body.get("proposal_id") for m in applied}
+        pending: list[tuple[str, str]] = []
+        for m in ratified:
+            aid = m.body.get("action_id", "")
+            pid = aid[4:] if aid.startswith("act-") else aid
+            if not pid or pid in applied_pids:
+                continue
+            ppath = root.child("state", "hephaestus", f"{pid}.json")
+            if not ppath.exists():
+                continue
+            try:
+                d = _json.loads(ppath.read_text(encoding="utf-8"))
+            except Exception:  # noqa: BLE001
+                continue
+            from olympus.runtime.test_seeds import is_test_proposal
+            if is_test_proposal(d):
+                continue
+            pending.append((pid, d.get("summary", "") or
+                             d.get("drift_observed", "")[:80]))
+        print(aphrodite.banner(
+            "hephaestus pending",
+            f"{len(pending)} ratified-but-unapplied proposal(s)"))
+        for pid, summary in pending[:30]:
+            print(aglaia.murmur(
+                f"  {pid:<40} {summary[:70]}"))
+        if not pending:
+            print(aglaia.murmur(
+                "  (nothing pending — Hephaestus has a quiet forge)"))
+        return 0
+
+    if sub == "apply":
+        if len(argv) < 2:
+            print(aglaia.murmur(
+                "usage: invoke hephaestus apply <pid> "
+                "[--really] [--skip-push] [--skip-pr]"))
+            return 2
+        pid = argv[1]
+        really = "--really" in argv
+        skip_push = "--skip-push" in argv
+        skip_pr = "--skip-pr" in argv
+
+        # Pre-flight refuse-list
+        ppath = root.child("state", "hephaestus", f"{pid}.json")
+        if not ppath.exists():
+            print(aglaia.murmur(
+                f"  ✗ proposal {pid!r} not found at {ppath}"))
+            return 1
+        try:
+            proposal = _json.loads(ppath.read_text(encoding="utf-8"))
+        except Exception as exc:  # noqa: BLE001
+            print(aglaia.murmur(f"  ✗ proposal unreadable: {exc}"))
+            return 1
+
+        # Confirm ratified
+        ratified = mnemosyne.recall("action.ratified")
+        action_ids = {m.body.get("action_id") for m in ratified}
+        if (f"act-{pid}" not in action_ids
+                and pid not in action_ids):
+            print(aglaia.murmur(
+                f"  ✗ proposal {pid!r} is not ratified "
+                "(no action.ratified record)"))
+            return 1
+
+        # Confirm not already applied
+        applied = mnemosyne.recall("prometheus.applied")
+        if any(m.body.get("proposal_id") == pid for m in applied
+                if not m.body.get("dry_run")):
+            print(aglaia.murmur(
+                f"  ✗ proposal {pid!r} already applied"))
+            return 1
+
+        # Working tree clean?
+        if not git_ops.git_clean():
+            print(aglaia.murmur(
+                "  ✗ working tree is dirty; commit or stash first"))
+            return 1
+
+        # Build the apply plan
+        target_branch = str(proposal.get("target_branch", "main"))
+        if git_ops.is_protected(target_branch):
+            pass  # OK: target is allowed to be main (we BRANCH OFF main)
+        new_branch = f"prometheus/{pid}"
+        if git_ops.branch_exists(new_branch):
+            print(aglaia.murmur(
+                f"  ✗ branch {new_branch!r} already exists"))
+            return 1
+        original_branch = git_ops.current_branch()
+        has_patch = bool(proposal.get("patch", "").strip())
+        title = f"[{proposal.get('risk_class', 'LOW')}] " \
+                f"{proposal.get('summary', proposal.get('drift_observed', '')[:60])}"
+        body_lines = [
+            f"## Proposal `{pid}`",
+            "",
+            f"**Drift observed**: {proposal.get('drift_observed', '(n/a)')}",
+            "",
+            f"**Proposed fix**: {proposal.get('proposed_fix', '(n/a)')}",
+            "",
+            f"**Rationale**: {proposal.get('rationale', '(n/a)')}",
+            "",
+            f"**Risk class**: {proposal.get('risk_class', 'LOW')}",
+            "",
+            f"**Raised by**: {proposal.get('raised_by', '(unknown)')}",
+            "",
+            "---",
+            "",
+            "_Per Olympus constitution: Hephaestus surfaces drift; Momus "
+            "contests; Zeus ratifies on Styx; Prometheus applies as a "
+            "branch + PR. The operator merges via the GitHub UI._",
+            "",
+            f"_Delphi: codex/oracles/delphi/*-{Nyx.now().strftime('%Y-%m-%d')}-*.md_",
+        ]
+        if not has_patch:
+            body_lines.insert(0,
+                "**[TRACKING]** This PR has no patch — it documents a "
+                "ratified proposal that the operator will implement. "
+                "The proposal text is also written to "
+                f"`proposals/{pid}.md` as a tracked artifact.")
+            body_lines.insert(1, "")
+        body = "\n".join(body_lines)
+
+        print(aphrodite.banner(
+            "hephaestus apply" + (" [DRY-RUN]" if not really else ""),
+            f"proposal {pid} → branch {new_branch}"))
+        print(aglaia.section("plan"))
+        print(aglaia.murmur(f"  1. git checkout -b {new_branch}"))
+        if has_patch:
+            print(aglaia.murmur(
+                f"  2. git apply <patch>  ({len(proposal['patch'])} chars)"))
+        else:
+            print(aglaia.murmur(
+                f"  2. write proposals/{pid}.md  (tracking artifact)"))
+        print(aglaia.murmur(
+            f"  3. git commit -m \"{title}\""))
+        if not skip_push:
+            print(aglaia.murmur(
+                f"  4. git push -u origin {new_branch}"))
+        if not skip_pr and git_ops.gh_available():
+            print(aglaia.murmur(
+                f"  5. gh pr create --base {target_branch} "
+                f"--head {new_branch}"))
+        elif not skip_pr:
+            print(aglaia.murmur(
+                "  5. (gh CLI missing; skip pr-create)"))
+        print(aglaia.murmur(
+            f"  6. git checkout {original_branch}"))
+
+        if not really:
+            print(aglaia.murmur(
+                "  (dry-run — pass --really to execute)"))
+            # Still record an audit row so we have evidence of the plan
+            mnemosyne.remember(
+                kind="prometheus.applied",
+                actor="zeus:operator",
+                summary=f"DRY-RUN plan for proposal {pid}",
+                proposal_id=pid, branch=new_branch,
+                target_branch=target_branch,
+                has_patch=has_patch, dry_run=True,
+            )
+            return 0
+
+        # ──── ACTUALLY APPLY ────
+        result_log: list[CommandResult] = []  # type: ignore[name-defined]
+
+        def _step(step_name: str, r):
+            result_log.append(r)
+            badge = "✓" if r.ok else "✗"
+            print(aglaia.murmur(f"  {badge} {step_name}"
+                                + (f"  {r.error or r.stderr[:80]}"
+                                   if not r.ok else "")))
+            return r.ok
+
+        if not _step(f"create branch {new_branch}",
+                      git_ops.create_branch(new_branch)):
+            return 1
+        if has_patch:
+            if not _step("apply patch",
+                          git_ops.apply_patch(proposal["patch"])):
+                git_ops.checkout(original_branch)
+                return 1
+            stage_paths: tuple[str, ...] = ()
+        else:
+            rel = f"proposals/{pid}.md"
+            content_lines = [
+                f"# Proposal {pid}",
+                "",
+                f"_(tracking artifact — generated by Olympus "
+                f"`invoke hephaestus apply --really`)_",
+                "",
+                body,
+            ]
+            if not _step(f"write {rel}",
+                          git_ops.write_file_under_repo(
+                              rel, "\n".join(content_lines))):
+                git_ops.checkout(original_branch)
+                return 1
+            stage_paths = (rel,)
+        if not _step("commit",
+                      git_ops.stage_and_commit(title, *stage_paths)):
+            git_ops.checkout(original_branch)
+            return 1
+
+        pushed = False
+        if not skip_push:
+            push_r = git_ops.push_to_remote(new_branch)
+            pushed = push_r.ok
+            _step(f"push {new_branch}", push_r)
+            # Don't abort on push fail — the branch + commit exist locally
+
+        pr_url = ""
+        if pushed and not skip_pr and git_ops.gh_available():
+            pr_r = git_ops.open_pr(
+                title=title, body=body,
+                base=target_branch, head=new_branch)
+            _step("open PR", pr_r)
+            if pr_r.ok:
+                pr_url = pr_r.stdout.strip()
+
+        # Return to original branch
+        co_r = git_ops.checkout(original_branch)
+        _step(f"return to {original_branch}", co_r)
+
+        # Record
+        mnemosyne.remember(
+            kind="prometheus.applied",
+            actor="zeus:operator",
+            summary=(f"applied proposal {pid} → branch {new_branch}"
+                     + (f"  pr={pr_url}" if pr_url else "")),
+            proposal_id=pid,
+            branch=new_branch,
+            target_branch=target_branch,
+            has_patch=has_patch,
+            pushed=pushed,
+            pr_url=pr_url,
+            dry_run=False,
+        )
+        print(aphrodite.laurel(
+            f"applied proposal {pid} → branch {new_branch}"
+            + (f" → {pr_url}" if pr_url else "")))
+        return 0
+
+    print(aglaia.murmur(
+        f"  unknown subcommand {sub!r}; valid: pending, apply"))
+    return 2
+
+
+# CommandResult type forward import for the inner _step closure
+from olympus.runtime.git_ops import CommandResult
+
+
+@hermes.register("chronos", "Chronos — scheduled rituals; "
+                             "chronos <rituals|tick|check|ritual>")
+def _chronos(argv: list[str]) -> int:
+    """Per Delphi 2026-05-19-chronos-arc.md.
+
+    Subcommands:
+      chronos rituals             — list configured + next-due times
+      chronos tick                — evaluate now; fire matching rituals
+      chronos check "<when>"      — would this when-expr fire now? + next 3 due
+      chronos ritual add <id> <when> <do>
+      chronos ritual remove <id>
+    """
+    from olympus.runtime.config import load as load_cfg, save as save_cfg
+    from olympus.primordials.chronos import (
+        chronos, RitualSpec, parse_when, matches_now, next_due,
+    )
+    from olympus.primordials.nyx import Nyx
+    sub = argv[0] if argv else "rituals"
+
+    if sub == "rituals":
+        rituals = chronos.load_rituals()
+        print(aphrodite.banner(
+            "chronos rituals",
+            f"{len(rituals)} configured (whitelist: "
+            f"{len(__import__('olympus.runtime.errand_whitelist',fromlist=['AUTOMATED_ERRANDS']).AUTOMATED_ERRANDS)})"))
+        if not rituals:
+            print(aglaia.murmur(
+                "  (no rituals — try `invoke chronos ritual add "
+                "morning weekday 09:00 today`)"))
+            return 0
+        now = Nyx.now()
+        for r in rituals:
+            badge = "✓" if r.enabled else "○"
+            nd = next_due(parse_when(r.when), now)
+            nd_str = nd.strftime("%Y-%m-%d %H:%M") if nd else "(never)"
+            print(aglaia.murmur(
+                f"  {badge} {r.id:<24} when={r.when:<18} "
+                f"do={r.do:<10} next={nd_str}"))
+        return 0
+
+    if sub == "tick":
+        fired = chronos.tick()
+        print(aphrodite.banner(
+            "chronos tick", f"{len(fired)} ritual(s) fired"))
+        for f in fired:
+            print(aglaia.murmur(
+                f"  {f.ritual_id:<24} invoke {f.errand} "
+                f"(rc={f.exit_code} {f.elapsed_ms:.0f}ms)"))
+            if f.error:
+                print(aglaia.murmur(f"    error: {f.error[:120]}"))
+        if not fired:
+            print(aglaia.murmur(
+                "  (no rituals matched the current minute)"))
+        return 0
+
+    if sub == "check":
+        if len(argv) < 2:
+            print(aglaia.murmur(
+                'usage: invoke chronos check "<when-expr>"'))
+            return 2
+        expr = " ".join(argv[1:])
+        w = parse_when(expr)
+        if not w.valid:
+            print(aphrodite.banner(
+                "chronos check — invalid", expr))
+            print(aglaia.murmur(f"  error: {w.error}"))
+            return 1
+        now = Nyx.now()
+        match = matches_now(w, now)
+        print(aphrodite.banner(
+            f"chronos check — {expr}",
+            f"parsed=valid · matches_now={match}"))
+        # Show next 3 due times
+        cursor = now
+        for i in range(3):
+            nd = next_due(w, cursor)
+            if nd is None:
+                break
+            print(aglaia.murmur(
+                f"  next #{i+1}: {nd.strftime('%Y-%m-%d %H:%M')}"))
+            cursor = nd
+        return 0
+
+    if sub == "ritual":
+        if len(argv) < 2:
+            print(aglaia.murmur(
+                "usage: invoke chronos ritual <add|remove> ..."))
+            return 2
+        op = argv[1]
+        if op == "add":
+            if len(argv) < 5:
+                print(aglaia.murmur(
+                    "usage: invoke chronos ritual add <id> "
+                    "<when> <do>"))
+                print(aglaia.murmur(
+                    "  example: invoke chronos ritual add "
+                    "morning weekday 09:00 today"))
+                return 2
+            # `add <id> <when-may-have-spaces> <do>`. The grammar
+            # uses up to 2 tokens for when (e.g. "weekday 09:00"),
+            # last token is `do`.
+            ritual_id = argv[2]
+            do_errand = argv[-1]
+            when_tokens = argv[3:-1]
+            when_expr = " ".join(when_tokens)
+            spec = RitualSpec(id=ritual_id, when=when_expr, do=do_errand)
+            ok, err = spec.validate()
+            if not ok:
+                print(aglaia.murmur(f"  invalid spec: {err}"))
+                return 1
+            cfg = load_cfg()
+            existing = {r.get("id") for r in cfg.chronos.rituals}
+            if ritual_id in existing:
+                print(aglaia.murmur(
+                    f"  ritual id {ritual_id!r} already exists; "
+                    "remove first"))
+                return 1
+            cfg.chronos.rituals.append({
+                "id": ritual_id, "when": when_expr,
+                "do": do_errand, "enabled": True,
+            })
+            save_cfg(cfg)
+            print(aphrodite.laurel(
+                f"added ritual '{ritual_id}' → "
+                f"when='{when_expr}' do={do_errand}"))
+            return 0
+        if op == "remove":
+            if len(argv) < 3:
+                print(aglaia.murmur(
+                    "usage: invoke chronos ritual remove <id>"))
+                return 2
+            ritual_id = argv[2]
+            cfg = load_cfg()
+            before = len(cfg.chronos.rituals)
+            cfg.chronos.rituals = [
+                r for r in cfg.chronos.rituals
+                if r.get("id") != ritual_id]
+            after = len(cfg.chronos.rituals)
+            if after == before:
+                print(aglaia.murmur(
+                    f"  no ritual with id {ritual_id!r}"))
+                return 1
+            save_cfg(cfg)
+            print(aphrodite.laurel(f"removed ritual '{ritual_id}'"))
+            return 0
+        print(aglaia.murmur(f"  unknown ritual op {op!r}"))
+        return 2
+
+    print(aglaia.murmur(
+        f"  unknown subcommand {sub!r}; "
+        "valid: rituals, tick, check, ritual"))
+    return 2
+
+
+@hermes.register("argos", "Argos colony — fs watcher management; "
+                           "argos <scan|watches|watch>")
+def _argos(argv: list[str]) -> int:
+    """Per Delphi 2026-05-19-argos-eyes-arc.md.
+
+    Subcommands:
+      argos scan                    — run colony scan; report fs changes
+      argos watches                 — list configured watches
+      argos watch add <id> <path> [--glob G] [--action A]
+      argos watch remove <id>
+    """
+    from olympus.runtime.config import load as load_cfg, save as save_cfg
+    from olympus.monsters.argos.eyes.eye_filesystem import (
+        WatchSpec, ERRAND_WHITELIST,
+    )
+    sub = argv[0] if argv else "scan"
+
+    if sub == "scan":
+        # The colony already auto-registers FS eyes at import time.
+        # Forcing a re-import would risk double-registration; instead
+        # we deploy the colony as-is and surface fs.* findings.
+        from olympus.monsters.argos.colony import colony
+        census = colony.deploy(deposit=True)
+        fs_phers = [p for p in census.pheromones
+                    if p.slice.startswith("filesystem/")]
+        other = [p for p in census.pheromones
+                 if not p.slice.startswith("filesystem/")]
+        print(aphrodite.banner(
+            "argos scan",
+            f"{census.count} pheromone(s) "
+            f"({len(fs_phers)} fs · {len(other)} substrate)"))
+        if fs_phers:
+            print(aglaia.section("filesystem changes"))
+            for p in fs_phers[:20]:
+                print(aglaia.murmur(
+                    f"  {p.kind:<6} {p.detail[:100]}"))
+        return 0
+
+    if sub == "watches":
+        cfg = load_cfg()
+        watches = cfg.argos.watches or []
+        print(aphrodite.banner(
+            "argos watches", f"{len(watches)} configured"))
+        if not watches:
+            print(aglaia.murmur(
+                "  (no watches configured — try "
+                "`invoke argos watch add <id> <path>`)"))
+            return 0
+        for w in watches:
+            wid = w.get("id", "?")
+            path = w.get("path", "?")
+            glob = w.get("glob", "*")
+            action = w.get("action", "alert")
+            enabled = w.get("enabled", True)
+            badge = "✓" if enabled else "○"
+            print(aglaia.murmur(
+                f"  {badge} {wid:<24} {path}  glob={glob}  "
+                f"action={action}"))
+        return 0
+
+    if sub == "watch":
+        if len(argv) < 2:
+            print(aglaia.murmur(
+                "usage: invoke argos watch <add|remove> ..."))
+            return 2
+        op = argv[1]
+        if op == "add":
+            if len(argv) < 4:
+                print(aglaia.murmur(
+                    "usage: invoke argos watch add <id> <path> "
+                    "[--glob G] [--action alert|errand:<name>]"))
+                return 2
+            wid = argv[2]; path = argv[3]
+            glob = "*"; action = "alert"
+            i = 4
+            while i < len(argv):
+                if argv[i] == "--glob" and i + 1 < len(argv):
+                    glob = argv[i + 1]; i += 2; continue
+                if argv[i] == "--action" and i + 1 < len(argv):
+                    action = argv[i + 1]; i += 2; continue
+                i += 1
+            new_spec = WatchSpec(id=wid, path=path,
+                                  glob=glob, action=action)
+            ok, err = new_spec.validate()
+            if not ok:
+                print(aglaia.murmur(f"  invalid spec: {err}"))
+                if action.startswith("errand:"):
+                    print(aglaia.murmur(
+                        f"  errand whitelist: {sorted(ERRAND_WHITELIST)}"))
+                return 1
+            cfg = load_cfg()
+            existing_ids = {w.get("id") for w in cfg.argos.watches}
+            if wid in existing_ids:
+                print(aglaia.murmur(
+                    f"  watch id {wid!r} already exists; remove first"))
+                return 1
+            cfg.argos.watches.append({
+                "id": wid, "path": path, "glob": glob,
+                "action": action, "enabled": True,
+            })
+            save_cfg(cfg)
+            print(aphrodite.laurel(f"added watch '{wid}' → {path}"))
+            print(aglaia.murmur(
+                "  (takes effect on next `invoke argos scan` or daemon "
+                "iteration after import-time re-register)"))
+            return 0
+        if op == "remove":
+            if len(argv) < 3:
+                print(aglaia.murmur(
+                    "usage: invoke argos watch remove <id>"))
+                return 2
+            wid = argv[2]
+            cfg = load_cfg()
+            before = len(cfg.argos.watches)
+            cfg.argos.watches = [w for w in cfg.argos.watches
+                                  if w.get("id") != wid]
+            after = len(cfg.argos.watches)
+            if after == before:
+                print(aglaia.murmur(f"  no watch with id {wid!r}"))
+                return 1
+            save_cfg(cfg)
+            print(aphrodite.laurel(f"removed watch '{wid}'"))
+            return 0
+        print(aglaia.murmur(f"  unknown watch op {op!r}"))
+        return 2
+
+    print(aglaia.murmur(
+        f"  unknown subcommand {sub!r}; "
+        "valid: scan, watches, watch"))
+    return 2
+
+
+@hermes.register("recall", "Hippocrene — semantic recall over Mnemosyne; "
+                            "recall \"<query>\" [-k N] [--kinds K1,K2] "
+                            "[--rebuild] [--include-test-seeds] [--stats]")
+def _recall(argv: list[str]) -> int:
+    """Per Delphi 2026-05-19-hippocrene-arc.md."""
+    from olympus.heroes.hippocrene import hippocrene
+    k = 5
+    only_kinds: list[str] | None = None
+    rebuild = False
+    include_test_seeds = False
+    stats_only = False
+    query_parts: list[str] = []
+    i = 0
+    while i < len(argv):
+        a = argv[i]
+        if a == "-k" and i + 1 < len(argv):
+            try:
+                k = int(argv[i + 1])
+            except ValueError:
+                pass
+            i += 2; continue
+        if a == "--kinds" and i + 1 < len(argv):
+            only_kinds = [s.strip() for s in argv[i + 1].split(",")
+                          if s.strip()]
+            i += 2; continue
+        if a == "--rebuild":
+            rebuild = True; i += 1; continue
+        if a == "--include-test-seeds":
+            include_test_seeds = True; i += 1; continue
+        if a == "--stats":
+            stats_only = True; i += 1; continue
+        query_parts.append(a); i += 1
+
+    if stats_only:
+        if not hippocrene._records:
+            hippocrene.index(only_kinds=only_kinds,
+                              include_test_seeds=include_test_seeds)
+        s = hippocrene.stats()
+        if _GLOBAL_FLAGS["json"]:
+            import dataclasses as _dc
+            print(_json.dumps(_dc.asdict(s), default=str, indent=2))
+            return 0
+        print(aphrodite.banner(
+            "recall — Hippocrene stats",
+            f"embedder: {s.embedder} · {s.docs_total} docs · "
+            f"{s.vocab_size} terms"))
+        for kind, count in sorted(s.docs_by_kind.items(),
+                                    key=lambda kv: -kv[1]):
+            print(aglaia.murmur(f"  {kind:<35} {count:>5}"))
+        return 0
+
+    if rebuild:
+        n = hippocrene.rebuild(only_kinds=only_kinds,
+                                include_test_seeds=include_test_seeds)
+        print(aglaia.murmur(f"  re-indexed {n} record(s)"))
+
+    query = " ".join(query_parts).strip()
+    if not query:
+        print(aglaia.murmur(
+            "usage: invoke recall \"<query>\" [-k N] [--kinds K1,K2]"))
+        return 2
+
+    results = hippocrene.recall(
+        query, k=k, only_kinds=only_kinds,
+        include_test_seeds=include_test_seeds)
+
+    if _GLOBAL_FLAGS["json"]:
+        import dataclasses as _dc
+        print(_json.dumps([_dc.asdict(r) for r in results],
+                          default=str, indent=2))
+        return 0
+
+    print(aphrodite.banner(
+        f"recall — \"{query[:50]}\"",
+        f"{len(results)} hit(s)"))
+    if not results:
+        print(aglaia.murmur("  (no matches)"))
+        return 0
+    print(aglaia.murmur(
+        f"  {'score':<6} {'kind':<32} {'when':<22} summary"))
+    print(aglaia.murmur(f"  {'─'*6} {'─'*32} {'─'*22} {'─'*40}"))
+    for r in results:
+        when = (r.remembered_at or "")[:22]
+        summary = (r.summary or "")[:70]
+        print(aglaia.murmur(
+            f"  {r.score:<6.3f} {r.kind:<32} {when:<22} {summary}"))
+    return 0
+
+
+@hermes.register("vault", "Hades — secrets vault; "
+                           "vault <status|deposit|forget|migrate> [name]")
+def _vault(argv: list[str]) -> int:
+    """Per Delphi 2026-05-19-hades-arc.md. Manages secrets via the OS
+    keychain. Constitution: deposit/forget stay CLI-only (Throne can
+    only read status)."""
+    from olympus.olympians.hades import (
+        hades, ENV_OVERRIDES, PLAINTEXT_SENTINEL,
+    )
+    sub = argv[0] if argv else "status"
+
+    if sub == "status":
+        print(aphrodite.banner(
+            "vault — Hades strongbox",
+            f"backend: {hades.backend_name()} · "
+            f"available: {hades.available()}"))
+        # Show every known secret name
+        names = sorted(set(ENV_OVERRIDES.keys()))
+        for name in names:
+            st = hades.status(name)
+            badge = {
+                "env": "✓ env",
+                "keychain": "✓ keychain (encrypted)",
+                "plaintext": "! PLAINTEXT (run `invoke vault migrate`)",
+                "unset": "○ unset",
+            }.get(st.location, st.location)
+            print(aglaia.murmur(
+                f"  {name:<28} {badge}"
+                + (f" · {st.bytes_known}b · sha:{st.sha256_prefix}"
+                   if st.bytes_known else "")))
+        return 0
+
+    if sub == "deposit":
+        if len(argv) < 2:
+            print(aglaia.murmur(
+                "usage: invoke vault deposit <name>"))
+            return 1
+        name = argv[1]
+        if not hades.available():
+            print(aglaia.murmur(
+                "no keyring backend available; cannot deposit"))
+            return 1
+        import getpass
+        try:
+            secret = getpass.getpass(f"value for {name} (input hidden): ")
+        except (KeyboardInterrupt, EOFError):
+            print(); return 1
+        if not secret:
+            print(aglaia.murmur("(empty input — refusing)"))
+            return 1
+        hades.deposit(name, secret)
+        print(aphrodite.laurel(
+            f"deposited '{name}' to {hades.backend_name()}"))
+        return 0
+
+    if sub == "forget":
+        if len(argv) < 2:
+            print(aglaia.murmur("usage: invoke vault forget <name>"))
+            return 1
+        name = argv[1]
+        ok = hades.forget(name)
+        if ok:
+            print(aphrodite.laurel(f"forgot '{name}' from keychain"))
+        else:
+            print(aglaia.murmur(f"'{name}' was not in keychain"))
+        return 0
+
+    if sub == "migrate":
+        from olympus.runtime.config import migrate_plaintext_to_hades
+        result = migrate_plaintext_to_hades()
+        print(aphrodite.banner(
+            "vault migrate",
+            f"migrated: {result['migrated']} · where: {result['where']}"))
+        print(aglaia.murmur(f"  {result['reason']}"))
+        return 0 if result["migrated"] or "already" in result["where"] else 1
+
+    print(aglaia.murmur(
+        f"unknown subcommand: {sub!r}; valid: "
+        "status, deposit, forget, migrate"))
+    return 1
+
+
+@hermes.register("spend", "Plutus — LLM cost ledger + budget; "
+                            "spend [--today|--7d|--30d|--all|--budget|"
+                            "--acknowledge-budget [--reason \"...\"]]")
+def _spend(argv: list[str]) -> int:
+    """Per Delphi 2026-05-19-plutus-arc.md + 2026-05-19-plutus-budget-arc.md.
+
+    Default: cost report. --budget shows budget status. --acknowledge-budget
+    records an operator ack that lifts the LLM-call refusal until the
+    next breach."""
+    from olympus.heroes.plutus import plutus
+    # Per budget arc — handle the budget surfaces first
+    if "--acknowledge-budget" in argv:
+        reason = ""
+        if "--reason" in argv:
+            i = argv.index("--reason")
+            if i + 1 < len(argv):
+                reason = argv[i + 1]
+        plutus.acknowledge_breach(reason=reason)
+        print(aphrodite.laurel(
+            "budget breach acknowledged — LLM calls re-enabled "
+            "until next threshold crossing"))
+        if reason:
+            print(aglaia.murmur(f"  reason: {reason}"))
+        return 0
+    if "--budget" in argv:
+        s = plutus.budget_status()
+        if _GLOBAL_FLAGS["json"]:
+            print(_json.dumps(s, indent=2))
+            return 0
+        if not s.get("enabled"):
+            print(aphrodite.banner(
+                "spend --budget", "budget enforcement: DISABLED"))
+            print(aglaia.murmur(
+                "  to enable: set plutus.budget.enabled = true in "
+                "state/config.json and pick at least one threshold"))
+            return 0
+        print(aphrodite.banner(
+            "spend — budget status",
+            f"warn at {s.get('warn_at_pct', 80)}% · over at 100%"))
+        for key in ("daily", "weekly", "monthly"):
+            e = s.get(key) or {}
+            if e.get("state") == "unset":
+                continue
+            badge = {"ok": "✓", "warn": "!", "over": "✗"}.get(
+                e["state"], "?")
+            print(aglaia.murmur(
+                f"  {badge} {key:<10} ${e['spent']:>7.4f} / "
+                f"${e['ceiling']:>7.4f}  ({e['pct']:>5.1f}%)  "
+                f"[{e['state']}]"))
+        if plutus.is_over_budget():
+            if plutus.breach_since_ack():
+                print(aglaia.murmur(
+                    "  ✗ LLM CALLS REFUSED — "
+                    "run `invoke spend --acknowledge-budget`"))
+            else:
+                print(aglaia.murmur(
+                    "  (over budget but acknowledged; LLM calls "
+                    "continue until next threshold crossing)"))
+        return 0
+    window = "all"
+    for a in argv:
+        if a == "--today":
+            window = "today"
+        elif a in ("--7d", "--7days"):
+            window = "7d"
+        elif a in ("--30d", "--30days"):
+            window = "30d"
+        elif a in ("--24h",):
+            window = "24h"
+        elif a == "--all":
+            window = "all"
+    report = plutus.tally(window=window)
+
+    if _GLOBAL_FLAGS["json"]:
+        print(_json.dumps(report.to_dict(), default=str, indent=2))
+        return 0
+
+    print(aphrodite.banner(
+        f"spend — Plutus ledger ({window})",
+        f"${report.estimated_usd:.4f} estimated · "
+        f"{report.total_calls} call(s) · "
+        f"{report.total_input_tokens:,}in / "
+        f"{report.total_output_tokens:,}out tokens"))
+
+    if not report.total_calls:
+        print(aglaia.murmur("  (no LLM calls in this window)"))
+        return 0
+
+    def _table(title: str, rows: dict, max_rows: int = 10) -> None:
+        print(aglaia.section(title))
+        for key, b in list(rows.items())[:max_rows]:
+            print(aglaia.murmur(
+                f"  {key:<28} {b.calls:>4}× "
+                f"{b.input_tokens:>9,}in {b.output_tokens:>9,}out "
+                f"${b.estimated_usd:>8.4f}"))
+
+    _table("by bridge",    report.by_bridge)
+    _table("by role",      report.by_role)
+    _table("by model",     report.by_model)
+    _table("by day (newest first)", report.by_day, max_rows=14)
+
+    if report.unknown_model_calls:
+        print(aglaia.murmur(
+            f"  note: {report.unknown_model_calls} call(s) against "
+            f"unknown model(s) — $0 in estimate. "
+            f"Models: {', '.join(report.unknown_models[:5])}"))
+    return 0
+
+
+@hermes.register("throne", "Zeus's Throne — chat in plain English; "
+                            "throne [\"<one-shot question>\"] [--voice]")
+def _throne(argv: list[str]) -> int:
+    """The unified front door. No args → REPL. Args → one-shot.
+
+    Per Delphi 2026-05-19-throne-arc.md (base) +
+    2026-05-19-throne-voice-arc.md (--voice flag).
+    """
+    from olympus.throne.repl import run as repl_run, one_shot
+
+    # Per voice arc: --voice flag pipes responses through `say`
+    speak_responses = "--voice" in argv
+    if speak_responses:
+        argv = [a for a in argv if a != "--voice"]
+
+    if argv:
+        question = " ".join(argv)
+        rc = one_shot(question)
+        if speak_responses and rc == 0:
+            # Speak the most recent throne.turn answer
+            from olympus.titans.mnemosyne import mnemosyne
+            from olympus.runtime.voice import speak, get_backend
+            if get_backend().available():
+                turns = mnemosyne.recall("throne.turn")
+                if turns:
+                    speak(turns[-1].body.get("answer_head", ""))
+        return rc
+    return repl_run(speak_responses=speak_responses)
 
 
 @hermes.register("agora", "build the operator web UI — agora [--open] [--port N]")

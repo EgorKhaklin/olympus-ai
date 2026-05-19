@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agora — Spend (Plutus)</title>
+    <style>/*__AGORA_CSS__*/</style>
+</head>
+<body>
+__AGORA_NAV__
+
+<main>
+    <header class="page-head">
+        <h1>💸 Plutus — Spend Ledger</h1>
+        <div class="subtitle">every Claude token, every dollar, every role — the cornucopia with a price tag</div>
+        <div class="status-strip">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="status-text">connecting…</span>
+            &nbsp;·&nbsp; window:&nbsp;
+            <a href="#" onclick="setWindow('today');return false;" id="w-today">today</a> ·
+            <a href="#" onclick="setWindow('7d');return false;" id="w-7d">7 days</a> ·
+            <a href="#" onclick="setWindow('30d');return false;" id="w-30d">30 days</a> ·
+            <a href="#" onclick="setWindow('all');return false;" id="w-all">all-time</a>
+        </div>
+    </header>
+
+    <section class="grid" id="totals"><!-- top stats --></section>
+
+    <section class="panel">
+        <h2>Budget status</h2>
+        <div class="panel-body" id="budget-body">loading…</div>
+    </section>
+
+    <section class="panel">
+        <h2>By role</h2>
+        <div class="panel-body" id="by-role">loading…</div>
+    </section>
+
+    <section class="panel">
+        <h2>By model</h2>
+        <div class="panel-body" id="by-model">loading…</div>
+    </section>
+
+    <section class="panel">
+        <h2>By day (recent)</h2>
+        <div class="panel-body" id="by-day">loading…</div>
+    </section>
+</main>
+
+<footer class="agora-foot">
+    Per Plutus arc · acknowledge a budget breach via <code>invoke spend --acknowledge-budget</code>
+</footer>
+
+<script>/*__AGORA_JS__*/</script>
+<script>
+"use strict";
+var window_param = "today";
+
+function setWindow(w) {
+    window_param = w;
+    document.querySelectorAll(".status-strip a").forEach(function (a) {
+        a.style.color = "";
+        a.style.fontWeight = "";
+    });
+    var el = document.getElementById("w-" + w);
+    if (el) {
+        el.style.color = "var(--gold-bright)";
+        el.style.fontWeight = "600";
+    }
+    refresh();
+}
+
+function renderBreakdown(rootId, axis) {
+    var body = document.getElementById(rootId);
+    body.innerHTML = "";
+    var keys = Object.keys(axis || {});
+    if (!keys.length) {
+        body.appendChild(AGORA.el("p",
+            {text: "(no data in this window)"}));
+        return;
+    }
+    var table = AGORA.el("table", {"class": "iris"});
+    var thead = AGORA.el("thead", null, [
+        AGORA.el("tr", null, [
+            AGORA.el("th", {text: ""}),
+            AGORA.el("th", {text: "calls"}),
+            AGORA.el("th", {text: "input tokens"}),
+            AGORA.el("th", {text: "output tokens"}),
+            AGORA.el("th", {text: "estimated USD"}),
+        ]),
+    ]);
+    var tbody = AGORA.el("tbody");
+    keys.forEach(function (k) {
+        var v = axis[k];
+        tbody.appendChild(AGORA.el("tr", null, [
+            AGORA.el("td", {text: k}),
+            AGORA.el("td", {"class": "mono", text: String(v.calls)}),
+            AGORA.el("td", {"class": "mono",
+                text: v.input_tokens.toLocaleString()}),
+            AGORA.el("td", {"class": "mono",
+                text: v.output_tokens.toLocaleString()}),
+            AGORA.el("td", {"class": "mono",
+                text: "$" + v.estimated_usd.toFixed(4)}),
+        ]));
+    });
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    body.appendChild(table);
+}
+
+function renderTotals(report) {
+    var root = document.getElementById("totals");
+    root.innerHTML = "";
+    var tiles = [
+        ["Estimated USD", "$" + (report.estimated_usd || 0).toFixed(4),
+         "this window"],
+        ["Total calls", String(report.total_calls || 0),
+         report.window || "all"],
+        ["Input tokens", (report.total_input_tokens || 0).toLocaleString(),
+         "across all bridges"],
+        ["Output tokens", (report.total_output_tokens || 0).toLocaleString(),
+         "across all bridges"],
+    ];
+    tiles.forEach(function (t) {
+        root.appendChild(AGORA.el("div", {"class": "card"}, [
+            AGORA.el("div", {"class": "label", text: t[0]}),
+            AGORA.el("div", {"class": "value", text: t[1]}),
+            AGORA.el("div", {"class": "annot", text: t[2]}),
+        ]));
+    });
+}
+
+function renderBudget(b) {
+    var body = document.getElementById("budget-body");
+    body.innerHTML = "";
+    if (!b.enabled) {
+        body.innerHTML = "<p><em>Budget enforcement is disabled.</em> " +
+            "To enable, set <code>plutus.budget.enabled = true</code> in " +
+            "<code>state/config.json</code> and add at least one threshold " +
+            "(daily_usd, weekly_usd, monthly_usd).</p>";
+        return;
+    }
+    var table = AGORA.el("table", {"class": "iris"});
+    var thead = AGORA.el("thead", null, [
+        AGORA.el("tr", null, [
+            AGORA.el("th", {text: "window"}),
+            AGORA.el("th", {text: "spent"}),
+            AGORA.el("th", {text: "ceiling"}),
+            AGORA.el("th", {text: "%"}),
+            AGORA.el("th", {text: "state"}),
+        ]),
+    ]);
+    var tbody = AGORA.el("tbody");
+    ["daily", "weekly", "monthly"].forEach(function (k) {
+        var e = b[k] || {};
+        if (e.state === "unset") return;
+        var badge = AGORA.el("span",
+            {"class": "badge " + (e.state === "over" ? "fail"
+                : e.state === "warn" ? "warn" : "ok"),
+             text: e.state});
+        tbody.appendChild(AGORA.el("tr", null, [
+            AGORA.el("td", {text: k}),
+            AGORA.el("td", {"class": "mono",
+                text: "$" + e.spent.toFixed(4)}),
+            AGORA.el("td", {"class": "mono",
+                text: "$" + e.ceiling.toFixed(2)}),
+            AGORA.el("td", {"class": "mono",
+                text: e.pct.toFixed(1) + "%"}),
+            AGORA.el("td", null, [badge]),
+        ]));
+    });
+    table.appendChild(thead);
+    table.appendChild(tbody);
+    body.appendChild(table);
+    if (b.breach_since_ack) {
+        var warn = AGORA.el("p", null, [
+            AGORA.el("strong", {text: "⚠ Over budget. "}),
+            document.createTextNode("LLM calls are being refused. Run: "),
+        ]);
+        var cmd = AGORA.el("code", {"class": "msg-cmd",
+            text: "$ invoke spend --acknowledge-budget"});
+        body.appendChild(warn);
+        body.appendChild(cmd);
+    }
+}
+
+function refresh() {
+    AGORA.get("/spend?window=" + window_param, function (err, r) {
+        if (err) {
+            AGORA.setStatus(false, "error: " + err.message);
+            return;
+        }
+        AGORA.setStatus(true, "live");
+        renderTotals(r);
+        renderBreakdown("by-role", r.by_role);
+        renderBreakdown("by-model", r.by_model);
+        renderBreakdown("by-day", r.by_day);
+    });
+    AGORA.get("/budget", function (err, b) {
+        if (!err) renderBudget(b);
+    });
+}
+
+setWindow("today");   // highlights "today" tab and triggers initial fetch
+setInterval(refresh, AGORA.INTERVAL_MS);
+</script>
+</body>
+</html>

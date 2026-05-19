@@ -68,10 +68,24 @@ class TestBridgeSelection(unittest.TestCase):
         reset_bridge()
 
     def test_default_is_echo(self):
+        """Per Delphi 2026-05-19-pause-arc.md: pre-existing failure
+        when operator has a real state/config.json with provider=anthropic.
+        Fix: redirect config._path() at a tmp file so this test runs
+        against a clean state regardless of operator setup."""
+        import pathlib, tempfile
         from olympus.runtime.llm_bridge import bridge, EchoBridge
-        os.environ.pop("OLYMPUS_LLM", None)
-        b = bridge()
-        self.assertIsInstance(b, EchoBridge)
+        from olympus.runtime import config as cfg_mod
+        original_path = cfg_mod._path
+        with tempfile.TemporaryDirectory() as td:
+            fake = pathlib.Path(td) / "config.json"
+            cfg_mod._path = lambda: fake
+            try:
+                os.environ.pop("OLYMPUS_LLM", None)
+                os.environ.pop("ANTHROPIC_API_KEY", None)
+                b = bridge()
+                self.assertIsInstance(b, EchoBridge)
+            finally:
+                cfg_mod._path = original_path
 
     def test_explicit_echo(self):
         from olympus.runtime.llm_bridge import bridge, EchoBridge

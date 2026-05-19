@@ -12,16 +12,18 @@ __AGORA_NAV__
 <main>
     <header class="page-head">
         <h1>The Agora</h1>
-        <div class="subtitle">the operator's marketplace · the place where the substrate is met</div>
+        <div class="subtitle">the operator's marketplace — where the substrate is met</div>
         <div class="status-strip">
             <span class="status-dot" id="status-dot"></span>
             <span id="status-text">connecting…</span>
-            · built __BUILT_AT__
-            · polling __API_BASE__ every <span id="iv"></span>s
+            &nbsp;·&nbsp; built __BUILT_AT__
+            &nbsp;·&nbsp; polling __API_BASE__ every <span id="iv"></span>s
         </div>
     </header>
 
     <section class="grid" id="cards"><!-- filled by JS --></section>
+
+    <div class="divider-classical">⚡ Oracle ⚡</div>
 
     <section class="panel">
         <h2>Today — the single-action oracle</h2>
@@ -29,7 +31,7 @@ __AGORA_NAV__
     </section>
 
     <section class="panel">
-        <h2>Harmony — substrate ratios vs sacred anchors</h2>
+        <h2>Harmony — substrate ratios vs the sacred anchors</h2>
         <div class="panel-body" id="harmony-body">loading…</div>
     </section>
 </main>
@@ -47,23 +49,93 @@ __AGORA_NAV__
     document.getElementById("iv").textContent =
         (AGORA.INTERVAL_MS / 1000).toFixed(1);
 
+    // Per Delphi 2026-05-19-eos-arc.md: dashboard now surfaces Decade
+    // capabilities as additional cards alongside the substrate state.
+    var _decadeData = {};
+
     function renderCards(status) {
         var cards = document.getElementById("cards");
         cards.innerHTML = "";
+        var d = _decadeData;
+        var spend = d.spend || {};
+        var budget = d.budget || {};
+        var vault = d.vault || {};
+        var library = d.library || {};
+        var rituals = d.rituals || {};
+        var watches = d.watches || {};
+        var replay = d.replay || {};
+
+        var hearth = (status.hearth || {});
+        var styx = (status.styx || {});
+
+        var libraryDocs = (library.documents || []).length;
+        var ritualCount = (rituals.rituals || []).length;
+        var watchCount = (watches.watches || []).length;
+
+        // Vault: count secrets actually present
+        var vaultPresent = 0;
+        (vault.secrets || []).forEach(function (s) {
+            if (s.location === "keychain" || s.location === "env")
+                vaultPresent += 1;
+        });
+
+        // Budget: pct of nearest active threshold, or "—"
+        var budgetText = "—", budgetAnnot = "disabled";
+        if (budget.enabled) {
+            var worst = 0;
+            ["daily", "weekly", "monthly"].forEach(function (k) {
+                var b = budget[k] || {};
+                if (b.state && b.state !== "unset" && b.pct > worst)
+                    worst = b.pct;
+            });
+            budgetText = worst.toFixed(0) + "%";
+            budgetAnnot = budget.breach_since_ack
+                ? "⚠ over · LLM refused"
+                : (worst > 80 ? "approaching" : "ok");
+        }
+
+        // Replay stability % over recent window
+        var replayText = "—", replayAnnot = "no runs";
+        if (replay.total > 0) {
+            var c = replay.counts || {};
+            var stable = c.stable || 0;
+            var pct = Math.round(100 * stable / replay.total);
+            replayText = pct + "%";
+            replayAnnot = stable + "/" + replay.total + " stable";
+        }
+
+        var spendText = spend.estimated_usd != null
+            ? "$" + (spend.estimated_usd).toFixed(2)
+            : "—";
+
         var tiles = [
-            ["Hearth", (status.hearth || {}).name || "—",
-             (status.hearth || {}).lit ? "lit" : "dark"],
-            ["Styx oaths",
-             (status.styx || {}).total_oaths || 0,
-             (status.styx || {}).intact ? "intact" : "BROKEN"],
+            // Row 1: substrate state (existing)
+            ["Hearth", hearth.name || "—",
+             hearth.lit ? "lit" : "dark"],
+            ["Styx oaths", styx.total_oaths || 0,
+             styx.intact ? "intact" : "BROKEN"],
+            ["Sessions", (status.sessions || {}).total || 0,
+             "completed"],
+            // Row 2: Decade (Eos)
+            ["💸 Today's spend", spendText,
+             spend.total_calls ? spend.total_calls + " calls" : "—"],
+            ["📊 Budget", budgetText, budgetAnnot],
+            ["🗝️ Vault", vaultPresent,
+             (vault.backend || "?") + (vault.available ? "" : " unavail")],
+            ["📚 Library", libraryDocs,
+             libraryDocs ? "ingested" : "drop files to begin"],
+            ["⏰ Rituals", ritualCount,
+             ritualCount ? "scheduled" : "none yet"],
+            ["👁️ Watches", watchCount,
+             watchCount ? "active" : "none yet"],
+            ["⏪ Replay (recent)", replayText, replayAnnot],
+            // Old row 1 leftovers (de-duped)
             ["Hydra heads", (status.hydra || {}).heads || 0,
              "watcher tier"],
             ["Argos eyes", (status.argos || {}).eyes || 0,
              "swarm tier"],
             ["Pending", (status.actions || {}).pending || 0,
              ((status.actions || {}).delphi_pending || 0) + " delphi"],
-            ["Sessions", (status.sessions || {}).total || 0,
-             "completed"],
         ];
         tiles.forEach(function (t) {
             cards.appendChild(AGORA.el("div", {"class": "card"}, [
@@ -110,27 +182,82 @@ __AGORA_NAV__
     }
 
     function refresh() {
+        // Decade signals — fetched in parallel, then dashboard re-renders
+        var pending = 7;
+        var lastStatus = null;
+        function done() {
+            pending -= 1;
+            if (pending === 0 && lastStatus) renderCards(lastStatus);
+        }
+        AGORA.get("/spend?window=today", function (err, d) {
+            _decadeData.spend = err ? {} : d; done();
+        });
+        AGORA.get("/budget", function (err, d) {
+            _decadeData.budget = err ? {} : d; done();
+        });
+        AGORA.get("/vault", function (err, d) {
+            _decadeData.vault = err ? {} : d; done();
+        });
+        AGORA.get("/library", function (err, d) {
+            _decadeData.library = err ? {} : d; done();
+        });
+        AGORA.get("/rituals", function (err, d) {
+            _decadeData.rituals = err ? {} : d; done();
+        });
+        AGORA.get("/watches", function (err, d) {
+            _decadeData.watches = err ? {} : d; done();
+        });
+        AGORA.get("/replay/recent?limit=20", function (err, d) {
+            _decadeData.replay = err ? {} : d; done();
+        });
         AGORA.get("/status", function (err, status) {
             if (err) {
                 AGORA.setStatus(false, "error: " + err.message);
                 return;
             }
             AGORA.setStatus(true, "live");
-            renderCards(status);
+            lastStatus = status;
+            renderCards(status);   // immediate first paint w/ empty Decade
         });
         AGORA.get("/geometry", function (err, g) {
             if (err || !g) return;
             renderHarmony(g);
         });
-        // Today is rendered via the dialogue ask template — but
-        // there's no public /today endpoint, so we display a hint.
-        var today = document.getElementById("today-body");
-        if (today.dataset.shown !== "1") {
-            today.innerHTML = "Run <code>invoke today</code> in the " +
-                "terminal for the single-action oracle. (Future arc: " +
-                "expose today via the HTTP API.)";
-            today.dataset.shown = "1";
-        }
+        // Today — per Eos arc, fetch live action and render
+        AGORA.get("/today", function (err, action) {
+            var body = document.getElementById("today-body");
+            if (err || !action) {
+                body.innerHTML = "<em>unable to fetch today</em>";
+                return;
+            }
+            body.innerHTML = "";
+            var badge = AGORA.el("span",
+                {"class": "badge " + (action.priority || "calm"),
+                 text: action.priority || ""});
+            var head = AGORA.el("div", null, [
+                badge,
+                AGORA.el("span", {text: "  " + (action.headline || "")}),
+            ]);
+            head.style.fontSize = "1.05rem";
+            head.style.marginBottom = "0.5rem";
+            body.appendChild(head);
+            if (action.detail) {
+                var det = AGORA.el("div",
+                    {text: action.detail});
+                det.style.color = "var(--marble-dim)";
+                det.style.fontSize = "0.92rem";
+                body.appendChild(det);
+            }
+            if (action.drawn_from && action.drawn_from.length) {
+                var src = AGORA.el("div", {"class": "mono",
+                    text: "sources: " + action.drawn_from.join(", ")});
+                src.style.color = "var(--marble-muted)";
+                src.style.fontSize = "0.74rem";
+                src.style.marginTop = "0.65rem";
+                src.style.letterSpacing = "0.04em";
+                body.appendChild(src);
+            }
+        });
     }
 
     refresh();

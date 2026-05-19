@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agora — Library (Demeter)</title>
+    <style>/*__AGORA_CSS__*/</style>
+</head>
+<body>
+__AGORA_NAV__
+
+<main>
+    <header class="page-head">
+        <h1>📚 Demeter — Library</h1>
+        <div class="subtitle">drop your knowledge into <code>state/demeter/library/</code> · the throne will cite it</div>
+        <div class="status-strip">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="status-text">connecting…</span>
+        </div>
+    </header>
+
+    <section class="grid" id="totals"></section>
+
+    <section class="panel">
+        <h2>Ingest now</h2>
+        <div class="panel-body">
+            <p>Drop <code>.md</code>, <code>.txt</code>, <code>.rst</code>, or <code>.pdf</code> files into <code>state/demeter/library/</code>, then click below. The substrate chunks each file and adds it to Mnemosyne under <code>demeter.chunk</code>. Hippocrene's search picks it up automatically.</p>
+            <button class="ingest-btn" id="ingest-btn" onclick="ingest()">⟳ Rescan + Ingest</button>
+            <pre class="cli" id="ingest-out" style="margin-top:1rem; display:none;"></pre>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>Tracked documents</h2>
+        <div class="panel-body" id="docs">loading…</div>
+    </section>
+
+    <section class="panel">
+        <h2>Try a query</h2>
+        <div class="panel-body">
+            <p>Ask the Throne: "<a href="index.html"><em>what does my onboarding doc say about authentication?</em></a>" — Hippocrene runs over <code>demeter.chunk</code> records and surfaces the matching paragraph.</p>
+        </div>
+    </section>
+</main>
+
+<style>
+.ingest-btn {
+    padding: 0.7rem 1.4rem;
+    background: linear-gradient(180deg, var(--gold) 0%, var(--gold-soft) 100%);
+    color: var(--void);
+    border: none; border-radius: var(--r-md);
+    font: inherit; font-weight: 600; cursor: pointer;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    font-size: 0.84rem;
+    box-shadow: 0 4px 14px rgba(212,175,55,0.2);
+    transition: all var(--t-fast) var(--ease);
+}
+.ingest-btn:hover {
+    background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(212,175,55,0.32);
+}
+.ingest-btn:disabled { opacity: 0.5; cursor: wait; transform: none; }
+</style>
+
+<script>/*__AGORA_JS__*/</script>
+<script>
+"use strict";
+
+function ingest() {
+    var btn = document.getElementById("ingest-btn");
+    var out = document.getElementById("ingest-out");
+    btn.disabled = true; btn.textContent = "Ingesting…";
+    out.style.display = "block";
+    out.textContent = "running demeter.ingest()...";
+    AGORA.post("/library/ingest", {}, function (err, r) {
+        btn.disabled = false; btn.textContent = "⟳ Rescan + Ingest";
+        if (err) {
+            out.textContent = "ERROR: " + (err.message || err);
+            return;
+        }
+        out.textContent = JSON.stringify(r, null, 2);
+        refresh();
+    });
+}
+
+function renderTotals(docs) {
+    var totalChunks = 0, totalBytes = 0;
+    docs.forEach(function (d) {
+        totalChunks += d.chunk_count || 0;
+        totalBytes += d.size_bytes || 0;
+    });
+    var root = document.getElementById("totals");
+    root.innerHTML = "";
+    var kb = (totalBytes / 1024).toFixed(1);
+    var tiles = [
+        ["Documents", String(docs.length), "tracked"],
+        ["Chunks", String(totalChunks), "in Mnemosyne"],
+        ["Source size", kb + " KB", "total bytes"],
+    ];
+    tiles.forEach(function (t) {
+        root.appendChild(AGORA.el("div", {"class": "card"}, [
+            AGORA.el("div", {"class": "label", text: t[0]}),
+            AGORA.el("div", {"class": "value", text: t[1]}),
+            AGORA.el("div", {"class": "annot", text: t[2]}),
+        ]));
+    });
+}
+
+function renderDocs(docs) {
+    var body = document.getElementById("docs");
+    body.innerHTML = "";
+    if (!docs.length) {
+        body.innerHTML = "<p><em>No documents ingested yet.</em> Drop files into <code>state/demeter/library/</code> then click <strong>Rescan + Ingest</strong> above.</p>";
+        return;
+    }
+    var table = AGORA.el("table", {"class": "iris"});
+    var thead = AGORA.el("thead", null, [
+        AGORA.el("tr", null, [
+            AGORA.el("th", {text: "source"}),
+            AGORA.el("th", {text: "chunks"}),
+            AGORA.el("th", {text: "size"}),
+            AGORA.el("th", {text: "sha"}),
+            AGORA.el("th", {text: "ingested"}),
+        ]),
+    ]);
+    var tbody = AGORA.el("tbody");
+    docs.forEach(function (d) {
+        var kb = ((d.size_bytes || 0) / 1024).toFixed(1) + " KB";
+        var when = (d.ingested_at || "").substring(0, 19);
+        tbody.appendChild(AGORA.el("tr", null, [
+            AGORA.el("td", {text: d.source_path || ""}),
+            AGORA.el("td", {"class": "mono", text: String(d.chunk_count || 0)}),
+            AGORA.el("td", {"class": "mono", text: kb}),
+            AGORA.el("td", {"class": "mono",
+                text: (d.sha256 || "").substring(0, 12)}),
+            AGORA.el("td", {"class": "mono", text: when}),
+        ]));
+    });
+    table.appendChild(thead); table.appendChild(tbody);
+    body.appendChild(table);
+}
+
+function refresh() {
+    AGORA.get("/library", function (err, r) {
+        if (err) {
+            AGORA.setStatus(false, "error: " + err.message);
+            return;
+        }
+        AGORA.setStatus(true, "live");
+        var docs = r.documents || [];
+        renderTotals(docs);
+        renderDocs(docs);
+    });
+}
+
+refresh();
+setInterval(refresh, AGORA.INTERVAL_MS);
+</script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agora — Proposals (Hephaestus)</title>
+    <style>/*__AGORA_CSS__*/</style>
+</head>
+<body>
+__AGORA_NAV__
+
+<main>
+    <header class="page-head">
+        <h1>🔧 Hephaestus — Proposals</h1>
+        <div class="subtitle">ratified-but-not-yet-applied · operator reviews + applies via CLI</div>
+        <div class="status-strip">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="status-text">connecting…</span>
+            &nbsp;·&nbsp; pending pulled from <code>action.ratified</code> ∖ <code>prometheus.applied</code>
+        </div>
+    </header>
+
+    <section class="panel">
+        <h2>Pending</h2>
+        <div class="panel-body" id="pending">loading…</div>
+    </section>
+
+    <section class="panel">
+        <h2>Apply (CLI-only — constitutional S7)</h2>
+        <div class="panel-body">
+            <p>Source-code mutations require operator-in-person. The chatbot and this web UI cannot apply proposals — only show the command:</p>
+            <pre class="cli">$ invoke hephaestus apply &lt;pid&gt;             # dry-run by default
+$ invoke hephaestus apply &lt;pid&gt; --really    # actually mutate
+$ invoke hephaestus pending                  # CLI mirror of this page</pre>
+            <p>Safety guarantees baked in: <strong>never push to main · never <code>--force</code> · never merge · refuse on dirty tree</strong>.</p>
+        </div>
+    </section>
+</main>
+
+<footer class="agora-foot">
+    Per Hephaestus-PR arc · proposals become real git PRs via <code>gh</code> CLI (operator-explicit)
+</footer>
+
+<script>/*__AGORA_JS__*/</script>
+<script>
+"use strict";
+
+function refresh() {
+    // We use /mnemosyne/action.ratified and /mnemosyne/prometheus.applied
+    // to compute pending. Server-side aggregation could be a future arc.
+    var pending = 2;
+    var ratified = null, applied = null;
+    function done() {
+        pending -= 1;
+        if (pending !== 0) return;
+        if (!ratified || !applied) return;
+        var appliedPids = {};
+        applied.records.forEach(function (r) {
+            var pid = (r.body || {}).proposal_id;
+            if (pid) appliedPids[pid] = true;
+        });
+        var rows = [];
+        ratified.records.forEach(function (r) {
+            var aid = (r.body || {}).action_id || "";
+            var pid = aid.indexOf("act-") === 0 ? aid.substring(4) : aid;
+            if (!pid || appliedPids[pid]) return;
+            rows.push({pid: pid, when: r.remembered_at, summary: r.summary});
+        });
+        renderRows(rows);
+    }
+    AGORA.get("/mnemosyne/action.ratified?limit=200", function (err, d) {
+        ratified = err ? {records: []} : d; done();
+    });
+    AGORA.get("/mnemosyne/prometheus.applied?limit=200", function (err, d) {
+        applied = err ? {records: []} : d; done();
+    });
+}
+
+function renderRows(rows) {
+    AGORA.setStatus(true, "live");
+    var body = document.getElementById("pending");
+    body.innerHTML = "";
+    if (!rows.length) {
+        body.innerHTML = "<p><em>Nothing pending.</em> Hephaestus has a quiet forge.</p>";
+        return;
+    }
+    var table = AGORA.el("table", {"class": "iris"});
+    var thead = AGORA.el("thead", null, [
+        AGORA.el("tr", null, [
+            AGORA.el("th", {text: "proposal id"}),
+            AGORA.el("th", {text: "ratified at"}),
+            AGORA.el("th", {text: "summary"}),
+            AGORA.el("th", {text: "apply command"}),
+        ]),
+    ]);
+    var tbody = AGORA.el("tbody");
+    rows.forEach(function (r) {
+        var when = (r.when || "").substring(0, 19);
+        var summary = (r.summary || "").substring(0, 80);
+        var cmd = AGORA.el("code", {"class": "mono",
+            text: "invoke hephaestus apply " + r.pid});
+        tbody.appendChild(AGORA.el("tr", null, [
+            AGORA.el("td", {"class": "mono", text: r.pid}),
+            AGORA.el("td", {"class": "mono", text: when}),
+            AGORA.el("td", {text: summary}),
+            AGORA.el("td", null, [cmd]),
+        ]));
+    });
+    table.appendChild(thead); table.appendChild(tbody);
+    body.appendChild(table);
+}
+
+refresh();
+setInterval(refresh, AGORA.INTERVAL_MS);
+</script>
+</body>
+</html>

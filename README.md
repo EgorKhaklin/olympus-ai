@@ -6,7 +6,7 @@
 
 ***a cognitive substrate built in the shape of greek mythology***
 
-**ninety-one named figures · zero abstractions you can't name · 393 tests, all green**
+**ninety-four named figures · twenty-two arcs shipped · 860 tests, all green**
 
 [Cosmogony](codex/COSMOGONY.md) · [Pantheon](codex/PANTHEON.md) · [Architecture](codex/ARCHITECTURE.md) · [Operations](codex/OPERATIONS.md) · [Geometry](codex/GEOMETRY.md) · [Specs](codex/SPECS.md) · [Chronicle](codex/CHRONICLE.md) · [Plugins](codex/PLUGINS.md)
 
@@ -129,7 +129,32 @@ Rigor over architecture. **Ananke** (Primordial — deterministic seed source; S
 
 ### 11. The xenia arc 🏺
 
-Hospitality — the substrate gets a front door. **`invoke setup`** — interactive welcome wizard (idempotent, metacognitive, 6 steps from `git clone` to working substrate; tests the LLM call before saving, never silent-saves a broken config). **`state/config.json`** — operator config file the LLM bridge auto-loads (env vars always win). **Agora** — vanilla HTML/JS web UI at `src/olympus/agora/` (5 pages: dashboard / setup guide / doctor / today / agents). **Welcome flow** — first `invoke <anything>` with unlit Hestia greets the stranger warmly and points at `invoke setup`. **`codex/QUICKSTART.md`** — 5-minute non-technical tour written for outside observers.
+Hospitality — the substrate gets a front door. **`invoke setup`** — interactive welcome wizard. **`state/config.json`** — operator config file the LLM bridge auto-loads (env vars always win). **Agora** — vanilla HTML/JS web UI at `src/olympus/agora/`. **Welcome flow** — first `invoke <anything>` with unlit Hestia greets the stranger.
+
+### 12. The throne arc 👑
+
+The unified conversational front door. **Zeus's Throne** — chat in plain English; Claude routes intent into errands, executes the safe ones, refuses the gated ones with the exact command. `invoke throne` (REPL or one-shot). HTTP `POST /throne/turn`. The constitution stays loud: `SAFE_ERRANDS` callable, `GATED_ERRANDS` (kindle/ratify/etc.) NEVER autonomous.
+
+### The Decade (δεκάς) — Arcs 12 → 21
+
+Ten arcs in sequence; each a focused session; each sworn on Styx. Together they take Olympus from "measurement framework" to "substrate that does work."
+
+| # | arc | one-line |
+|---|---|---|
+| 12 | **Tartarus 🜍** | test-seed filter — substrate stops crying wolf about its own audit residue |
+| 13 | **Hippocrene 💧** | TF-IDF semantic recall over Mnemosyne (no embedding dep) |
+| 14 | **Argos-Eyes 👁️** | filesystem watcher — declared paths fire pheromones on change |
+| 15 | **Chronos ⏰** | scheduled rituals (cron-style grammar) on the daemon |
+| 16 | **Hephaestus-PR 🔧** | ratified proposals → real git branches + GitHub PRs (operator-gated) — **the keystone** |
+| 17 | **Demeter-Library 📚** | drop PDFs / markdown into `state/demeter/library/`, Throne can cite them |
+| 18 | **Throne-Voice 🎙️** | TTS via macOS `say` (STT honestly deferred) |
+| 19 | **Hermes-MCP 🪶** | Olympus as an MCP server — call it from inside Claude Code |
+| 20 | **Plutus-Budget 💸** | budget alarms (constitutional debate held; Pan untouched) |
+| 21 | **Olympus-Replay ⏪** | regression harness re-runs past `agent.invocation` records; bookend |
+
+### 22. The Eos arc 🌅 (UI surfacing)
+
+The Decade built 10 capabilities; the UI surfaced ~30% of them. Eos closes the gap: **9 new HTTP GET endpoints + 1 idempotent POST + 6 new Agora pages + 7 new dashboard cards + cinematic visual redesign** (obsidian palette · antique gold · marble text · pulse animations · backdrop blur · film grain). Today + Doctor wired live (no more static guides). The web UI finally matches what the substrate can do.
 
 ---
 
@@ -142,11 +167,15 @@ pip install -e .
 # Welcome wizard — kindles hearth, picks LLM, optional daemon, runs a session
 invoke setup
 
-# Or one command at a time:
-invoke today                    # the substrate's single-action oracle
-invoke doctor                   # full health diagnostic
-invoke serve --port 8765 &      # start the read-only HTTP API
-invoke agora --open             # build the web UI + open in browser
+# Drop your API key into the OS keychain (encrypted at rest)
+invoke vault deposit anthropic_api_key
+
+# Open the cinematic web UI
+invoke serve --port 8765 &       # HTTP API (12 pages poll it)
+invoke agora --open              # cinematic Agora — Throne + 11 other pages
+
+# Use Olympus from inside Claude Code (or any MCP client)
+invoke mcp                       # serve over stdio — wire into ~/.claude/mcp_servers.json
 ```
 
 If you want the 5-minute walkthrough: [`codex/QUICKSTART.md`](codex/QUICKSTART.md).
@@ -156,21 +185,41 @@ Full operator runbook: [`codex/OPERATIONS.md`](codex/OPERATIONS.md).
 
 ## The full CLI surface
 
-Forty-plus errands. Highlights by tier:
+Fifty-plus errands. Highlights by tier:
 
 **Substrate primitives:** `prime`, `kindle`, `status`, `bring-forth`, `version`, `history`, `list`, `describe`, `remember`, `swear`, `verify`, `labors`, `pantheon`, `consult`, `shell`, `help`
 
 **The loop:** `session`, `improve`, `loop`, `daemon {run|install|status|uninstall}`
 
-**Reasoning + memory:** `meta`, `wisdom`, `correlate`, `reflect`, `cassandra`, `shoulders`, `narrate`, `ariadne`, `nemesis`
+**Reasoning + memory:** `meta`, `wisdom`, `correlate`, `reflect`, `cassandra`, `shoulders`, `narrate`, `ariadne`, `nemesis`, **`recall "<query>"`** (Hippocrene)
 
-**Decision + action:** `action {review|delphi|ratify|reject}`, `console`, `redteam`, `tune`, `today`
+**Decision + action:** `action {review|delphi|ratify|reject}`, `console`, `redteam`, `tune`, `today [--resolve <slice>]`
 
 **Recovery + maintenance:** `heal`, `panic [--clear]`, `ferry [--days N]`, `hygieia`, `phoenix`
 
 **Surfaces:** `iris [--live]`, `serve`, `schemas`, `specs`, `cartograph [--write]`, `centrality`, `harmony`, `geometry`, `pythagoras`, `plato`, `euterpe`
 
 **External:** `pythia {--github "q" | --web URL}`, `federate <url>`, `ask "<question>"`
+
+**Conversational interfaces (Throne + Decade):**
+- 👑 **`throne [--voice]`** — chat in plain English; voice mode pipes TTS
+- 💬 **`ask "<q>"`** — pattern-matched Q&A (legacy)
+- 🎙️ **`speak "<text>" [--voice V] [--rate N]`** — macOS TTS
+
+**Real-world integrations (Decade):**
+- 🔧 **`hephaestus {pending | apply <pid> [--really]}`** — proposals → real PRs via `gh` (operator-gated)
+- 📚 **`demeter {ingest [--reingest] | library | forget <id>}`** — knowledge-base ingestion
+- 👁️ **`argos {scan | watches | watch add/remove}`** — filesystem watcher
+- ⏰ **`chronos {rituals | tick | check "<when>" | ritual add/remove}`** — scheduled rituals
+- ⏪ **`replay [--limit N] [--role R] [--use-anthropic]`** — regression harness
+
+**Money + secrets:**
+- 💸 **`spend [--today|--7d|--30d|--all|--budget|--acknowledge-budget]`** — Plutus cost ledger + budget
+- 🗝️ **`vault {status | deposit <name> | forget <name> | migrate}`** — Hades secrets (OS keychain)
+
+**Servers + UI:**
+- 🪶 **`mcp [--probe]`** — Olympus as MCP server (stdio) for Claude Code
+- 🌅 **`agora [--open]`** — build the cinematic web UI (12 pages)
 
 **Plugins:** `plugins`
 
@@ -255,13 +304,13 @@ Zeus         0.0769
 
 ## Tests
 
-393 tests across 50 files. All green.
+860 tests, all green.
 
 ```bash
-python3 -m unittest discover -s tests
+python3 -m pytest tests/ -q
 ```
 
-The pantheon-coherence test (`tests/test_pantheon_coherence.py`) enforces that every figure named in `EXPECTED` exists on disk and is mentioned in `PANTHEON.md`. The S-invariant tests (`tests/test_invariant_S*.py`) enforce the constitution at runtime.
+Disciplined test isolation: the pause-and-harden arc shipped a session-scoped contamination guard (`tests/conftest.py`) that fails the entire suite if any test mutates `state/config.json`. The pantheon-coherence test enforces every figure named in `EXPECTED` exists on disk. The S-invariant tests enforce the constitution at runtime. Two conditional skips remain (platform-dependent).
 
 ---
 
@@ -269,14 +318,19 @@ The pantheon-coherence test (`tests/test_pantheon_coherence.py`) enforces that e
 
 | metric | value |
 |---|---|
-| named principal figures | **93** |
-| tests passing | **480 / 480** |
-| Styx oaths sworn | 114+ |
+| named principal figures | **94** (+ Plutus, Hippocrene, Chronos) |
+| tests passing | **860 / 860** |
+| Styx oaths sworn | 185+ |
 | TLA+ specifications | 3 |
 | JSON Schemas | 7 |
-| arcs shipped | **11** (substance · self-improvement · missing-figures · compass-rose · recursion · labyrinth · phi · aegis · oikoumene · akropolis · **xenia**) |
-| heavy-production overrides invoked | 8 |
+| Delphi notes (sworn) | **22** |
+| arcs shipped | **22** (substance → akropolis → xenia → throne → **the Decade (12-21)** → Eos) |
+| Decade complete | δεκάς — 10 arcs in sequence, sworn separately |
+| heavy-production overrides invoked | 10 |
 | ratification rate vs 1/φ | **0.98** harmony score |
+| Agora pages | **12** (throne · dashboard · today · doctor · spend · library · watches · rituals · replay · proposals · agents · setup) |
+| HTTP endpoints | **20** GET + **3** POST (`/proposals/raise`, `/throne/turn`, `/library/ingest`) |
+| MCP server | live (`invoke mcp`) — 14 tools exposed |
 
 ---
 

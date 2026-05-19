@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Zeus's Throne — Olympus</title>
+    <style>/*__AGORA_CSS__*/</style>
+</head>
+<body>
+__AGORA_NAV__
+
+<div class="throne-shell">
+    <div class="throne-head">
+        <h1>👑 Zeus's Throne</h1>
+        <div class="throne-sub">Ask anything in plain English. Every turn is recorded. HIGH-risk actions stay on the CLI by constitutional design.</div>
+    </div>
+
+    <div class="throne-log" id="log">
+        <div class="throne-starter">
+            <strong>Begin —</strong> choose a starting prompt or type your own.
+            <br>
+            <a onclick="ask(this.textContent)">How is the substrate doing?</a>
+            <a onclick="ask(this.textContent)">What should I look at today?</a>
+            <a onclick="ask(this.textContent)">What is Olympus?</a>
+            <a onclick="ask(this.textContent)">Ask hephaestus what's drifting</a>
+            <a onclick="ask(this.textContent)">Show me what we've learned</a>
+            <a onclick="ask(this.textContent)">What are we spending on Claude?</a>
+            <a onclick="ask(this.textContent)">Find decisions about authentication</a>
+        </div>
+    </div>
+
+    <form class="throne-input" onsubmit="event.preventDefault(); send();">
+        <textarea id="input"
+            placeholder="Type a question · Enter to send · Shift+Enter for newline"
+            rows="1" autofocus></textarea>
+        <button type="submit" id="send-btn">Send</button>
+    </form>
+</div>
+
+<footer class="agora-foot">
+    Throne speaks to <code>POST __API_BASE__/throne/turn</code> · every turn → <code>throne.turn</code> in Mnemosyne
+</footer>
+
+<script>/*__AGORA_JS__*/</script>
+<script>
+"use strict";
+
+// Per Delphi 2026-05-19-throne-arc.md (CSS-fix): hardcode the URL at
+// build time so the page doesn't rely on AGORA.API_BASE being loaded.
+var THRONE_URL = "__API_BASE__/throne/turn";
+
+var log = document.getElementById("log");
+var inputEl = document.getElementById("input");
+var sendBtn = document.getElementById("send-btn");
+
+function el(tag, attrs, children) {
+    var e = document.createElement(tag);
+    if (attrs) {
+        for (var k in attrs) {
+            if (k === "class") e.className = attrs[k];
+            else if (k === "text") e.textContent = attrs[k];
+            else e.setAttribute(k, attrs[k]);
+        }
+    }
+    if (children) children.forEach(function (c) { e.appendChild(c); });
+    return e;
+}
+
+function append(msg) {
+    log.appendChild(msg);
+    // Smooth scroll to bottom
+    requestAnimationFrame(function () {
+        log.scrollTop = log.scrollHeight;
+    });
+}
+
+function appendYou(text) {
+    var m = el("div", {"class": "msg msg-you"});
+    m.textContent = text;
+    append(m);
+}
+
+function appendThrone(resp) {
+    var m = el("div", {"class": "msg msg-throne"});
+    var body = el("div");
+    body.textContent = resp.answer || "(no answer)";
+    m.appendChild(body);
+
+    if (resp.suggested_command) {
+        var cmd = el("code", {"class": "msg-cmd"});
+        cmd.textContent = "$ " + resp.suggested_command;
+        m.appendChild(cmd);
+    }
+
+    var meta = el("div", {"class": "msg-meta"});
+    var bits = [];
+    if (resp.actions_taken && resp.actions_taken.length) {
+        bits.push("ran: " + resp.actions_taken.join(", "));
+    }
+    bits.push((resp.elapsed_ms || 0).toFixed(0) + "ms");
+    bits.push("via " + (resp.bridge || "?"));
+    meta.textContent = "── " + bits.join(" · ");
+    m.appendChild(meta);
+
+    append(m);
+}
+
+function appendError(err) {
+    var m = el("div", {"class": "msg msg-throne"});
+    m.style.borderLeftColor = "#c4392f";
+    m.textContent = "(throne errored: " + err + ")";
+    append(m);
+}
+
+function ask(text) {
+    inputEl.value = text;
+    send();
+}
+
+function send() {
+    var text = inputEl.value.trim();
+    if (!text) return;
+    inputEl.value = "";
+    inputEl.style.height = "auto";
+    sendBtn.disabled = true;
+    appendYou(text);
+
+    var thinking = el("div", {"class": "msg msg-throne msg-thinking"});
+    thinking.textContent = "thinking ";
+    append(thinking);
+
+    fetch(THRONE_URL, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({input: text}),
+    })
+    .then(function (r) {
+        return r.json().then(function (j) {
+            return {status: r.status, body: j};
+        });
+    })
+    .then(function (res) {
+        log.removeChild(thinking);
+        if (res.status >= 400) {
+            appendError(res.body.error || ("status " + res.status));
+        } else {
+            appendThrone(res.body);
+        }
+    })
+    .catch(function (err) {
+        if (thinking.parentNode) log.removeChild(thinking);
+        appendError(err.message || String(err));
+    })
+    .finally(function () {
+        sendBtn.disabled = false;
+        inputEl.focus();
+    });
+}
+
+inputEl.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        send();
+    }
+});
+
+// Auto-grow textarea
+inputEl.addEventListener("input", function () {
+    inputEl.style.height = "auto";
+    inputEl.style.height = Math.min(inputEl.scrollHeight, 144) + "px";
+});
+</script>
+</body>
+</html>

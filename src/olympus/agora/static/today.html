@@ -17,10 +17,12 @@ __AGORA_NAV__
 
     <section class="panel">
         <h2>The action</h2>
-        <div class="panel-body" id="today-body">
-            <p>Run <code>invoke today</code> in your terminal:</p>
-            <pre class="cli"><span class="prompt">$</span> invoke today</pre>
-            <p>The oracle's priority order is:</p>
+        <div class="panel-body" id="today-body">loading…</div>
+    </section>
+
+    <section class="panel">
+        <h2>Priority ladder (how the oracle decides)</h2>
+        <div class="panel-body">
             <ol>
                 <li><span class="badge urgent">urgent</span> Pan in panic → address the cause first</li>
                 <li><span class="badge notable">noteworthy</span> Cassandra vindication unaddressed → re-raise dismissed warning</li>
@@ -47,7 +49,49 @@ __AGORA_NAV__
 <script>
 "use strict";
 (function () {
+    function renderAction(action) {
+        var body = document.getElementById("today-body");
+        body.innerHTML = "";
+        if (!action) {
+            body.innerHTML = "<p><em>unable to fetch today</em></p>";
+            return;
+        }
+        var head = AGORA.el("div", null, [
+            AGORA.el("span",
+                {"class": "badge " + (action.priority || "calm"),
+                 text: action.priority || ""}),
+            AGORA.el("span", {text: "  " + (action.headline || "")}),
+        ]);
+        head.style.fontSize = "1.1rem";
+        head.style.marginBottom = "0.7rem";
+        body.appendChild(head);
+        if (action.detail) {
+            var det = AGORA.el("p", {text: action.detail});
+            det.style.color = "var(--marble-dim)";
+            body.appendChild(det);
+        }
+        if (action.drawn_from && action.drawn_from.length) {
+            var src = AGORA.el("div", {"class": "mono",
+                text: "sources: " + action.drawn_from.join(", ")});
+            src.style.color = "var(--marble-muted)";
+            src.style.fontSize = "0.78rem";
+            src.style.marginTop = "0.6rem";
+            src.style.letterSpacing = "0.04em";
+            body.appendChild(src);
+        }
+    }
+    function refreshLive() {
+        AGORA.get("/today", function (err, action) {
+            if (err) {
+                AGORA.setStatus(false, "error: " + err.message);
+                return;
+            }
+            AGORA.setStatus(true, "live");
+            renderAction(action);
+        });
+    }
     function refresh() {
+        refreshLive();
         AGORA.get("/mnemosyne/today.action?limit=10",
             function (err, data) {
                 var body = document.getElementById("recent-body");
