@@ -127,6 +127,10 @@ The substrate is inhabited by LLM agents. **`runtime/llm_bridge.py`** — plugga
 
 Rigor over architecture. **Ananke** (Primordial — deterministic seed source; SHA-256(name) → fixed seed). **Tiresias** (Hero — ground-truth tracker; Brier-score calibration). **Heracles benchmark harness** (deterministic seeds, golden outputs, regression detection). **Typhon fault injector** (real break-then-verify-then-revert; e.g. `invoke fault-inject break-styx-chain --confirm` actually corrupts the chain and Tisiphone detects it). **Atalanta scalability harness** (p50/p95/p99 + memory delta across state sizes — measured O(n) on real I/O). **`invoke doctor`** — OpenClaw-inspired single-screen diagnostic that *honestly surfaces* warnings rather than printing theatrical green-light. **`codex/RIGOR.md`** answers each of Zeus's six rigor concerns with the substrate's actual instrumentation + live measurements.
 
+### 11. The xenia arc 🏺
+
+Hospitality — the substrate gets a front door. **`invoke setup`** — interactive welcome wizard (idempotent, metacognitive, 6 steps from `git clone` to working substrate; tests the LLM call before saving, never silent-saves a broken config). **`state/config.json`** — operator config file the LLM bridge auto-loads (env vars always win). **Agora** — vanilla HTML/JS web UI at `src/olympus/agora/` (5 pages: dashboard / setup guide / doctor / today / agents). **Welcome flow** — first `invoke <anything>` with unlit Hestia greets the stranger warmly and points at `invoke setup`. **`codex/QUICKSTART.md`** — 5-minute non-technical tour written for outside observers.
+
 ---
 
 ## Quick start
@@ -135,29 +139,17 @@ Rigor over architecture. **Ananke** (Primordial — deterministic seed source; S
 # Install
 pip install -e .
 
-# Kindle the deployment identity
-invoke kindle my-olympus "production cognitive substrate"
+# Welcome wizard — kindles hearth, picks LLM, optional daemon, runs a session
+invoke setup
 
-# Bring forth required directories
-invoke bring-forth
-
-# Run one cognitive session
-invoke session
-
-# See what the substrate knows
-invoke wisdom
-
-# Build the dashboard
-invoke iris
-
-# Start the read-only HTTP API
-invoke serve --port 8765
-
-# Install the daemon (macOS launchd or Linux systemd)
-invoke daemon install
-invoke daemon status
+# Or one command at a time:
+invoke today                    # the substrate's single-action oracle
+invoke doctor                   # full health diagnostic
+invoke serve --port 8765 &      # start the read-only HTTP API
+invoke agora --open             # build the web UI + open in browser
 ```
 
+If you want the 5-minute walkthrough: [`codex/QUICKSTART.md`](codex/QUICKSTART.md).
 Full operator runbook: [`codex/OPERATIONS.md`](codex/OPERATIONS.md).
 
 ---
@@ -253,6 +245,7 @@ Zeus         0.0769
 - **[`codex/SPECS.md`](codex/SPECS.md)** — the TLA+ formal-verification layer
 - **[`codex/PLUGINS.md`](codex/PLUGINS.md)** — third-party extensions via entry-points
 - **[`codex/INTELLIGENCE.md`](codex/INTELLIGENCE.md)** — how the substrate accumulates understanding
+- **[`codex/QUICKSTART.md`](codex/QUICKSTART.md)** — **5-minute tour for outside observers** (`git clone` → working substrate)
 - **[`codex/AGENTS.md`](codex/AGENTS.md)** — **how LLM agents inhabit the substrate** (prompt grounding + external governance + recursion gating)
 - **[`codex/RIGOR.md`](codex/RIGOR.md)** — **how Olympus answers "is this theatrical?"** (per-concern instrumentation + live measurements)
 - **[`codex/CHRONICLE.md`](codex/CHRONICLE.md)** — every shipped arc in reverse chronological order
@@ -277,12 +270,12 @@ The pantheon-coherence test (`tests/test_pantheon_coherence.py`) enforces that e
 | metric | value |
 |---|---|
 | named principal figures | **93** |
-| tests passing | **460 / 460** |
-| Styx oaths sworn | 105+ |
+| tests passing | **480 / 480** |
+| Styx oaths sworn | 114+ |
 | TLA+ specifications | 3 |
 | JSON Schemas | 7 |
-| arcs shipped | **10** (substance · self-improvement · missing-figures · compass-rose · recursion · labyrinth · phi · aegis · oikoumene · **akropolis**) |
-| heavy-production overrides invoked | 7 |
+| arcs shipped | **11** (substance · self-improvement · missing-figures · compass-rose · recursion · labyrinth · phi · aegis · oikoumene · akropolis · **xenia**) |
+| heavy-production overrides invoked | 8 |
 | ratification rate vs 1/φ | **0.98** harmony score |
 
 ---

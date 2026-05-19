@@ -269,9 +269,12 @@ Plus the operational modules:
 - **Daemon** (`src/olympus/runtime/daemon.py`) + templates at `scripts/daemon/` — generates launchd / systemd units so the self-improvement loop runs continuously.
 - **HTTP API** (`src/olympus/runtime/http_api.py`) — read-only JSON surface (plus exactly one write route: `POST /proposals/raise`); lets external observers query substrate state without Python coupling.
 - **Plugin loader** (`src/olympus/runtime/plugins.py`) — discovers third-party packages via `importlib.metadata` entry_points and registers their handlers/eyes/healers.
-- **LLM bridge** (`src/olympus/runtime/llm_bridge.py`) — pluggable interface for LLM providers (`EchoBridge` default for safety/tests, `AnthropicBridge` for `claude-opus-4-7`). The substrate's *one place* that talks to external models.
+- **LLM bridge** (`src/olympus/runtime/llm_bridge.py`) — pluggable interface for LLM providers (`EchoBridge` default for safety/tests, `AnthropicBridge` for `claude-opus-4-7`). The substrate's *one place* that talks to external models. Auto-loads from `state/config.json`; env vars always win.
 - **Agents tier** (`src/olympus/runtime/agents.py`) — role registry letting LLMs inhabit canonical figures (`hephaestus`, `momus`, `cassandra`, `athena`, `figure_proposer`). The agent layer lives in `runtime/` because it's plumbing; agents *are* canonical figures.
+- **Doctor** (`src/olympus/runtime/doctor.py`) — single-screen health diagnostic (akropolis arc).
+- **Setup wizard** (`src/olympus/runtime/setup.py`) + **config** (`runtime/config.py`) — interactive welcome ritual; writes `state/config.json` (xenia arc).
+- **Agora** (`src/olympus/agora/`) — vanilla HTML/JS operator web UI (5 pages) parallel to Iris; consumes the read-only HTTP API (xenia arc).
 
-Not gods; pure operational scaffolding. See [`codex/AGENTS.md`](AGENTS.md) for how LLM agents inhabit the substrate.
+Not gods; pure operational scaffolding. See [`codex/QUICKSTART.md`](QUICKSTART.md) for the 5-minute tour and [`codex/AGENTS.md`](AGENTS.md) for how LLM agents inhabit the substrate.
 
 Plus the Argos swarm: **9 Eyes**, **4 Satyrs**, **6 Demes**, **4 Phalanges**.

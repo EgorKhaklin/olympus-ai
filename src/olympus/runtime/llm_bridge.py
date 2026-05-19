@@ -246,11 +246,23 @@ _active_bridge: LLMBridge | None = None
 def bridge() -> LLMBridge:
     """Return the active LLM bridge for this process.
 
-    Honors OLYMPUS_LLM env var; defaults to EchoBridge so the
-    substrate is safe by default (no surprise network calls)."""
+    Order of precedence (xenia arc):
+      1. OLYMPUS_LLM env var (operator's explicit choice)
+      2. state/config.json::llm.provider (if config exists)
+      3. 'echo' (safe default — no network)
+
+    If the config picks anthropic, the config's anthropic_api_key is
+    exposed via ANTHROPIC_API_KEY (only if ANTHROPIC_API_KEY isn't
+    already set — env vars are never overwritten)."""
     global _active_bridge
     if _active_bridge is not None:
         return _active_bridge
+    # Pull config-derived env values (only sets vars that aren't set)
+    try:
+        from olympus.runtime.config import apply_to_environment
+        apply_to_environment()
+    except Exception:  # noqa: BLE001
+        pass
     name = os.environ.get("OLYMPUS_LLM", "echo").lower().strip()
     cls = _BRIDGE_REGISTRY.get(name)
     if cls is None:

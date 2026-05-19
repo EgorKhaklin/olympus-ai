@@ -1,0 +1,271 @@
+/* Agora — operator interactive surface.
+   Palette echoes Aphrodite (gold / wine / marble / sea / laurel).
+   No web fonts. No animations except hover. */
+
+:root {
+    --gold:   #d4a017;
+    --gold-2: #f0c43a;
+    --wine:   #722f37;
+    --wine-2: #4a1c22;
+    --marble: #ecebe4;
+    --ink:    #1c1a16;
+    --paper:  #faf8f1;
+    --sea:    #2d6a6a;
+    --laurel: #6b8e6b;
+    --line:   rgba(28, 26, 22, 0.12);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                 Georgia, serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.55;
+}
+
+nav.agora-nav {
+    background: linear-gradient(180deg, var(--wine) 0%, var(--wine-2) 100%);
+    color: var(--marble);
+    padding: 1rem 2rem;
+    border-bottom: 3px solid var(--gold);
+    display: flex;
+    gap: 1.2rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+nav.agora-nav a {
+    color: var(--marble);
+    text-decoration: none;
+    font-size: 0.9rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.3rem 0.6rem;
+    border-radius: 2px;
+    transition: background 0.15s;
+}
+nav.agora-nav a:hover { background: rgba(212, 160, 23, 0.15); }
+nav.agora-nav a.brand {
+    font-weight: 600;
+    color: var(--gold-2);
+    letter-spacing: 0.18em;
+    font-size: 1.1rem;
+    margin-right: 1rem;
+}
+
+main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 3rem;
+}
+
+header.page-head {
+    margin-bottom: 1.5rem;
+}
+header.page-head h1 {
+    margin: 0;
+    color: var(--wine);
+    font-size: 1.6rem;
+    letter-spacing: 0.05em;
+}
+header.page-head .subtitle {
+    color: var(--sea);
+    font-style: italic;
+    margin-top: 0.3rem;
+}
+header.page-head .status-strip {
+    margin-top: 0.6rem;
+    font-size: 0.78rem;
+    color: var(--sea);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+.card {
+    background: white;
+    border: 1px solid var(--line);
+    border-left: 4px solid var(--gold);
+    border-radius: 3px;
+    padding: 1rem;
+}
+.card .label {
+    text-transform: uppercase;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    color: var(--sea);
+    font-weight: 600;
+}
+.card .value {
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--ink);
+    margin-top: 0.25rem;
+}
+.card .annot {
+    color: var(--sea);
+    font-size: 0.78rem;
+    margin-top: 0.1rem;
+}
+
+.panel {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    margin-bottom: 1.5rem;
+    overflow: hidden;
+}
+.panel h2 {
+    background: var(--marble);
+    margin: 0;
+    padding: 0.7rem 1.1rem;
+    font-size: 0.95rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--wine);
+    border-bottom: 1px solid var(--line);
+}
+.panel-body { padding: 1.1rem 1.1rem; }
+
+table.iris {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+}
+table.iris th, table.iris td {
+    padding: 0.45rem 0.6rem;
+    text-align: left;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+}
+table.iris th {
+    color: var(--sea);
+    font-weight: 600;
+    font-size: 0.75rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+table.iris tr:last-child td { border-bottom: none; }
+table.iris .mono {
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.78rem;
+    color: var(--wine-2);
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.12rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+}
+.badge.ok       { background: var(--laurel); color: white; }
+.badge.warn     { background: var(--gold);   color: var(--ink); }
+.badge.fail     { background: var(--wine);   color: var(--marble); }
+.badge.urgent   { background: var(--wine);   color: var(--marble); }
+.badge.notable  { background: var(--gold);   color: var(--ink); }
+.badge.gentle   { background: var(--laurel); color: white; }
+.badge.calm     { background: var(--sea);    color: white; }
+
+.cli {
+    background: #1c1a16;
+    color: #ecebe4;
+    padding: 0.9rem 1.1rem;
+    border-radius: 3px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 0.85rem;
+    overflow-x: auto;
+    line-height: 1.5;
+}
+.cli .comment { color: var(--laurel); }
+.cli .prompt { color: var(--gold-2); }
+
+.step {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    margin-bottom: 1rem;
+    padding: 1.1rem;
+}
+.step h3 {
+    margin: 0 0 0.4rem 0;
+    color: var(--wine);
+    font-size: 1rem;
+    letter-spacing: 0.04em;
+}
+.step .step-num {
+    background: var(--gold);
+    color: var(--ink);
+    padding: 0.1rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-right: 0.5rem;
+}
+.step .why {
+    color: var(--sea);
+    font-style: italic;
+    margin: 0.3rem 0 0.7rem 0;
+    font-size: 0.85rem;
+}
+
+form.agent-form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+form.agent-form select, form.agent-form textarea, form.agent-form button {
+    font-family: inherit;
+    font-size: 0.9rem;
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+}
+form.agent-form textarea { min-height: 5rem; resize: vertical; }
+form.agent-form button {
+    background: var(--gold);
+    color: var(--ink);
+    border: none;
+    font-weight: 600;
+    cursor: pointer;
+    align-self: flex-start;
+}
+form.agent-form button:hover { background: var(--gold-2); }
+
+footer.agora-foot {
+    text-align: center;
+    color: var(--sea);
+    font-style: italic;
+    padding: 1.5rem 1rem 2rem;
+    font-size: 0.85rem;
+}
+
+.status-dot {
+    display: inline-block;
+    width: 9px; height: 9px;
+    border-radius: 50%;
+    margin-right: 0.3rem;
+    background: var(--laurel);
+    vertical-align: middle;
+}
+.status-dot.bad { background: var(--wine); }
+
+pre.json {
+    background: #1c1a16;
+    color: #ecebe4;
+    padding: 1rem;
+    overflow: auto;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    border-radius: 3px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    margin: 0;
+}

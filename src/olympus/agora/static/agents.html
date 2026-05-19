@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agora — Agents</title>
+    <style>/*__AGORA_CSS__*/</style>
+</head>
+<body>
+__AGORA_NAV__
+
+<main>
+    <header class="page-head">
+        <h1>Agents</h1>
+        <div class="subtitle">LLM-as-figure invocation · prompt grounding + external governance</div>
+    </header>
+
+    <section class="panel">
+        <h2>How agents inhabit the substrate</h2>
+        <div class="panel-body">
+            <p>Every LLM call is made <em>as</em> a Greek role: <code>hephaestus</code>,
+            <code>momus</code>, <code>cassandra</code>, <code>athena</code>,
+            <code>figure_proposer</code>. The role determines the system
+            prompt (figure docstring + the constitution S1–S8 + the AP
+            catalog) and the output schema.</p>
+            <p>The model <strong>thinks in</strong> the mythology; the substrate
+            <strong>enforces</strong> the constitution on the output. Pan still
+            gates ratification; Momus still contests; Zeus still ratifies.</p>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>Invoke an agent role (via CLI)</h2>
+        <div class="panel-body">
+            <p>The agent invocation is CLI-only by design (writes to
+            <code>llm.call</code> and <code>agent.invocation</code> in the
+            substrate's audit trail). Use the wizard below to generate the
+            command:</p>
+            <form class="agent-form" onsubmit="event.preventDefault(); generate();">
+                <label>Role
+                    <select id="role">
+                        <option value="hephaestus">hephaestus — surface drift</option>
+                        <option value="momus">momus — contest a proposal via AP1–AP8</option>
+                        <option value="cassandra">cassandra — review dismissed warnings</option>
+                        <option value="athena">athena — synthesis</option>
+                        <option value="figure_proposer">figure_proposer — extend the pantheon</option>
+                    </select>
+                </label>
+                <label>Prompt
+                    <textarea id="prompt" placeholder="What should the agent examine?"></textarea>
+                </label>
+                <button type="submit">Generate command</button>
+            </form>
+            <pre class="cli" id="cmd-output" style="margin-top: 1rem; display: none;"></pre>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>Recent agent invocations</h2>
+        <div class="panel-body" id="recent-body">loading…</div>
+    </section>
+</main>
+
+<footer class="agora-foot">
+    Read the answers to all three of Zeus's questions in <code>codex/AGENTS.md</code>.
+</footer>
+
+<script>/*__AGORA_JS__*/</script>
+<script>
+"use strict";
+function generate() {
+    var role = document.getElementById("role").value;
+    var prompt = document.getElementById("prompt").value.trim();
+    var quoted = prompt
+        ? '"' + prompt.replace(/"/g, '\\"') + '"'
+        : "";
+    var cmd = "invoke agent " + role + (quoted ? " " + quoted : "");
+    var out = document.getElementById("cmd-output");
+    out.textContent = "$ " + cmd;
+    out.style.display = "block";
+}
+
+(function () {
+    function refresh() {
+        AGORA.get("/mnemosyne/agent.invocation?limit=10",
+            function (err, data) {
+                var body = document.getElementById("recent-body");
+                body.innerHTML = "";
+                if (err) {
+                    body.appendChild(AGORA.el("p",
+                        {text: "error: " + err.message}));
+                    return;
+                }
+                if (!data.returned) {
+                    body.appendChild(AGORA.el("p",
+                        {text: "(no agent invocations yet — try one above)"}));
+                    return;
+                }
+                var table = AGORA.el("table", {"class": "iris"});
+                var thead = AGORA.el("thead", null, [
+                    AGORA.el("tr", null, [
+                        AGORA.el("th", {text: "when"}),
+                        AGORA.el("th", {text: "role"}),
+                        AGORA.el("th", {text: "bridge"}),
+                        AGORA.el("th", {text: "conf"}),
+                        AGORA.el("th", {text: "elapsed"}),
+                    ]),
+                ]);
+                var tbody = AGORA.el("tbody");
+                data.records.forEach(function (r) {
+                    var b = (r.body || {});
+                    tbody.appendChild(AGORA.el("tr", null, [
+                        AGORA.el("td", {"class": "mono",
+                            text: (r.remembered_at || "").substring(0, 19)}),
+                        AGORA.el("td", {text: b.role || "?"}),
+                        AGORA.el("td", {text: b.bridge || "?"}),
+                        AGORA.el("td", {"class": "mono",
+                            text: (b.confidence || 0).toFixed(2)}),
+                        AGORA.el("td", {"class": "mono",
+                            text: (b.elapsed_ms || 0).toFixed(0) + "ms"}),
+                    ]));
+                });
+                table.appendChild(thead);
+                table.appendChild(tbody);
+                body.appendChild(table);
+            });
+    }
+    refresh();
+    setInterval(refresh, AGORA.INTERVAL_MS);
+})();
+</script>
+</body>
+</html>

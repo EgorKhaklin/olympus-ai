@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agora — Setup Guide</title>
+    <style>/*__AGORA_CSS__*/</style>
+</head>
+<body>
+__AGORA_NAV__
+
+<main>
+    <header class="page-head">
+        <h1>Setup Guide</h1>
+        <div class="subtitle">five steps from <code>git clone</code> to a running substrate</div>
+        <div class="status-strip">
+            built __BUILT_AT__ ·
+            <em>this page is a guide; the CLI wizard does the work</em>
+        </div>
+    </header>
+
+    <section class="panel">
+        <h2>Why a wizard at all?</h2>
+        <div class="panel-body">
+            <p>The substrate's most powerful surfaces — Pan's panic gate, Zeus's ratification on Styx, Hephaestus's proposal pipeline — are <strong>by design</strong> CLI-and-Python only. The web UI would create attack surfaces those gates exist to prevent.</p>
+            <p>Setup is the operator's first ritual. The CLI wizard does it all in one terminal session; this page shows what's happening, in case you want to know first.</p>
+        </div>
+    </section>
+
+    <div class="step">
+        <h3><span class="step-num">1</span>Run the wizard</h3>
+        <div class="why">Idempotent — re-running is safe. Re-runs show current state.</div>
+        <pre class="cli"><span class="prompt">$</span> invoke setup</pre>
+    </div>
+
+    <div class="step">
+        <h3><span class="step-num">2</span>Kindle the hearth (Hestia)</h3>
+        <div class="why">Names this Olympus deployment. Every cognitive loop runs under this identity.</div>
+        <pre class="cli"><span class="comment"># Wizard prompts:</span>
+  name [my-olympus]: <span class="prompt">production-substrate</span>
+  vocation: <span class="prompt">private cognitive assistant for VANTA</span></pre>
+    </div>
+
+    <div class="step">
+        <h3><span class="step-num">3</span>Choose your LLM provider</h3>
+        <div class="why">Olympus runs <strong>without</strong> an LLM. <code>echo</code> is a deterministic stub — safe by default.
+        Switch to <code>anthropic</code> for real agent reasoning (Claude). The wizard <strong>tests the API call</strong>
+        before saving — no surprise broken setups.</div>
+        <pre class="cli"><span class="comment"># Choices:</span>
+  1. echo       <span class="comment"># no network, no cost (recommended to start)</span>
+  2. anthropic  <span class="comment"># Claude (needs ANTHROPIC_API_KEY)</span>
+  3. skip       <span class="comment"># leave as-is</span>
+  choice (1/2/3) [echo]: <span class="prompt">2</span>
+  ANTHROPIC_API_KEY (paste): <span class="prompt">sk-ant-…</span>
+  testing the connection (one tiny call)…
+  ✓ test call succeeded (model=claude-opus-4-7)</pre>
+    </div>
+
+    <div class="step">
+        <h3><span class="step-num">4</span>Install the daemon (optional)</h3>
+        <div class="why"><code>launchd</code> on macOS or <code>systemd</code> on Linux runs <code>invoke session + improve</code> on a cadence. You can install now or skip and add later via <code>invoke daemon install</code>.</div>
+        <pre class="cli">  install daemon now (Y/n): <span class="prompt">n</span>
+  <span class="comment"># Will run interactively / via cron for now</span></pre>
+    </div>
+
+    <div class="step">
+        <h3><span class="step-num">5</span>Pick the Agora port + first session</h3>
+        <div class="why">Agora binds to <code>localhost:8765</code> by default. The wizard runs one session to confirm everything works.</div>
+        <pre class="cli">  Agora port [8765]: <span class="prompt">[enter]</span>
+  run a session now (Y/n): <span class="prompt">[enter]</span>
+  ✓ session session-abc12345 completed
+    hydra=9 argos=9 proposals=0</pre>
+    </div>
+
+    <div class="step">
+        <h3><span class="step-num">6</span>Open the Agora</h3>
+        <div class="why">From now on you can use the web UI for everyday operator work. The CLI is always available for the constitution-bearing actions.</div>
+        <pre class="cli"><span class="prompt">$</span> invoke serve --port 8765 &amp;       <span class="comment"># start the API</span>
+<span class="prompt">$</span> invoke agora --open               <span class="comment"># build + open Agora</span></pre>
+    </div>
+
+    <section class="panel">
+        <h2>Where the config lives</h2>
+        <div class="panel-body">
+            <p><code>state/config.json</code> — gitignored, plaintext, operator-owned. The wizard writes it; env vars override it; the LLM bridge auto-loads it.</p>
+            <p><strong>API keys are stored as plaintext.</strong> The operator is responsible for filesystem-level security. A future arc may add OS-keychain integration. We don't pretend otherwise.</p>
+        </div>
+    </section>
+</main>
+
+<footer class="agora-foot">
+    Run <code>invoke setup</code> in your terminal to begin.
+</footer>
+
+<script>/*__AGORA_JS__*/</script>
+</body>
+</html>

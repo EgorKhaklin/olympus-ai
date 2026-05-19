@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agora — Today</title>
+    <style>/*__AGORA_CSS__*/</style>
+</head>
+<body>
+__AGORA_NAV__
+
+<main>
+    <header class="page-head">
+        <h1>Today</h1>
+        <div class="subtitle">the single-action oracle · one concrete thing to do</div>
+    </header>
+
+    <section class="panel">
+        <h2>The action</h2>
+        <div class="panel-body" id="today-body">
+            <p>Run <code>invoke today</code> in your terminal:</p>
+            <pre class="cli"><span class="prompt">$</span> invoke today</pre>
+            <p>The oracle's priority order is:</p>
+            <ol>
+                <li><span class="badge urgent">urgent</span> Pan in panic → address the cause first</li>
+                <li><span class="badge notable">noteworthy</span> Cassandra vindication unaddressed → re-raise dismissed warning</li>
+                <li><span class="badge notable">noteworthy</span> Hygieia incoherence → fix the cross-module gap</li>
+                <li><span class="badge gentle">gentle</span> Phoenix rebirth candidate → consider regenerating</li>
+                <li><span class="badge gentle">gentle</span> Metis high-confidence tuning rec</li>
+                <li><span class="badge calm">calm</span> the substrate is healthy — quiet days are good days</li>
+            </ol>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>Recent actions taken</h2>
+        <div class="panel-body" id="recent-body">loading…</div>
+    </section>
+</main>
+
+<footer class="agora-foot">
+    The today oracle picks one. The substrate has many problems; the
+    operator should look at the most pressing.
+</footer>
+
+<script>/*__AGORA_JS__*/</script>
+<script>
+"use strict";
+(function () {
+    function refresh() {
+        AGORA.get("/mnemosyne/today.action?limit=10",
+            function (err, data) {
+                var body = document.getElementById("recent-body");
+                body.innerHTML = "";
+                if (err) {
+                    body.appendChild(AGORA.el("p",
+                        {text: "error: " + err.message}));
+                    return;
+                }
+                if (!data.returned) {
+                    body.appendChild(AGORA.el("p",
+                        {text: "(no today.action records yet — run invoke today)"}));
+                    return;
+                }
+                var table = AGORA.el("table", {"class": "iris"});
+                var thead = AGORA.el("thead", null, [
+                    AGORA.el("tr", null, [
+                        AGORA.el("th", {text: "when"}),
+                        AGORA.el("th", {text: "priority"}),
+                        AGORA.el("th", {text: "headline"}),
+                    ]),
+                ]);
+                var tbody = AGORA.el("tbody");
+                data.records.forEach(function (r) {
+                    var b = (r.body || {});
+                    tbody.appendChild(AGORA.el("tr", null, [
+                        AGORA.el("td", {"class": "mono",
+                            text: (r.remembered_at || "")
+                                .substring(0, 19)}),
+                        AGORA.el("td", null, [
+                            AGORA.el("span", {
+                                "class": "badge " + (b.priority || ""),
+                                text: b.priority || "?",
+                            }),
+                        ]),
+                        AGORA.el("td", {text: b.headline || ""}),
+                    ]));
+                });
+                table.appendChild(thead);
+                table.appendChild(tbody);
+                body.appendChild(table);
+            });
+    }
+    refresh();
+    setInterval(refresh, AGORA.INTERVAL_MS);
+})();
+</script>
+</body>
+</html>

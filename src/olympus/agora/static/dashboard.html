@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agora — Olympus</title>
+    <style>/*__AGORA_CSS__*/</style>
+</head>
+<body>
+__AGORA_NAV__
+
+<main>
+    <header class="page-head">
+        <h1>The Agora</h1>
+        <div class="subtitle">the operator's marketplace · the place where the substrate is met</div>
+        <div class="status-strip">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="status-text">connecting…</span>
+            · built __BUILT_AT__
+            · polling __API_BASE__ every <span id="iv"></span>s
+        </div>
+    </header>
+
+    <section class="grid" id="cards"><!-- filled by JS --></section>
+
+    <section class="panel">
+        <h2>Today — the single-action oracle</h2>
+        <div class="panel-body" id="today-body">loading…</div>
+    </section>
+
+    <section class="panel">
+        <h2>Harmony — substrate ratios vs sacred anchors</h2>
+        <div class="panel-body" id="harmony-body">loading…</div>
+    </section>
+</main>
+
+<footer class="agora-foot">
+    The Agora is a static page polling the read-only HTTP API.
+    For mutations (ratify, kindle, panic-clear) use the CLI:
+    <code>invoke help</code>.
+</footer>
+
+<script>/*__AGORA_JS__*/</script>
+<script>
+"use strict";
+(function () {
+    document.getElementById("iv").textContent =
+        (AGORA.INTERVAL_MS / 1000).toFixed(1);
+
+    function renderCards(status) {
+        var cards = document.getElementById("cards");
+        cards.innerHTML = "";
+        var tiles = [
+            ["Hearth", (status.hearth || {}).name || "—",
+             (status.hearth || {}).lit ? "lit" : "dark"],
+            ["Styx oaths",
+             (status.styx || {}).total_oaths || 0,
+             (status.styx || {}).intact ? "intact" : "BROKEN"],
+            ["Hydra heads", (status.hydra || {}).heads || 0,
+             "watcher tier"],
+            ["Argos eyes", (status.argos || {}).eyes || 0,
+             "swarm tier"],
+            ["Pending", (status.actions || {}).pending || 0,
+             ((status.actions || {}).delphi_pending || 0) + " delphi"],
+            ["Sessions", (status.sessions || {}).total || 0,
+             "completed"],
+        ];
+        tiles.forEach(function (t) {
+            cards.appendChild(AGORA.el("div", {"class": "card"}, [
+                AGORA.el("div", {"class": "label", text: t[0]}),
+                AGORA.el("div", {"class": "value", text: String(t[1])}),
+                AGORA.el("div", {"class": "annot", text: String(t[2])}),
+            ]));
+        });
+    }
+
+    function renderHarmony(g) {
+        var body = document.getElementById("harmony-body");
+        body.innerHTML = "";
+        var m = (g || {}).harmony_metrics || {};
+        var keys = Object.keys(m);
+        if (!keys.length) {
+            body.appendChild(AGORA.el("div",
+                {text: "(no harmony metrics yet)"}));
+            return;
+        }
+        var table = AGORA.el("table", {"class": "iris"});
+        var thead = AGORA.el("thead", null, [
+            AGORA.el("tr", null, [
+                AGORA.el("th", {text: "metric"}),
+                AGORA.el("th", {text: "ratio"}),
+                AGORA.el("th", {text: "nearest"}),
+                AGORA.el("th", {text: "score"}),
+            ]),
+        ]);
+        var tbody = AGORA.el("tbody");
+        keys.forEach(function (k) {
+            tbody.appendChild(AGORA.el("tr", null, [
+                AGORA.el("td", {text: k}),
+                AGORA.el("td", {"class": "mono",
+                    text: m[k].ratio.toFixed(4)}),
+                AGORA.el("td", {text: m[k].nearest_anchor}),
+                AGORA.el("td", {"class": "mono",
+                    text: m[k].score.toFixed(4)}),
+            ]));
+        });
+        table.appendChild(thead);
+        table.appendChild(tbody);
+        body.appendChild(table);
+    }
+
+    function refresh() {
+        AGORA.get("/status", function (err, status) {
+            if (err) {
+                AGORA.setStatus(false, "error: " + err.message);
+                return;
+            }
+            AGORA.setStatus(true, "live");
+            renderCards(status);
+        });
+        AGORA.get("/geometry", function (err, g) {
+            if (err || !g) return;
+            renderHarmony(g);
+        });
+        // Today is rendered via the dialogue ask template — but
+        // there's no public /today endpoint, so we display a hint.
+        var today = document.getElementById("today-body");
+        if (today.dataset.shown !== "1") {
+            today.innerHTML = "Run <code>invoke today</code> in the " +
+                "terminal for the single-action oracle. (Future arc: " +
+                "expose today via the HTTP API.)";
+            today.dataset.shown = "1";
+        }
+    }
+
+    refresh();
+    setInterval(refresh, AGORA.INTERVAL_MS);
+})();
+</script>
+</body>
+</html>

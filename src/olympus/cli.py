@@ -1693,6 +1693,41 @@ def _calibration(argv: list[str]) -> int:
     return 0
 
 
+@hermes.register("setup", "interactive welcome wizard (start here, stranger)")
+def _setup(_argv: list[str]) -> int:
+    from olympus.runtime.setup import run_setup
+    run_setup()
+    return 0
+
+
+@hermes.register("agora", "build the operator web UI — agora [--open] [--port N]")
+def _agora(argv: list[str]) -> int:
+    from olympus.agora import build, open_in_browser
+    from olympus.runtime.config import load as load_config
+    cfg = load_config()
+    port = cfg.agora.port
+    host = cfg.agora.host
+    open_it = "--open" in argv
+    i = 0
+    while i < len(argv):
+        if argv[i] == "--port" and i + 1 < len(argv):
+            port = int(argv[i + 1]); i += 2; continue
+        if argv[i] == "--host" and i + 1 < len(argv):
+            host = argv[i + 1]; i += 2; continue
+        i += 1
+    api_base = f"http://{host}:{port}"
+    out = build(api_base=api_base, interval_seconds=5.0)
+    print(aphrodite.laurel(f"agora built — {out}"))
+    print(aglaia.murmur(f"  pages poll {api_base} every 5.0s"))
+    print(aglaia.murmur(f"  ensure `invoke serve --port {port}` is running"))
+    if open_it:
+        open_in_browser(out)
+        print(aglaia.murmur("  opened in browser"))
+    else:
+        print(aglaia.murmur(f"  open with: open {out}"))
+    return 0
+
+
 @hermes.register("doctor", "single-screen health diagnostic (akropolis arc)")
 def _doctor(_argv: list[str]) -> int:
     from olympus.runtime.doctor import diagnose
@@ -1903,12 +1938,60 @@ def _load_plugins_once() -> None:
         pass
 
 
+_WELCOME_EXEMPT = {
+    "setup", "help", "version", "kindle", "describe",
+    "bring-forth", "pantheon", "list", "agora",
+}
+
+
+def _maybe_welcome(argv: list[str]) -> bool:
+    """If the operator hasn't kindled the hearth yet and isn't running
+    an exempt command (setup/help/etc.), print a friendly welcome
+    and return True (caller should exit early without dispatching)."""
+    if not argv:
+        return False
+    cmd = argv[0]
+    if cmd in _WELCOME_EXEMPT or cmd.startswith("-"):
+        return False
+    try:
+        from olympus.olympians.hestia import hestia
+        if hestia.is_lit():
+            return False
+    except Exception:  # noqa: BLE001
+        return False
+    # Hestia is unlit AND the operator is trying to do real work.
+    sys.stdout.write(
+        "\n"
+        "═══════════════════════════════════════════════════════════\n"
+        "  welcome to Olympus, stranger.\n"
+        "═══════════════════════════════════════════════════════════\n"
+        "\n"
+        "  Olympus is a cognitive substrate built in the shape of\n"
+        "  Greek mythology. It hasn't met you yet — Hestia's hearth\n"
+        "  is unlit.\n"
+        "\n"
+        "  To begin (the friendly walk-through, ~5 minutes):\n"
+        "      invoke setup\n"
+        "\n"
+        "  If you're in a hurry:\n"
+        "      invoke kindle <name> \"<vocation>\"\n"
+        "      invoke session\n"
+        "\n"
+        "  If you want the full picture first:\n"
+        "      cat codex/QUICKSTART.md\n"
+        "\n"
+    )
+    return True
+
+
 def main(argv: list[str] | None = None) -> int:
     """Entry point. `invoke ...` (pip-installed) and `./scripts/invoke ...`
     both land here."""
     if argv is None:
         argv = sys.argv[1:]
     _load_plugins_once()
+    if _maybe_welcome(argv):
+        return 0
     return hermes.dispatch(argv)
 
 

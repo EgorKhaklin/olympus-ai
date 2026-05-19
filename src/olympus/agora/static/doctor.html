@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Agora — Doctor</title>
+    <style>/*__AGORA_CSS__*/</style>
+</head>
+<body>
+__AGORA_NAV__
+
+<main>
+    <header class="page-head">
+        <h1>Doctor</h1>
+        <div class="subtitle">single-screen health diagnostic · honest about warnings</div>
+        <div class="status-strip">
+            <span class="status-dot" id="status-dot"></span>
+            <span id="status-text">connecting…</span>
+            · run <code>invoke doctor</code> in the terminal to refresh
+        </div>
+    </header>
+
+    <section class="panel">
+        <h2>Substrate health</h2>
+        <div class="panel-body" id="doctor-body">
+            <p>The doctor endpoint is CLI-only by design (it reads
+            live state across every tier). For now this page shows
+            the status endpoint; future arc will expose a JSON
+            doctor endpoint to the HTTP API.</p>
+            <p>Run in your terminal:</p>
+            <pre class="cli"><span class="prompt">$</span> invoke doctor</pre>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>Live status (subset)</h2>
+        <div class="panel-body"><pre class="json" id="status-json">loading…</pre></div>
+    </section>
+</main>
+
+<footer class="agora-foot">
+    The doctor is honest — if it says <span class="badge warn">warn</span> it means it.
+</footer>
+
+<script>/*__AGORA_JS__*/</script>
+<script>
+"use strict";
+(function () {
+    function refresh() {
+        AGORA.get("/status", function (err, status) {
+            if (err) {
+                AGORA.setStatus(false, "error: " + err.message);
+                return;
+            }
+            AGORA.setStatus(true, "live");
+            document.getElementById("status-json").textContent =
+                JSON.stringify(status, null, 2);
+        });
+    }
+    refresh();
+    setInterval(refresh, AGORA.INTERVAL_MS);
+})();
+</script>
+</body>
+</html>

@@ -12,6 +12,43 @@ Newest first. Each entry names what changed, what was sworn, who decided.
 
 ---
 
+## 2026-05-18 — the xenia arc 🏺 (HIGH-COMPOSITE, eighth boil-the-ocean override)
+
+**Risk class:** HIGH-COMPOSITE.
+**Delphi:** [`codex/oracles/delphi/2026-05-18-xenia-arc.md`](oracles/delphi/2026-05-18-xenia-arc.md)
+**Sworn on Styx at seq=121.**
+
+Zeus was right: ten arcs built a powerful substrate; a stranger had **no obvious path** from `git clone` to "I'm using this." This arc operationalizes guest-friendship (Greek: ξενία).
+
+### What ships
+
+**`runtime/setup.py`** — interactive 6-step welcome wizard. Idempotent, metacognitive, testable via injected `input_provider`. **Tests the LLM call before saving** — no surprise broken configs.
+
+**`runtime/config.py`** — `state/config.json` load/save. Env vars **always win**; `apply_to_environment()` only sets unset keys.
+
+**Agora** — `src/olympus/agora/` (5 vanilla HTML/JS pages: dashboard, setup-guide, doctor, today, agents). Consumes the read-only HTTP API. **Constitution-bearing actions stay CLI-only by design.**
+
+**Welcome flow** — `cli.py::_maybe_welcome` intercepts non-exempt errands when Hestia is unlit; prints a warm message pointing at `invoke setup`.
+
+**LLM bridge auto-loads config** — `runtime/llm_bridge.py::bridge()` calls `config.apply_to_environment()`; env vars always still win.
+
+**`codex/QUICKSTART.md`** — 5-minute non-technical tour for outside observers.
+
+### CLI
+`invoke setup`, `invoke agora [--open] [--port N]`.
+
+### Tests
+Three new files, 20 new tests. **Full suite: 480/480 green.** (460 → 480.)
+
+### Refused
+- No web-based ratification of HIGH-risk actions (S7 holds).
+- No GUI installer — CLI wizard is canonical.
+- No API key encryption at rest (gitignored plaintext; documented).
+
+A stranger can now go from `git clone` to a working Olympus in five minutes. *The door is open.*
+
+---
+
 ## 2026-05-18 — the akropolis arc 🏛 (HIGH-COMPOSITE, seventh boil-the-ocean override)
 
 **Risk class:** HIGH-COMPOSITE.
