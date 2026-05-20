@@ -21,7 +21,6 @@ LOW-risk changes can ship autonomously. MEDIUM goes through proposal review (Mom
 
 ## 🜂 Quality bar
 
-- **No em-dashes in human-readable prose** (use commas, periods, or parens).
 - **Declarative style.** No filler. No "as we can see" or "it's worth noting."
 - **No new heavy dependencies** without a Delphi-tier debate. Olympus prides itself on stdlib + small pure-Python additions.
 - **No silent state writes.** Every change to `state/config.json`, every chunk of audit-of-record, every commit must be traceable.
